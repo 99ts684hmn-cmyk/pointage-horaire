@@ -234,9 +234,9 @@ function openProfile(empId) {
   const emp = allEmployees.find((e) => e.id === empId);
   if (!emp) return;
   const rest = new Set(emp.restDays || []);
-  // Date d'effet par défaut : lundi de la semaine prochaine (le futur n'altère pas le passé/présent).
-  const nm = weekBounds(new Date()).monday; nm.setDate(nm.getDate() + 7);
-  const nextMonday = localISO(nm);
+  // Date d'effet par défaut : lundi de la semaine EN COURS, pour qu'un changement
+  // s'applique immédiatement. Mettre une date antérieure/ultérieure si besoin.
+  const thisMonday = localISO(weekBounds(new Date()).monday);
   profileModal.innerHTML = `
     <h2>${escapeHtml(emp.name)}</h2>
     <div class="sub">Profil — repos &amp; service</div>
@@ -248,8 +248,8 @@ function openProfile(empId) {
     </div>
     <div class="field" style="margin-top:10px">
       <label for="pf-from">Repos applicables à partir du</label>
-      <input type="date" id="pf-from" value="${nextMonday}">
-      <div class="sub" style="font-size:.78rem;margin-top:4px">Laissez cette date pour ne pas modifier les semaines passées ou en cours.</div>
+      <input type="date" id="pf-from" value="${thisMonday}">
+      <div class="sub" style="font-size:.78rem;margin-top:4px">Par défaut : début de la semaine en cours (effet immédiat). Avancez la date pour ne changer que les semaines futures, ou reculez-la pour corriger le passé.</div>
     </div>
     <div class="field" style="margin-top:12px">
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer">

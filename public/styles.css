@@ -255,6 +255,15 @@ td.num { font-variant-numeric: tabular-nums; }
 .pl-rest-lbl { font-weight: 700; font-size: .7rem; text-transform: uppercase; color: #8a8a8a; letter-spacing: .04em; }
 .planning .pl-day-head { cursor: pointer; }
 .planning .pl-day-head:hover { text-decoration: underline; background: #2a2c29; }
+/* Ligne « Extra » : deux cases par jour (midi / soir), texte libre cliquable. */
+.planning .pl-extra-row .pl-name { background: #fff7ec; }
+.planning .pl-extra-cell { padding: 0; vertical-align: top; }
+.pl-extra-sub { display: block; padding: 4px 6px; cursor: pointer; min-height: 22px; text-align: center; }
+.pl-extra-sub + .pl-extra-sub { border-top: 1px dashed var(--border); }
+.pl-extra-sub:hover { background: #fff3df; }
+.pl-extra-sub.has { background: #fff0d6; }
+.pl-extra-tag { display: block; font-size: .6rem; text-transform: uppercase; letter-spacing: .04em; color: #b08400; font-weight: 700; }
+.pl-extra-txt { font-weight: 600; color: #5a4500; white-space: pre-wrap; }
 .toast {
   position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
   background: #1f2120; color: #fff8f0; padding: 11px 18px; border-radius: 10px;

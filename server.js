@@ -718,6 +718,28 @@ app.put('/api/admin/day-status', requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
+// --- Ligne « Extra » du planning (texte libre par jour et par service) ----
+function readExtra() {
+  try {
+    const v = JSON.parse(getSetting('extra_notes') || '{}');
+    return (v && typeof v === 'object' && !Array.isArray(v)) ? v : {};
+  } catch { return {}; }
+}
+app.get('/api/admin/extra', requireAdmin, (req, res) => {
+  res.json(readExtra());
+});
+app.put('/api/admin/extra', requireAdmin, (req, res) => {
+  const { date, service, text } = req.body || {};
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) return res.status(400).json({ error: 'Date invalide' });
+  if (service !== 'midi' && service !== 'soir') return res.status(400).json({ error: 'Service invalide' });
+  const map = readExtra();
+  const key = `${date}|${service}`;
+  const t = String(text == null ? '' : text).trim().slice(0, 200);
+  if (t) map[key] = t; else delete map[key];
+  setSetting('extra_notes', JSON.stringify(map));
+  res.json({ ok: true });
+});
+
 // Pose un statut sur une PLAGE de jours (ex. toute la semaine) pour plusieurs
 // salariés — bouton « Hors entreprise ». École réservée aux apprentis (ignorée sinon).
 app.put('/api/admin/day-status/range', requireAdmin, (req, res) => {

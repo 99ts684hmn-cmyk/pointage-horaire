@@ -440,6 +440,7 @@ function classifyDay(segments) {
 // Données du planning (toujours complètes, indépendantes du filtre du rapport).
 let planningReport = [];
 let statusMap = new Map(); // clé "empId|day" → 'cp'|'am'|'ecole'
+let extraMap = {}; // clé "YYYY-MM-DD|midi" / "…|soir" → texte libre (ligne « Extra »)
 const STATUS_SHORT = { cp: 'CP', am: 'AM', ecole: 'École', absent: 'Abs', repos: 'Repos' };
 const STATUS_FULL = { cp: 'Congés payés', am: 'Arrêt maladie', ecole: 'École', absent: 'Absent', repos: 'Repos' };
 
@@ -448,15 +449,17 @@ async function loadPlanning() {
   const to = $('rep-to').value;
   if (!from || !to) { renderPlanning(); return; }
   const params = new URLSearchParams({ from, to });
-  const [rep, st] = await Promise.all([
+  const [rep, st, ex] = await Promise.all([
     api('/api/admin/report?' + params.toString()),
     api('/api/admin/day-statuses?' + params.toString()),
+    api('/api/admin/extra?' + params.toString()),
   ]);
   planningReport = (rep.ok && rep.data) ? rep.data : [];
   statusMap = new Map();
   if (st.ok && Array.isArray(st.data)) {
     for (const s of st.data) statusMap.set(s.employeeId + '|' + s.day, s.status);
   }
+  extraMap = (ex.ok && ex.data && typeof ex.data === 'object') ? ex.data : {};
   renderPlanning();
 }
 
@@ -548,6 +551,21 @@ function renderPlanning() {
       html += `<td class="pl-total">${fmtH(tot)}</td></tr>`;
   }
 
+  // Ligne « Extra » : saisie libre par service ; chaque texte saisi compte +1 présent.
+  html += '<tr class="pl-extra-row"><td class="pl-name">Extra</td>';
+  for (const d of days) {
+    const m = (extraMap[d + '|midi'] || '').trim();
+    const s = (extraMap[d + '|soir'] || '').trim();
+    if (m) midiCount[d]++;
+    if (s) soirCount[d]++;
+    const sub = (svc, val) => `<div class="pl-extra-sub${val ? ' has' : ''}" data-day="${d}" data-svc="${svc}">`
+      + `<span class="pl-extra-tag">${svc === 'midi' ? 'Midi' : 'Soir'}</span>`
+      + (val ? `<span class="pl-extra-txt">${escapeHtml(val)}</span>` : '<span class="pl-empty">+</span>')
+      + '</div>';
+    html += `<td class="pl-extra-cell">${sub('midi', m)}${sub('soir', s)}</td>`;
+  }
+  html += '<td></td></tr>';
+
   // Nombre de présents par service (par jour).
   html += '<tr class="pl-svc-row"><td class="pl-name">Présents midi (9h–14h)</td>';
   for (const d of days) html += `<td>${midiCount[d] || '—'}</td>`;
@@ -568,6 +586,52 @@ function renderPlanning() {
   out.querySelectorAll('.pl-day-head').forEach((th) => {
     th.addEventListener('click', () => copyDayArrivals(th.dataset.day));
   });
+  out.querySelectorAll('.pl-extra-sub').forEach((el) => {
+    el.addEventListener('click', () => openExtraEditor(el.dataset.day, el.dataset.svc));
+  });
+}
+
+// Éditeur d'une case « Extra » (texte libre pour un service donné).
+function openExtraEditor(day, svc) {
+  const key = day + '|' + svc;
+  const cur = extraMap[key] || '';
+  const svcLabel = svc === 'midi' ? 'Midi' : 'Soir';
+  cellModal.innerHTML = `
+    <h2>Extra — ${svcLabel}</h2>
+    <div class="sub">${planningDayLabel(day).replace('<br>', ' ')}</div>
+    <div class="field" style="margin-top:12px">
+      <label for="ex-text">Texte libre (ex. nom d'un extra, renfort…)</label>
+      <textarea id="ex-text" style="width:100%;height:90px;font-family:inherit;font-size:.95rem;padding:10px;border:1px solid var(--border);border-radius:10px">${escapeHtml(cur)}</textarea>
+      <div class="sub" style="font-size:.78rem;margin-top:4px">Si du texte est saisi, +1 présent est compté pour le service du ${svcLabel.toLowerCase()}.</div>
+    </div>
+    <div class="action-buttons" style="margin-top:12px;grid-template-columns:repeat(2,1fr)">
+      <button class="btn btn-green" id="ex-save">Enregistrer</button>
+      ${cur ? '<button class="btn btn-ghost" id="ex-clear">Effacer</button>' : ''}
+    </div>
+    <div class="msg error" id="ex-msg"></div>
+    <div style="margin-top:12px"><button class="btn btn-ghost" id="ex-close">Fermer</button></div>
+  `;
+  cellModal.querySelector('#ex-save').addEventListener('click', () => {
+    saveExtra(day, svc, cellModal.querySelector('#ex-text').value);
+  });
+  const clr = cellModal.querySelector('#ex-clear');
+  if (clr) clr.addEventListener('click', () => saveExtra(day, svc, ''));
+  cellModal.querySelector('#ex-close').addEventListener('click', () => cellOverlay.classList.remove('show'));
+  cellOverlay.classList.add('show');
+}
+
+async function saveExtra(day, svc, text) {
+  const { ok, data } = await api('/api/admin/extra', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ date: day, service: svc, text }),
+  });
+  if (!ok) {
+    const m = $('ex-msg');
+    if (m) { m.textContent = (data && data.error) || 'Erreur'; m.classList.add('show'); }
+    return;
+  }
+  cellOverlay.classList.remove('show');
+  await loadPlanning();
 }
 
 // Copie « Nom : heures d'arrivée » pour le jour cliqué.

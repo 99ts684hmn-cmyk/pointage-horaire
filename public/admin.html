@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Administration — Boeuf &amp; Cow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><span class="brand-name">Bœuf <span class="amp">&amp;</span> Cow</span><span class="brand-tag">Administration</span></div>
+    <div>
+      <a href="index.html">← Écran de pointage</a>
+      <a href="#" id="logout-link" style="display:none; margin-left:16px">Déconnexion</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Connexion -->
+    <div id="login-view" class="login-wrap" style="display:none">
+      <div class="panel">
+        <h2>Connexion administrateur</h2>
+        <div class="field">
+          <label for="login-password">Mot de passe</label>
+          <input type="password" id="login-password" autocomplete="current-password" placeholder="••••••••">
+        </div>
+        <button class="btn btn-blue" id="login-btn" style="width:100%">Se connecter</button>
+        <div class="msg error" id="login-msg"></div>
+      </div>
+    </div>
+
+    <!-- Tableau de bord -->
+    <div id="admin-view" style="display:none">
+
+      <div class="panel" id="planning-panel">
+        <h2>Planning de la semaine</h2>
+        <div class="row" style="margin-bottom:14px; align-items:center; gap:14px">
+          <button class="btn btn-ghost" id="wk-prev" style="flex:0 0 auto">‹ Précédente</button>
+          <div id="wk-label" style="font-weight:700; min-width:170px; text-align:center"></div>
+          <button class="btn btn-ghost" id="wk-next" style="flex:0 0 auto">Suivante ›</button>
+          <button class="btn btn-blue" id="he-btn" style="flex:0 0 auto">🏖️ Hors entreprise</button>
+          <button class="btn btn-green" id="grp-btn" style="flex:0 0 auto">👥 Arrivée groupée</button>
+          <button class="btn btn-blue" id="pdf-btn" style="flex:0 0 auto">📄 PDF</button>
+        </div>
+        <div class="table-wrap"><div id="planning-output"></div></div>
+      </div>
+
+      <div class="panel">
+        <h2>Employés</h2>
+        <div class="row" style="margin-bottom:18px">
+          <div class="field">
+            <label for="new-name">Nom complet</label>
+            <input type="text" id="new-name" placeholder="Ex. Sophie Bernard">
+          </div>
+          <div class="field" style="max-width:190px">
+            <label for="new-cat">Catégorie</label>
+            <select id="new-cat">
+              <option value="responsable">Responsable</option>
+              <option value="chef_de_rang" selected>Chef de rang</option>
+              <option value="apprenti">Apprenti</option>
+            </select>
+          </div>
+          <button class="btn btn-green" id="add-btn" style="flex:0 0 auto">+ Ajouter</button>
+        </div>
+        <div class="msg error" id="emp-msg"></div>
+        <div class="table-wrap">
+          <table class="emp-table">
+            <thead><tr><th></th><th>Nom</th><th>Catégorie</th><th>Statut</th><th style="text-align:right">Actions</th></tr></thead>
+            <tbody id="emp-tbody"></tbody>
+          </table>
+          <div class="sub" style="font-size:.8rem;margin-top:8px">Glissez la poignée ⠿ pour réordonner — l'ordre s'applique au planning.</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Pauses obligatoires déduites</h2>
+        <p style="color:#64748b;font-size:.9rem;margin-bottom:14px">
+          Ces créneaux sont automatiquement déduits du temps de travail lorsque le salarié
+          est présent (pointé) pendant la plage. Format 24h (HH:MM).
+        </p>
+        <div id="breaks-list"></div>
+        <div style="margin-top:12px">
+          <button class="link-btn" id="add-break">+ Ajouter un créneau</button>
+        </div>
+        <div style="margin-top:14px">
+          <button class="btn btn-blue" id="save-breaks" style="flex:0 0 auto">Enregistrer les pauses</button>
+        </div>
+        <div class="msg" id="breaks-msg"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Rapport des heures (détail)</h2>
+        <div class="row" style="margin-bottom:18px; align-items:flex-end">
+          <button class="btn btn-ghost" id="rep-prev" style="flex:0 0 auto">‹ Précédente</button>
+          <button class="btn btn-ghost" id="rep-next" style="flex:0 0 auto">Suivante ›</button>
+          <div class="field">
+            <label for="rep-from">Du</label>
+            <input type="date" id="rep-from">
+          </div>
+          <div class="field">
+            <label for="rep-to">Au</label>
+            <input type="date" id="rep-to">
+          </div>
+          <div class="field">
+            <label for="rep-emp">Employé</label>
+            <select id="rep-emp"><option value="">Tous</option></select>
+          </div>
+          <button class="btn btn-blue" id="rep-btn" style="flex:0 0 auto">Afficher</button>
+          <button class="btn btn-ghost" id="csv-btn" style="flex:0 0 auto">⬇ Export CSV</button>
+        </div>
+        <div id="report-output"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Établissement</h2>
+        <div class="row">
+          <div class="field">
+            <label for="estab-name">Nom du site (affiché en haut de l'application)</label>
+            <input type="text" id="estab-name" placeholder="Ex. Boeuf & Cow">
+          </div>
+          <button class="btn btn-blue" id="estab-btn" style="flex:0 0 auto">Enregistrer</button>
+        </div>
+        <div class="msg" id="estab-msg"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Sécurité</h2>
+        <div class="row">
+          <div class="field">
+            <label for="cur-pwd">Mot de passe actuel</label>
+            <input type="password" id="cur-pwd" autocomplete="current-password">
+          </div>
+          <div class="field">
+            <label for="new-pwd">Nouveau mot de passe</label>
+            <input type="password" id="new-pwd" autocomplete="new-password">
+          </div>
+          <button class="btn btn-blue" id="pwd-btn" style="flex:0 0 auto">Modifier</button>
+        </div>
+        <div class="msg" id="pwd-msg"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Éditeur de case du planning -->
+  <div class="overlay" id="cell-overlay">
+    <div class="modal" id="cell-modal"></div>
+  </div>
+
+  <!-- Profil salarié (repos, service continu) -->
+  <div class="overlay" id="profile-overlay">
+    <div class="modal" id="profile-modal"></div>
+  </div>
+
+  <script src="sortable.min.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

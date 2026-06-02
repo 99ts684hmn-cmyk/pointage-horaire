@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pointage — Boeuf &amp; Cow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><span class="brand-name">Bœuf <span class="amp">&amp;</span> Cow</span><span class="brand-tag">Pointage</span></div>
+    <a href="admin.html">Administration →</a>
+  </div>
+
+  <div class="container">
+    <div class="clock">
+      <div class="time" id="clock-time">--:--</div>
+      <div class="date" id="clock-date"></div>
+    </div>
+
+    <div class="employees-grid" id="employees"></div>
+  </div>
+
+  <!-- Modale PIN / actions -->
+  <div class="overlay" id="overlay">
+    <div class="modal" id="modal"><!-- rempli dynamiquement --></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -524,8 +524,9 @@ function renderPlanning() {
         // Repos = motif récurrent du jour OU repos ponctuel (statut, ex. apprentis).
         const isRest = restDaysOn(emp.restPeriods, d).includes(weekday[d]) || status === 'repos';
         const parts = [];
-        if (isRest) parts.push('<span class="pl-rest-lbl">Repos</span>');
-        if (status && status !== 'repos') parts.push(`<span class="pl-badge st-${status}">${STATUS_SHORT[status]}</span>`);
+        const awayStatus = AWAY_STATUSES.includes(status) ? status : null; // cp/am/absent/ecole
+        if (awayStatus) parts.push(`<span class="pl-status-lbl">${STATUS_SHORT[awayStatus]}</span>`);
+        else if (isRest) parts.push('<span class="pl-rest-lbl">Repos</span>');
         let filled = false;
         if (day && day.segments.length) {
           const fmt = (s) => (s.open ? fmtTime(s.clockIn) : `${fmtTime(s.clockIn)}–${fmtTime(s.clockOut)}`);
@@ -557,7 +558,11 @@ function renderPlanning() {
           filled = true;
         }
         const inner = parts.length ? parts.join('<br>') : '<span class="pl-empty">+</span>';
-        const cls = 'pl-cell pl-click' + (isRest ? ' pl-rest' : '') + (filled ? ' pl-filled' : '');
+        let fillCls = '';
+        if (filled) fillCls = ' pl-filled';
+        else if (awayStatus) fillCls = ` pl-statusfill st-${awayStatus}`;
+        else if (isRest) fillCls = ' pl-rest';
+        const cls = 'pl-cell pl-click' + fillCls;
         rowCells += `<td class="${cls}" data-emp="${emp.id}" data-day="${d}">${inner}</td>`;
       }
       const tot = rep ? rep.totalSeconds : 0;

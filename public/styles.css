@@ -280,6 +280,12 @@ td.num { font-variant-numeric: tabular-nums; }
 .planning .pl-rest { background: #e4e4e4; }
 .planning .pl-rest:hover { background: #dcdcdc; }
 .pl-rest-lbl { font-weight: 700; font-size: .7rem; text-transform: uppercase; color: #8a8a8a; letter-spacing: .04em; }
+/* Statuts CP / AM / École / Absent : couleur sur toute la case (comme Repos). */
+.planning .pl-statusfill.st-cp { background: #dbeafe; color: #1e40af; }
+.planning .pl-statusfill.st-am { background: #fee2e2; color: #b91c1c; }
+.planning .pl-statusfill.st-ecole { background: #ede9fe; color: #6d28d9; }
+.planning .pl-statusfill.st-absent { background: #e5e7eb; color: #374151; }
+.pl-status-lbl { font-weight: 700; font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; }
 .planning .pl-day-head { cursor: pointer; }
 .planning .pl-day-head:hover { text-decoration: underline; background: #2a2c29; }
 .wk-print-dates { display: none; } /* visible uniquement à l'impression (PDF) */

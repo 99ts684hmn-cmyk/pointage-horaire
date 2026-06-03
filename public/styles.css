@@ -315,13 +315,6 @@ td.num { font-variant-numeric: tabular-nums; }
 .pl-extra-sub.has { background: #fff0d6; }
 .pl-extra-tag { display: block; font-size: .6rem; text-transform: uppercase; letter-spacing: .04em; color: #b08400; font-weight: 700; }
 .pl-extra-txt { font-weight: 600; color: #5a4500; white-space: pre-wrap; }
-/* Ligne « Événement / Groupe » en haut du planning. */
-.planning .pl-event-row td { background: #fdeccb; }
-.planning .pl-event-row .pl-name { background: #fbe3b0; white-space: normal; font-size: .66rem; line-height: 1.12; }
-.planning td.pl-event-cell { white-space: normal; vertical-align: middle; padding: 3px 4px; font-size: .62rem; line-height: 1.15; }
-.pl-event-click { cursor: pointer; }
-.pl-event-click:hover { background: #fbe3b0 !important; }
-.pl-event-txt { font-weight: 700; color: #6b4e00; }
 .toast {
   position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
   background: #1f2120; color: #fff8f0; padding: 11px 18px; border-radius: 10px;

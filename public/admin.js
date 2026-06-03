@@ -544,7 +544,6 @@ function classifyDay(segments) {
 let planningReport = [];
 let statusMap = new Map(); // clé "empId|day" → 'cp'|'am'|'ecole'
 let extraMap = {}; // clé "YYYY-MM-DD|midi" / "…|soir" → texte libre (ligne « Extra »)
-let eventMap = {}; // clé "YYYY-MM-DD" → texte libre (ligne « Événement / Groupe »)
 const STATUS_SHORT = { cp: 'CP', am: 'AM', ecole: 'École', absent: 'Abs', repos: 'Repos' };
 const STATUS_FULL = { cp: 'Congés payés', am: 'Arrêt maladie', ecole: 'École', absent: 'Absent', repos: 'Repos' };
 // Croix (X) en coin à coin, remplit la case (repos) ou la demi-case (demi).
@@ -555,11 +554,10 @@ async function loadPlanning() {
   const to = $('rep-to').value;
   if (!from || !to) { renderPlanning(); return; }
   const params = new URLSearchParams({ from, to });
-  const [rep, st, ex, ev] = await Promise.all([
+  const [rep, st, ex] = await Promise.all([
     api('/api/admin/report?' + params.toString()),
     api('/api/admin/day-statuses?' + params.toString()),
     api('/api/admin/extra?' + params.toString()),
-    api('/api/admin/event'),
   ]);
   planningReport = (rep.ok && rep.data) ? rep.data : [];
   statusMap = new Map();
@@ -567,7 +565,6 @@ async function loadPlanning() {
     for (const s of st.data) statusMap.set(s.employeeId + '|' + s.day, s.status);
   }
   extraMap = (ex.ok && ex.data && typeof ex.data === 'object') ? ex.data : {};
-  eventMap = (ev.ok && ev.data && typeof ev.data === 'object') ? ev.data : {};
   renderPlanning();
 }
 
@@ -622,14 +619,6 @@ function renderPlanning() {
     }
     firstMidiT[d] = bmT; firstSoirT[d] = bsT;
   }
-
-  // Ligne « Événement / Groupe » (note libre par jour) en haut du planning.
-  html += '<tr class="pl-event-row"><td class="pl-name">Événement / Groupe</td>';
-  for (const d of days) {
-    const txt = (eventMap[d] || '').trim();
-    html += `<td class="pl-event-cell pl-event-click" data-day="${d}">${txt ? `<span class="pl-event-txt">${escapeHtml(txt)}</span>` : '<span class="pl-empty">+</span>'}</td>`;
-  }
-  html += '<td></td></tr>';
 
   const AWAY_STATUSES = ['cp', 'am', 'absent', 'ecole'];
   for (const emp of actives) {
@@ -731,47 +720,6 @@ function renderPlanning() {
   out.querySelectorAll('.pl-extra-sub').forEach((el) => {
     el.addEventListener('click', () => openExtraEditor(el.dataset.day, el.dataset.svc));
   });
-  out.querySelectorAll('.pl-event-click').forEach((td) => {
-    td.addEventListener('click', () => openEventEditor(td.dataset.day));
-  });
-}
-
-// Éditeur de la ligne « Événement / Groupe » (texte libre pour un jour).
-function openEventEditor(day) {
-  const cur = eventMap[day] || '';
-  cellModal.innerHTML = `
-    <h2>Événement / Groupe</h2>
-    <div class="sub">${planningDayLabel(day).replace('<br>', ' ')}</div>
-    <div class="field" style="margin-top:12px">
-      <label for="ev-text">Note (ex. groupe 12, mariage, fermeture…)</label>
-      <textarea id="ev-text" style="width:100%;height:80px;font-family:inherit;font-size:.95rem;padding:10px;border:1px solid var(--border);border-radius:10px">${escapeHtml(cur)}</textarea>
-    </div>
-    <div class="action-buttons" style="margin-top:12px;grid-template-columns:repeat(2,1fr)">
-      <button class="btn btn-green" id="ev-save">Enregistrer</button>
-      ${cur ? '<button class="btn btn-ghost" id="ev-clear">Effacer</button>' : ''}
-    </div>
-    <div class="msg error" id="ev-msg"></div>
-    <div style="margin-top:12px"><button class="btn btn-ghost" id="ev-close">Fermer</button></div>
-  `;
-  cellModal.querySelector('#ev-save').addEventListener('click', () => saveEvent(day, cellModal.querySelector('#ev-text').value));
-  const clr = cellModal.querySelector('#ev-clear');
-  if (clr) clr.addEventListener('click', () => saveEvent(day, ''));
-  cellModal.querySelector('#ev-close').addEventListener('click', () => cellOverlay.classList.remove('show'));
-  cellOverlay.classList.add('show');
-}
-
-async function saveEvent(day, text) {
-  const { ok, data } = await api('/api/admin/event', {
-    method: 'PUT', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ date: day, text }),
-  });
-  if (!ok) {
-    const m = $('ev-msg');
-    if (m) { m.textContent = (data && data.error) || 'Erreur'; m.classList.add('show'); }
-    return;
-  }
-  cellOverlay.classList.remove('show');
-  await loadPlanning();
 }
 
 // Éditeur d'une case « Extra » (texte libre pour un service donné).

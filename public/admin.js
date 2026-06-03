@@ -583,10 +583,10 @@ function renderPlanning() {
   html += '<td></td></tr>';
 
   // Nombre de présents par service (par jour).
-  html += '<tr class="pl-svc-row"><td class="pl-name">Présents midi</td>';
+  html += '<tr class="pl-svc-row"><td class="pl-name">Pres. midi</td>';
   for (const d of days) html += `<td>${midiCount[d] || '—'}</td>`;
   html += '<td></td></tr>';
-  html += '<tr class="pl-svc-row"><td class="pl-name">Présents soir</td>';
+  html += '<tr class="pl-svc-row"><td class="pl-name">Pres. soir</td>';
   for (const d of days) html += `<td>${soirCount[d] || '—'}</td>`;
   html += '<td></td></tr>';
 

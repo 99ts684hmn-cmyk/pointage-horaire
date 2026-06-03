@@ -261,13 +261,16 @@ td.num { font-variant-numeric: tabular-nums; }
 .link-btn.danger { color: var(--red); }
 
 /* Planning hebdomadaire (grille salariés × jours) */
-.planning { border-collapse: collapse; min-width: 720px; }
+.planning { border-collapse: collapse; table-layout: fixed; }
 .planning th, .planning td {
   border: 1px solid var(--border); text-align: center; vertical-align: middle;
   font-size: .8rem; padding: 6px 8px; white-space: nowrap;
 }
+/* Colonnes des jours toutes identiques ; nom et Total à part. */
+.planning .pl-day-head { width: 58px; }
+.planning thead th:last-child { width: 48px; }
 .planning thead th { background: #1f2120; color: var(--cream); font-weight: 600; text-transform: none; letter-spacing: 0; }
-.planning .pl-name { text-align: left; font-weight: 600; background: #faf3e8; position: sticky; left: 0; }
+.planning .pl-name { width: 92px; text-align: left; font-weight: 600; background: #faf3e8; position: sticky; left: 0; }
 .planning .pl-cell { font-variant-numeric: tabular-nums; line-height: 1.5; }
 .planning .pl-empty { color: #cdc8c0; }
 .planning .pl-total { text-align: right; font-weight: 700; }
@@ -298,11 +301,11 @@ td.num { font-variant-numeric: tabular-nums; }
 /* Cases du planning remplies : les couleurs occupent toute la demi-case
    (midi en haut, soir en bas) ; le service continu remplit la case entière. */
 .planning td.pl-filled { padding: 0; }
-.pl-stack { display: flex; flex-direction: column; height: 100%; min-height: 42px; }
+.pl-stack { display: flex; flex-direction: column; height: 100%; min-height: 34px; }
 .pl-half {
   flex: 1 1 0; display: flex; flex-direction: column;
   align-items: center; justify-content: center; text-align: center;
-  padding: 4px 4px; line-height: 1.2; font-variant-numeric: tabular-nums;
+  padding: 2px 2px; line-height: 1.15; font-size: .64rem; font-variant-numeric: tabular-nums;
 }
 .pl-half + .pl-half { border-top: 1px solid rgba(0,0,0,.10); }
 .pl-half.pl-first { background: #ffe27a; color: #6b5200; font-weight: 600; }
@@ -310,7 +313,7 @@ td.num { font-variant-numeric: tabular-nums; }
 .pl-half.pl-cont { background: #f6bcbc; color: #8a1212; font-weight: 600; }
 .pl-half.pl-demi {
   background: #e4e4e4; color: #7a7a7a; font-weight: 700;
-  font-size: .7rem; text-transform: uppercase; letter-spacing: .04em;
+  font-size: .6rem; text-transform: uppercase; letter-spacing: .04em;
 }
 .planning .pl-group td {
   background: #faf3e8; color: var(--gold-dark); text-align: left; font-weight: 700;

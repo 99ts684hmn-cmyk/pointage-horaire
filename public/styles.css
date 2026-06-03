@@ -295,6 +295,7 @@ td.num { font-variant-numeric: tabular-nums; }
 .planning .pl-statusfill.st-ecole { background: #ede9fe; color: #6d28d9; }
 .planning .pl-statusfill.st-absent { background: #e5e7eb; color: #374151; }
 .pl-status-lbl { font-weight: 700; font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; }
+.rep-carried { color: #b08400; font-weight: 800; margin-right: 2px; }
 .planning .pl-day-head { cursor: pointer; }
 .planning .pl-day-head:hover { text-decoration: underline; background: #2a2c29; }
 .wk-print-dates { display: none; } /* visible uniquement à l'impression (PDF) */

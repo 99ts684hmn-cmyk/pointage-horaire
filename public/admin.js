@@ -381,38 +381,105 @@ function reportQuery() {
   return { from, to, params };
 }
 
+function addDaysISO(iso, n) { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return localISO(d); }
+
 async function loadReport() {
   const out = $('report-output');
-  const { from, to, params } = reportQuery();
+  const { from, to } = reportQuery();
+  const empFilter = $('rep-emp').value;
   if (!from || !to) { out.innerHTML = '<div class="empty">Choisissez une période.</div>'; return; }
 
-  const { ok, data } = await api('/api/admin/report?' + params.toString());
-  if (!ok) { out.innerHTML = '<div class="empty">Erreur lors du chargement.</div>'; return; }
-  if (!data.length) { out.innerHTML = '<div class="empty">Aucun pointage sur cette période.</div>'; return; }
+  // Fenêtre élargie (±4 semaines) pour permettre le report d'échange multi-semaines.
+  const extFrom = addDaysISO(from, -28);
+  const extTo = addDaysISO(to, 28);
+  const p = new URLSearchParams({ from: extFrom, to: extTo });
+  const [rep, st] = await Promise.all([
+    api('/api/admin/report?' + p.toString()),
+    api('/api/admin/day-statuses?' + p.toString()),
+  ]);
+  if (!rep.ok) { out.innerHTML = '<div class="empty">Erreur lors du chargement.</div>'; return; }
+  const repData = rep.data || [];
+  const stat = new Map();
+  if (st.ok && Array.isArray(st.data)) for (const s of st.data) stat.set(s.employeeId + '|' + s.day, s.status);
 
-  // Grille lisible (comme le planning) : salariés × jours, heures NETTES + total.
-  const days = daysBetween(from, to);
-  const orderIndex = new Map(allEmployees.map((e, i) => [e.id, i]));
-  data.sort((a, b) => (orderIndex.get(a.employeeId) ?? 999) - (orderIndex.get(b.employeeId) ?? 999));
+  const AWAY = ['cp', 'am', 'absent', 'ecole'];
+  const dispDays = daysBetween(from, to);
+  const extDays = daysBetween(extFrom, extTo);
+  const repById = new Map(repData.map((e) => [e.employeeId, e]));
+
+  // Salariés à afficher : actifs / sortants encore visibles, ou ayant des données.
+  let emps = allEmployees.filter((e) => e.active || (e.endDate && e.endDate >= from) || repById.has(e.id));
+  if (empFilter) emps = emps.filter((e) => String(e.id) === String(empFilter));
+  emps.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  if (!emps.length) { out.innerHTML = '<div class="empty">Aucun salarié.</div>'; return; }
+
+  // Info par salarié et par jour (heures, statut, repos) puis report des échanges.
+  const perEmp = new Map();
+  for (const emp of emps) {
+    const secByDay = new Map(((repById.get(emp.id) || {}).days || []).map((x) => [x.day, x.seconds]));
+    const info = new Map();
+    for (const d of extDays) {
+      const wd = new Date(d + 'T12:00:00').getDay();
+      const status = stat.get(emp.id + '|' + d);
+      const isRest = restDaysOn(emp.restPeriods, d).includes(wd) || status === 'repos';
+      info.set(d, { sec: secByDay.get(d) || 0, status, isRest, carriedFrom: null, carriedTo: null });
+    }
+    // Échange : jour de repos avec heures → reporter sur le jour vide le plus proche
+    // (avant OU après, en s'éloignant ; un jour vide = non-repos, sans statut, sans heure).
+    const used = new Set();
+    for (const exDay of extDays) {
+      const it = info.get(exDay);
+      if (!(it.isRest && it.sec > 0)) continue;
+      const idx = extDays.indexOf(exDay);
+      let target = null;
+      for (let k = 1; k < extDays.length && !target; k++) {
+        for (const j of [idx - k, idx + k]) {
+          if (j < 0 || j >= extDays.length) continue;
+          const dd = extDays[j];
+          if (used.has(dd)) continue;
+          const t = info.get(dd);
+          if (!t.isRest && !AWAY.includes(t.status) && t.sec === 0 && !t.carriedFrom) { target = dd; break; }
+        }
+      }
+      if (target) {
+        used.add(target);
+        const t = info.get(target);
+        t.sec = it.sec; t.carriedFrom = exDay;
+        it.carriedTo = target; it.sec = 0;
+      }
+    }
+    perEmp.set(emp.id, info);
+  }
+
+  const cell = (it) => {
+    if (it.sec > 0) {
+      const mark = it.carriedFrom ? '<span class="rep-carried" title="Heures d\'un échange reportées ici">↳</span>' : '';
+      return `<td>${mark}${fmtH(it.sec)}</td>`;
+    }
+    if (AWAY.includes(it.status)) return `<td class="pl-statusfill st-${it.status}"><span class="pl-status-lbl">${STATUS_SHORT[it.status]}</span></td>`;
+    if (it.isRest) return `<td class="pl-rest">${CROSS_SVG}</td>`;
+    return '<td>—</td>';
+  };
 
   let html = '<table class="planning"><thead><tr><th class="pl-name">Salarié</th>';
-  for (const d of days) html += `<th>${planningDayLabel(d)}</th>`;
+  for (const d of dispDays) html += `<th>${planningDayLabel(d)}</th>`;
   html += '<th style="text-align:right">Total</th></tr></thead><tbody>';
 
-  const dayTot = {}; days.forEach((d) => { dayTot[d] = 0; }); let grand = 0;
-  for (const emp of data) {
-    const byDay = new Map(emp.days.map((x) => [x.day, x.seconds]));
-    html += `<tr><td class="pl-name">${escapeHtml(emp.name)}</td>`;
-    for (const d of days) {
-      const sec = byDay.get(d) || 0;
-      dayTot[d] += sec;
-      html += `<td>${sec ? fmtH(sec) : '—'}</td>`;
+  const dayTot = {}; dispDays.forEach((d) => { dayTot[d] = 0; }); let grand = 0;
+  for (const emp of emps) {
+    const info = perEmp.get(emp.id);
+    let tot = 0;
+    html += `<tr class="pl-emp-row"><td class="pl-name"><div class="pl-name-inner"><span class="pl-name-txt">${escapeHtml(emp.name)}</span></div></td>`;
+    for (const d of dispDays) {
+      const it = info.get(d);
+      html += cell(it);
+      dayTot[d] += it.sec; tot += it.sec;
     }
-    grand += emp.totalSeconds;
-    html += `<td class="pl-total">${fmtH(emp.totalSeconds)}</td></tr>`;
+    grand += tot;
+    html += `<td class="pl-total">${tot ? fmtH(tot) : '—'}</td></tr>`;
   }
   html += '<tr class="pl-tot-row"><td class="pl-name">Total / jour</td>';
-  for (const d of days) html += `<td>${dayTot[d] ? fmtH(dayTot[d]) : '—'}</td>`;
+  for (const d of dispDays) html += `<td>${dayTot[d] ? fmtH(dayTot[d]) : '—'}</td>`;
   html += `<td class="pl-total">${fmtH(grand)}</td></tr>`;
   html += '</tbody></table>';
   out.innerHTML = `<div class="table-wrap">${html}</div>`;

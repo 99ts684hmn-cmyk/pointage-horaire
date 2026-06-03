@@ -315,7 +315,14 @@ td.num { font-variant-numeric: tabular-nums; }
 .toast.show { opacity: 1; }
 /* Cases du planning remplies : les couleurs occupent toute la demi-case
    (midi en haut, soir en bas) ; le service continu remplit la case entière. */
-.planning td.pl-filled { padding: 0; height: 1px; } /* height:1px → pl-stack height:100% se résout (rouge plein) */
+.planning td.pl-filled { padding: 0; height: 1px; position: relative; } /* height:1px → pl-stack height:100% se résout (rouge plein) */
+/* Échange : « E » à gauche quand on travaille un jour de repos. */
+.pl-exchange {
+  position: absolute; left: 1px; top: 50%; transform: translateY(-50%); z-index: 2;
+  font-size: .52rem; font-weight: 800; line-height: 1; color: #1f2120;
+  background: rgba(255,255,255,.85); border: 1px solid rgba(0,0,0,.25);
+  border-radius: 3px; padding: 1px 2px;
+}
 .pl-stack { display: flex; flex-direction: column; height: 100%; }
 .pl-half {
   position: relative;

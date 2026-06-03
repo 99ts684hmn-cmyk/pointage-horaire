@@ -559,12 +559,14 @@ function renderPlanning() {
           filled = true;
         }
         const inner = parts.length ? parts.join('<br>') : '<span class="pl-empty">+</span>';
+        // Échange : des horaires sont saisis sur un jour de repos → petit « E » à gauche.
+        const exchangeMark = (isRest && filled) ? '<span class="pl-exchange" title="Échange — travaillé un jour de repos">E</span>' : '';
         let fillCls = '';
         if (filled) fillCls = ' pl-filled';
         else if (awayStatus) fillCls = ` pl-statusfill st-${awayStatus}`;
         else if (isRest) fillCls = ' pl-rest';
         const cls = 'pl-cell pl-click' + fillCls;
-        dayCells += `<td class="${cls}" data-emp="${emp.id}" data-day="${d}">${inner}</td>`;
+        dayCells += `<td class="${cls}" data-emp="${emp.id}" data-day="${d}">${exchangeMark}${inner}</td>`;
       }
       const tot = rep ? rep.totalSeconds : 0;
       grand += tot;

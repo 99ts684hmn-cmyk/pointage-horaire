@@ -769,7 +769,8 @@ async function saveExtra(day, svc, text) {
 function copyDayArrivals(d) {
   const byId = new Map((planningReport || []).map((e) => [e.employeeId, e]));
   const rows = [];
-  for (const emp of allEmployees.filter((e) => e.active)) {
+  // Visibles ce jour-là : actifs OU sortants pas encore partis (même règle que le planning).
+  for (const emp of allEmployees.filter((e) => e.active || (e.endDate && e.endDate >= d))) {
     const rep = byId.get(emp.id);
     const day = rep && rep.days.find((x) => x.day === d);
     if (!day || !day.segments.length) continue;
@@ -861,7 +862,7 @@ $('he-btn').addEventListener('click', openOffWork);
 function openOffWork() {
   const from = $('rep-from').value; const to = $('rep-to').value;
   if (!from || !to) return;
-  const list = allEmployees.filter((e) => e.active)
+  const list = allEmployees.filter((e) => e.active || (e.endDate && e.endDate >= from))
     .map((e) => `<label class="grp-row"><input type="checkbox" class="he-emp" value="${e.id}"> ${escapeHtml(e.name)}</label>`).join('');
   cellModal.innerHTML = `
     <h2>Hors entreprise</h2>
@@ -911,7 +912,7 @@ function eligibleForGroup(d) {
   const byId = new Map((planningReport || []).map((e) => [e.employeeId, e]));
   const wd = new Date(d + 'T12:00:00').getDay();
   return allEmployees.filter((e) => {
-    if (!e.active) return false;
+    if (!e.active && !(e.endDate && e.endDate >= d)) return false;
     if (restDaysOn(e.restPeriods, d).includes(wd)) return false;
     if (statusMap.has(e.id + '|' + d)) return false;
     const rep = byId.get(e.id);

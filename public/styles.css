@@ -300,6 +300,7 @@ td.num { font-variant-numeric: tabular-nums; }
 .pv-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
 .pv-nav { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; }
 .pv-nav .btn { padding: 7px 12px; }
+.pv-nav .btn:disabled { opacity: .35; cursor: default; pointer-events: none; }
 .planning .pl-day-head { cursor: pointer; }
 .planning .pl-day-head:hover { text-decoration: underline; background: #2a2c29; }
 .wk-print-dates { display: none; } /* visible uniquement à l'impression (PDF) */

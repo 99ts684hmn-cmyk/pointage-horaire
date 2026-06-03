@@ -171,19 +171,25 @@ function pvFrDate(iso) {
   const dt = new Date(iso + 'T12:00:00');
   return `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}`;
 }
-const pvMonday = (() => {
+// Lundi de la semaine en cours (base immuable). Navigation bornée : ±2 semaines.
+const pvBaseMonday = (() => {
   const d = new Date(); const dow = d.getDay(); const back = dow === 0 ? 6 : dow - 1;
   d.setDate(d.getDate() - back); d.setHours(0, 0, 0, 0); return d;
 })();
+let pvOffset = 0;
+const PV_MIN = -2; const PV_MAX = 2;
 
 async function loadPlanningView() {
   const out = document.getElementById('pv-output');
   if (!out || !window.PlanningView) return;
-  const monday = new Date(pvMonday);
+  const monday = new Date(pvBaseMonday); monday.setDate(monday.getDate() + pvOffset * 7);
   const sunday = new Date(monday); sunday.setDate(sunday.getDate() + 6);
   const from = pvLocalISO(monday); const to = pvLocalISO(sunday);
   const lbl = document.getElementById('pv-label');
   if (lbl) lbl.textContent = `du ${pvFrDate(from)} au ${pvFrDate(to)}`;
+  const prev = document.getElementById('pv-prev'); const next = document.getElementById('pv-next');
+  if (prev) prev.disabled = pvOffset <= PV_MIN;
+  if (next) next.disabled = pvOffset >= PV_MAX;
   try {
     const res = await fetch(`/api/planning?from=${from}&to=${to}`);
     if (!res.ok) { out.innerHTML = '<div class="empty">Erreur de chargement.</div>'; return; }
@@ -194,7 +200,11 @@ async function loadPlanningView() {
     out.innerHTML = '<div class="empty">Impossible de charger le planning.</div>';
   }
 }
-function pvShiftWeek(delta) { pvMonday.setDate(pvMonday.getDate() + delta * 7); loadPlanningView(); }
+function pvShiftWeek(delta) {
+  const n = pvOffset + delta;
+  if (n < PV_MIN || n > PV_MAX) return;
+  pvOffset = n; loadPlanningView();
+}
 document.getElementById('pv-prev')?.addEventListener('click', () => pvShiftWeek(-1));
 document.getElementById('pv-next')?.addEventListener('click', () => pvShiftWeek(1));
 

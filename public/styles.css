@@ -152,11 +152,14 @@ body {
 
 /* Saisie du départ du jour (écran de pointage) */
 .dep-row {
-  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-  margin: 10px 0; padding: 10px 12px; background: #faf3e8; border-radius: 10px;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin: 10px 0; padding: 12px; background: #faf3e8; border-radius: 10px;
 }
+.dep-row .dep-info { font-size: .98rem; }
+.dep-row .dep-pickers { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dep-row select { padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 1.05rem; background: #fff; color: var(--text); }
 .dep-row .dep-time { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 1rem; background: #fff; color: var(--text); }
-.dep-row .dep-save { flex: 0 0 auto; padding: 8px 16px; }
+.dep-row .dep-save { flex: 0 0 auto; padding: 9px 18px; }
 
 /* Raccourcis d'horaires */
 .preset-label { font-size: .78rem; color: var(--muted); margin: 8px 0 6px; font-weight: 600; }

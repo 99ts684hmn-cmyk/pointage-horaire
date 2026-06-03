@@ -160,6 +160,27 @@ body {
 .dep-row select { padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 1.05rem; background: #fff; color: var(--text); }
 .dep-row .dep-time { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 1rem; background: #fff; color: var(--text); }
 .dep-row .dep-save { flex: 0 0 auto; padding: 9px 18px; }
+.dep-pickers { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.dep-pickers select { padding: 11px 14px; border: 1px solid var(--border); border-radius: 10px; font-family: inherit; font-size: 1.15rem; background: #fff; color: var(--text); }
+
+/* Onglets de service (Saisir départ midi / soir) */
+.svc-tabs { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 6px; }
+.svc-tab {
+  flex: 1 1 220px; max-width: 340px; padding: 16px 18px; cursor: pointer;
+  border: 1px solid rgba(255,255,255,.14); border-radius: 14px;
+  background: rgba(255,255,255,.05); color: var(--cream);
+  font-family: inherit; font-size: 1.05rem; font-weight: 600;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  transition: background .15s, border-color .15s, transform .1s;
+}
+.svc-tab:hover { background: rgba(255,255,255,.1); }
+.svc-tab:active { transform: translateY(1px); }
+.svc-tab.active { background: var(--gold, #bf272d); border-color: transparent; color: #fff; }
+.svc-count {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px;
+  padding: 0 6px; border-radius: 11px; background: rgba(0,0,0,.25); font-size: .85rem;
+}
+.svc-tab.active .svc-count { background: rgba(255,255,255,.25); }
 
 /* Raccourcis d'horaires */
 .preset-label { font-size: .78rem; color: var(--muted); margin: 8px 0 6px; font-weight: 600; }

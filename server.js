@@ -210,6 +210,34 @@ app.get('/api/employees', (req, res) => {
   res.json(result);
 });
 
+// Arrivées encore ouvertes (sans départ) de la journée de travail en cours,
+// classées par service (midi / soir) selon l'heure d'arrivée. Sert à l'écran
+// de saisie des départs : seuls les salariés présents ce jour apparaissent.
+app.get('/api/open-entries', (req, res) => {
+  const today = businessDay(Date.now());
+  const rows = db.prepare(`
+    SELECT t.id, t.clock_in, t.employee_id, e.name, e.category
+    FROM time_entries t JOIN employees e ON e.id = t.employee_id
+    WHERE t.clock_out IS NULL AND e.active = 1
+    ORDER BY t.clock_in ASC
+  `).all();
+  const out = [];
+  for (const r of rows) {
+    if (businessDay(r.clock_in) !== today) continue;
+    const h = new Date(r.clock_in).getHours();
+    const service = (h >= DAY_CUTOFF_HOUR && h < 17) ? 'midi' : 'soir';
+    out.push({
+      entryId: r.id,
+      employeeId: r.employee_id,
+      name: r.name,
+      category: r.category || 'chef_de_rang',
+      clockIn: r.clock_in,
+      service,
+    });
+  }
+  res.json(out);
+});
+
 // Délai au-delà duquel un pointage déjà enregistré ne peut plus être modifié.
 const EDIT_WINDOW_DAYS = 7;
 const EDIT_WINDOW_MS = EDIT_WINDOW_DAYS * 24 * 60 * 60 * 1000;

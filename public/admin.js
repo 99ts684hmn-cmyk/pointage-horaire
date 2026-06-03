@@ -516,7 +516,8 @@ function renderPlanning() {
   const AWAY_STATUSES = ['cp', 'am', 'absent', 'ecole'];
   for (const emp of actives) {
       const rep = byId.get(emp.id);
-      let rowCells = `<td class="pl-name">${escapeHtml(emp.name)}</td>`;
+      let dayCells = '';
+      let demiCount = 0; // nombre de demi-journées (un seul service travaillé) sur la semaine
       for (const d of days) {
         const day = rep && rep.days.find((x) => x.day === d);
         const status = statusMap.get(emp.id + '|' + d);
@@ -548,6 +549,7 @@ function renderPlanning() {
               ? `<div class="pl-half${isOpen ? ' pl-open' : ''}">${soir.map(fmt).join('<br>')}</div>`
               : `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;
             stack = midiHalf + soirHalf;
+            if (!midi.length || !soir.length) demiCount++; // un seul service → demi
             if (midi.length) midiCount[d]++;
             if (soir.length) soirCount[d]++;
           }
@@ -562,12 +564,14 @@ function renderPlanning() {
         else if (awayStatus) fillCls = ` pl-statusfill st-${awayStatus}`;
         else if (isRest) fillCls = ' pl-rest';
         const cls = 'pl-cell pl-click' + fillCls;
-        rowCells += `<td class="${cls}" data-emp="${emp.id}" data-day="${d}">${inner}</td>`;
+        dayCells += `<td class="${cls}" data-emp="${emp.id}" data-day="${d}">${inner}</td>`;
       }
       const tot = rep ? rep.totalSeconds : 0;
       grand += tot;
-      rowCells += `<td class="pl-total">${fmtH(tot)}</td>`;
-      html += `<tr>${rowCells}</tr>`;
+      const nameCell = `<td class="pl-name"><span class="pl-name-txt">${escapeHtml(emp.name)}</span>`
+        + (demiCount ? `<span class="pl-demi-count" title="${demiCount} demi cette semaine">${demiCount}</span>` : '')
+        + '</td>';
+      html += `<tr>${nameCell}${dayCells}<td class="pl-total">${fmtH(tot)}</td></tr>`;
   }
 
   // Ligne « Extra » : saisie libre par service ; chaque texte saisi compte +1 présent.

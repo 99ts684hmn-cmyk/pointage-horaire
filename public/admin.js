@@ -568,9 +568,9 @@ function renderPlanning() {
       }
       const tot = rep ? rep.totalSeconds : 0;
       grand += tot;
-      const nameCell = `<td class="pl-name"><span class="pl-name-txt">${escapeHtml(emp.name)}</span>`
+      const nameCell = `<td class="pl-name"><div class="pl-name-inner"><span class="pl-name-txt">${escapeHtml(emp.name)}</span>`
         + (demiCount ? `<span class="pl-demi-count" title="${demiCount} demi cette semaine">${demiCount}</span>` : '')
-        + '</td>';
+        + '</div></td>';
       html += `<tr class="pl-emp-row">${nameCell}${dayCells}<td class="pl-total">${fmtH(tot)}</td></tr>`;
   }
 

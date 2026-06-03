@@ -528,7 +528,7 @@ function renderPlanning() {
         if (status && status !== 'repos') parts.push(`<span class="pl-badge st-${status}">${STATUS_SHORT[status]}</span>`);
         let filled = false;
         if (day && day.segments.length) {
-          const fmt = (s) => `${fmtTime(s.clockIn)}–${s.open ? '…' : fmtTime(s.clockOut)}`;
+          const fmt = (s) => (s.open ? fmtTime(s.clockIn) : `${fmtTime(s.clockIn)}–${fmtTime(s.clockOut)}`);
           const { cont, midi, soir } = classifyDay(day.segments);
           const isCont = emp.continuous || cont.length > 0;
           let stack;

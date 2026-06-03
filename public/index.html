@@ -25,6 +25,19 @@
     </div>
 
     <div class="employees-grid" id="employees"></div>
+
+    <!-- Planning de la semaine (lecture seule) -->
+    <div class="panel" id="planning-view-panel" style="margin-top:26px">
+      <div class="pv-head">
+        <h2 style="margin:0">Planning de la semaine</h2>
+        <div class="pv-nav">
+          <button class="btn btn-ghost" id="pv-prev">‹ Préc.</button>
+          <span id="pv-label"></span>
+          <button class="btn btn-ghost" id="pv-next">Suiv. ›</button>
+        </div>
+      </div>
+      <div class="table-wrap"><div id="pv-output"><div class="empty">Chargement…</div></div></div>
+    </div>
   </div>
 
   <!-- Modale PIN / actions -->
@@ -32,6 +45,7 @@
     <div class="modal" id="modal"><!-- rempli dynamiquement --></div>
   </div>
 
+  <script src="planning-view.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

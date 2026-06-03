@@ -210,6 +210,33 @@ app.get('/api/employees', (req, res) => {
   res.json(result);
 });
 
+// Planning d'une semaine en LECTURE SEULE (écran de pointage). Public, sans édition.
+app.get('/api/planning', (req, res) => {
+  const { from, to } = req.query;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from || '') || !/^\d{4}-\d{2}-\d{2}$/.test(to || '')) {
+    return res.status(400).json({ error: 'Période invalide' });
+  }
+  const employees = db.prepare(
+    'SELECT id, name, category, rest_days, continuous_service, active, end_date, sort_order FROM employees'
+  ).all().map((r) => ({
+    id: r.id,
+    name: r.name,
+    category: r.category,
+    restPeriods: parseRestPeriods(r.rest_days),
+    continuous: !!r.continuous_service,
+    active: r.active,
+    endDate: r.end_date || null,
+    sortOrder: r.sort_order,
+  }));
+  const report = buildReport({ from, to });
+  const statuses = db.prepare(
+    'SELECT employee_id AS employeeId, day, status FROM day_status WHERE day >= ? AND day <= ?'
+  ).all(from, to);
+  let extra = {};
+  try { const v = JSON.parse(getSetting('extra_notes') || '{}'); if (v && typeof v === 'object') extra = v; } catch { /* ignore */ }
+  res.json({ employees, report, statuses, extra });
+});
+
 // Arrivées encore ouvertes (sans départ) de la journée de travail en cours,
 // classées par service (midi / soir) selon l'heure d'arrivée. Sert à l'écran
 // de saisie des départs : seuls les salariés présents ce jour apparaissent.

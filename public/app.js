@@ -163,7 +163,43 @@ async function applyEstablishment() {
   } catch { /* ignore */ }
 }
 
+// --- Planning de la semaine (lecture seule) -------------------------------
+function pvLocalISO(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function pvFrDate(iso) {
+  const dt = new Date(iso + 'T12:00:00');
+  return `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}`;
+}
+const pvMonday = (() => {
+  const d = new Date(); const dow = d.getDay(); const back = dow === 0 ? 6 : dow - 1;
+  d.setDate(d.getDate() - back); d.setHours(0, 0, 0, 0); return d;
+})();
+
+async function loadPlanningView() {
+  const out = document.getElementById('pv-output');
+  if (!out || !window.PlanningView) return;
+  const monday = new Date(pvMonday);
+  const sunday = new Date(monday); sunday.setDate(sunday.getDate() + 6);
+  const from = pvLocalISO(monday); const to = pvLocalISO(sunday);
+  const lbl = document.getElementById('pv-label');
+  if (lbl) lbl.textContent = `du ${pvFrDate(from)} au ${pvFrDate(to)}`;
+  try {
+    const res = await fetch(`/api/planning?from=${from}&to=${to}`);
+    if (!res.ok) { out.innerHTML = '<div class="empty">Erreur de chargement.</div>'; return; }
+    const data = await res.json();
+    data.from = from; data.to = to;
+    window.PlanningView.render(out, data);
+  } catch {
+    out.innerHTML = '<div class="empty">Impossible de charger le planning.</div>';
+  }
+}
+function pvShiftWeek(delta) { pvMonday.setDate(pvMonday.getDate() + delta * 7); loadPlanningView(); }
+document.getElementById('pv-prev')?.addEventListener('click', () => pvShiftWeek(-1));
+document.getElementById('pv-next')?.addEventListener('click', () => pvShiftWeek(1));
+
 // --- Init -----------------------------------------------------------------
 applyEstablishment();
 loadOpenEntries();
 setInterval(loadOpenEntries, 30000);
+loadPlanningView();

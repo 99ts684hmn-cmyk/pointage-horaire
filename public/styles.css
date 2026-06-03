@@ -296,6 +296,10 @@ td.num { font-variant-numeric: tabular-nums; }
 .planning .pl-statusfill.st-absent { background: #e5e7eb; color: #374151; }
 .pl-status-lbl { font-weight: 700; font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; }
 .rep-carried { color: #b08400; font-weight: 800; margin-right: 2px; }
+/* En-tête du planning lecture seule (écran de pointage). */
+.pv-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+.pv-nav { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; }
+.pv-nav .btn { padding: 7px 12px; }
 .planning .pl-day-head { cursor: pointer; }
 .planning .pl-day-head:hover { text-decoration: underline; background: #2a2c29; }
 .wk-print-dates { display: none; } /* visible uniquement à l'impression (PDF) */

@@ -267,7 +267,7 @@ td.num { font-variant-numeric: tabular-nums; }
   font-size: .8rem; padding: 2px 6px; white-space: nowrap;
 }
 /* Colonnes des jours toutes identiques ; nom et Total à part. */
-.planning .pl-day-head { width: 58px; }
+.planning .pl-day-head { width: 68px; }
 .planning thead th:last-child { width: 48px; }
 .planning thead th { background: #1f2120; color: var(--cream); font-weight: 600; text-transform: none; letter-spacing: 0; }
 .planning .pl-name { width: 80px; text-align: left; font-weight: 600; background: #faf3e8; }
@@ -276,9 +276,9 @@ td.num { font-variant-numeric: tabular-nums; }
 .pl-name-inner { display: flex; align-items: center; justify-content: space-between; gap: 5px; }
 .pl-name-txt { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pl-demi-count {
-  flex: 0 0 auto; min-width: 15px; height: 15px; padding: 0 3px;
+  flex: 0 0 auto; min-width: 17px; height: 17px; padding: 0 4px;
   display: inline-flex; align-items: center; justify-content: center;
-  background: #cfcfcf; color: #333; border-radius: 8px; font-size: .58rem; font-weight: 700;
+  background: #cfcfcf; color: #333; border-radius: 9px; font-size: .66rem; font-weight: 700;
 }
 .planning .pl-cell { font-variant-numeric: tabular-nums; line-height: 1.5; }
 .planning .pl-empty { color: #cdc8c0; }
@@ -309,7 +309,7 @@ td.num { font-variant-numeric: tabular-nums; }
 /* Ligne « Extra » : deux cases par jour (midi / soir), texte libre cliquable. */
 .planning .pl-extra-row .pl-name { background: #fff7ec; }
 .planning .pl-extra-cell { padding: 0; vertical-align: top; }
-.pl-extra-sub { display: block; padding: 0 4px; cursor: pointer; min-height: 0; text-align: center; font-size: .63rem; line-height: 1.28; }
+.pl-extra-sub { display: block; padding: 0 4px; cursor: pointer; min-height: 0; text-align: center; font-size: .75rem; line-height: 1.28; }
 .pl-extra-sub + .pl-extra-sub { border-top: 1px dashed var(--border); }
 .pl-extra-sub:hover { background: #fff3df; }
 .pl-extra-sub.has { background: #fff0d6; }
@@ -336,17 +336,17 @@ td.num { font-variant-numeric: tabular-nums; }
   position: relative;
   flex: 1 1 0; display: flex; flex-direction: column;
   align-items: center; justify-content: center; text-align: center;
-  padding: 0 2px; line-height: 1.28; font-size: .63rem; font-variant-numeric: tabular-nums;
+  padding: 0 2px; line-height: 1.28; font-size: .75rem; font-variant-numeric: tabular-nums;
 }
 .pl-half + .pl-half { border-top: 1px solid rgba(0,0,0,.10); }
 .pl-half.pl-first { background: #ffe27a; color: #6b5200; font-weight: 600; }
 .pl-half.pl-open { background: #b7e4c7; color: #166534; font-weight: 600; }
 .pl-half.pl-cont { background: #f6bcbc; color: #8a1212; font-weight: 600; }
-.pl-half.pl-demi { background: #d7d7d4; padding: 0; min-height: 14px; }
+.pl-half.pl-demi { background: #d7d7d4; padding: 0; min-height: 17px; }
 /* Croix (X) coin à coin : en position absolue, elle épouse la hauteur de la
    case/demi-case sans imposer sa propre taille (donc lignes restent compactes). */
 .planning td.pl-rest { position: relative; padding: 0; }
-.planning td.pl-rest::after { content: ""; display: block; height: 14px; }
+.planning td.pl-rest::after { content: ""; display: block; height: 17px; }
 .pl-cross { position: absolute; top: 0; right: 0; bottom: 0; left: 0; width: 100%; height: 100%; display: block; }
 .pl-cross line { stroke: #888; stroke-width: 1.4; vector-effect: non-scaling-stroke; }
 .planning .pl-group td {

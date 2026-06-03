@@ -491,20 +491,22 @@ function renderPlanning() {
   let grand = 0;
   const colspan = days.length + 2;
 
-  // Première personne à arriver pour chaque service (par jour), hors service continu.
-  const firstMidi = {}; const firstSoir = {};
+  // Heure de la PREMIÈRE arrivée de chaque service (par jour), hors service
+  // continu. On retient l'heure : tous les salariés arrivés à cette heure
+  // sont colorés (les ex æquo sont tous mis en couleur).
+  const firstMidiT = {}; const firstSoirT = {};
   for (const d of days) {
-    let bmId = null; let bmT = Infinity; let bsId = null; let bsT = Infinity;
+    let bmT = Infinity; let bsT = Infinity;
     for (const emp of actives) {
       const rep = byId.get(emp.id);
       const day = rep && rep.days.find((x) => x.day === d);
       if (!day || !day.segments.length) continue;
       const { cont, midi, soir } = classifyDay(day.segments);
       if (emp.continuous || cont.length) continue;
-      for (const s of midi) if (s.clockIn < bmT) { bmT = s.clockIn; bmId = emp.id; }
-      for (const s of soir) if (s.clockIn < bsT) { bsT = s.clockIn; bsId = emp.id; }
+      for (const s of midi) if (s.clockIn < bmT) bmT = s.clockIn;
+      for (const s of soir) if (s.clockIn < bsT) bsT = s.clockIn;
     }
-    firstMidi[d] = bmId; firstSoir[d] = bsId;
+    firstMidiT[d] = bmT; firstSoirT[d] = bsT;
   }
 
   for (const emp of actives) {
@@ -528,14 +530,16 @@ function renderPlanning() {
             lines.push(`<span class="pl-hours pl-cont">${day.segments.map(fmt).join('<br>')}</span>`);
             midiCount[d]++; soirCount[d]++;
           } else {
-            // Moitié midi (jaune si 1er arrivé du midi, sinon « demi » grisé).
+            // Moitié midi (jaune si 1er arrivé du midi, ex æquo inclus ; sinon « demi »).
             if (midi.length) {
-              lines.push(`<span class="pl-hours${emp.id === firstMidi[d] ? ' pl-first' : ''}">${midi.map(fmt).join('<br>')}</span>`);
+              const isFirst = Math.min(...midi.map((s) => s.clockIn)) === firstMidiT[d];
+              lines.push(`<span class="pl-hours${isFirst ? ' pl-first' : ''}">${midi.map(fmt).join('<br>')}</span>`);
               midiCount[d]++;
             } else lines.push('<span class="pl-demi">demi</span>');
-            // Moitié soir (jaune si 1er arrivé du soir, sinon « demi » grisé).
+            // Moitié soir (vert si 1er arrivé du soir/ouverture, ex æquo inclus ; sinon « demi »).
             if (soir.length) {
-              lines.push(`<span class="pl-hours${emp.id === firstSoir[d] ? ' pl-open' : ''}">${soir.map(fmt).join('<br>')}</span>`);
+              const isOpen = Math.min(...soir.map((s) => s.clockIn)) === firstSoirT[d];
+              lines.push(`<span class="pl-hours${isOpen ? ' pl-open' : ''}">${soir.map(fmt).join('<br>')}</span>`);
               soirCount[d]++;
             } else lines.push('<span class="pl-demi">demi</span>');
           }

@@ -897,31 +897,84 @@ app.get('/api/admin/report', requireAdmin, (req, res) => {
 app.get('/api/admin/report.csv', requireAdmin, (req, res) => {
   const { from, to, employeeId } = req.query;
   if (!from || !to) return res.status(400).json({ error: 'Période manquante' });
-  const report = buildReport({ from, to, employeeId });
 
   const fmtH = (s) => (s ? `${Math.floor(s / 3600)}h${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}` : '');
+  const dayList = (a, b) => {
+    const out = []; const cur = new Date(`${a}T12:00:00`); const end = new Date(`${b}T12:00:00`);
+    while (cur <= end) { out.push(localDay(cur.getTime())); cur.setDate(cur.getDate() + 1); }
+    return out;
+  };
+  const addDays = (iso, n) => { const d = new Date(`${iso}T12:00:00`); d.setDate(d.getDate() + n); return localDay(d.getTime()); };
 
-  // Jours de la période (comme le planning) en colonnes.
-  const days = [];
-  const cur = new Date(`${from}T12:00:00`); const end = new Date(`${to}T12:00:00`);
+  // Fenêtre élargie (±4 semaines) pour le report d'échange multi-semaines (même logique que le tableau à l'écran).
+  const extFrom = addDays(from, -28), extTo = addDays(to, 28);
+  const report = buildReport({ from: extFrom, to: extTo, employeeId });
+  const repById = new Map(report.map((e) => [e.employeeId, e]));
+
+  const stat = new Map();
+  for (const s of db.prepare('SELECT employee_id, day, status FROM day_status WHERE day >= ? AND day <= ?').all(extFrom, extTo)) {
+    stat.set(s.employee_id + '|' + s.day, s.status);
+  }
+
+  const AWAY = ['cp', 'am', 'absent', 'ecole'];
+  const SHORT = { cp: 'CP', am: 'AM', ecole: 'École', absent: 'Abs' };
+  const extDays = dayList(extFrom, extTo);
+  const dispDays = dayList(from, to);
+
+  let emps = db.prepare('SELECT id, name, rest_days, active, end_date, sort_order FROM employees').all()
+    .filter((e) => e.active || (e.end_date && e.end_date >= from) || repById.has(e.id));
+  if (employeeId) emps = emps.filter((e) => String(e.id) === String(employeeId));
+  emps.sort((a, b) => (a.sort_order - b.sort_order) || a.name.localeCompare(b.name));
+
   const jj = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
-  while (cur <= end) {
-    const lbl = `${jj[cur.getDay()]} ${String(cur.getDate()).padStart(2, '0')}/${String(cur.getMonth() + 1).padStart(2, '0')}`;
-    days.push({ key: localDay(cur.getTime()), label: lbl });
-    cur.setDate(cur.getDate() + 1);
-  }
+  const labels = dispDays.map((d) => {
+    const dt = new Date(`${d}T12:00:00`);
+    return `${jj[dt.getDay()]} ${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}`;
+  });
 
-  const lines = ['Salarié;' + days.map((d) => d.label).join(';') + ';Total'];
-  const dayTot = {}; days.forEach((d) => { dayTot[d.key] = 0; }); let grand = 0;
-  for (const emp of report) {
-    const byDay = new Map(emp.days.map((x) => [x.day, x.seconds]));
-    const cells = days.map((d) => {
-      const sec = byDay.get(d.key) || 0; dayTot[d.key] += sec; return fmtH(sec);
+  const lines = ['Salarié;' + labels.join(';') + ';Total'];
+  const dayTot = {}; dispDays.forEach((d) => { dayTot[d] = 0; }); let grand = 0;
+
+  for (const emp of emps) {
+    const periods = parseRestPeriods(emp.rest_days);
+    const secByDay = new Map(((repById.get(emp.id) || {}).days || []).map((x) => [x.day, x.seconds]));
+    const info = new Map();
+    for (const d of extDays) {
+      const wd = new Date(`${d}T12:00:00`).getDay();
+      const status = stat.get(emp.id + '|' + d);
+      const isRest = restDaysOn(periods, d).includes(wd) || status === 'repos';
+      info.set(d, { sec: secByDay.get(d) || 0, status, isRest, carriedFrom: null, carriedTo: null });
+    }
+    // Report des échanges : heures d'un jour de repos → 1er jour vide (avant/après).
+    const used = new Set();
+    for (const exDay of extDays) {
+      const it = info.get(exDay);
+      if (!(it.isRest && it.sec > 0)) continue;
+      const idx = extDays.indexOf(exDay);
+      let target = null;
+      for (let k = 1; k < extDays.length && !target; k++) {
+        for (const j of [idx - k, idx + k]) {
+          if (j < 0 || j >= extDays.length) continue;
+          const dd = extDays[j];
+          if (used.has(dd)) continue;
+          const t = info.get(dd);
+          if (!t.isRest && !AWAY.includes(t.status) && t.sec === 0 && !t.carriedFrom) { target = dd; break; }
+        }
+      }
+      if (target) { used.add(target); const t = info.get(target); t.sec = it.sec; t.carriedFrom = exDay; it.carriedTo = target; it.sec = 0; }
+    }
+    let tot = 0;
+    const cells = dispDays.map((d) => {
+      const it = info.get(d);
+      if (it.sec > 0) { dayTot[d] += it.sec; tot += it.sec; return fmtH(it.sec) + (it.carriedFrom ? ' (éch)' : ''); }
+      if (AWAY.includes(it.status)) return SHORT[it.status];
+      if (it.isRest) return 'Repos';
+      return '';
     });
-    grand += emp.totalSeconds;
-    lines.push([emp.name, ...cells, fmtH(emp.totalSeconds)].join(';'));
+    grand += tot;
+    lines.push([emp.name, ...cells, fmtH(tot)].join(';'));
   }
-  lines.push(['Total / jour', ...days.map((d) => fmtH(dayTot[d.key])), fmtH(grand)].join(';'));
+  lines.push(['Total / jour', ...dispDays.map((d) => fmtH(dayTot[d])), fmtH(grand)].join(';'));
 
   const csv = '﻿' + lines.join('\r\n'); // BOM pour Excel
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');

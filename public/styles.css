@@ -295,15 +295,23 @@ td.num { font-variant-numeric: tabular-nums; }
   font-weight: 600; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 200;
 }
 .toast.show { opacity: 1; }
-.pl-demi {
-  display: block; background: #e4e4e4; color: #7a7a7a;
-  font-weight: 700; font-size: .7rem; text-transform: uppercase; letter-spacing: .04em;
-  padding: 3px 4px; border-radius: 4px; margin: 2px 0;
+/* Cases du planning remplies : les couleurs occupent toute la demi-case
+   (midi en haut, soir en bas) ; le service continu remplit la case entière. */
+.planning td.pl-filled { padding: 0; }
+.pl-stack { display: flex; flex-direction: column; height: 100%; min-height: 42px; }
+.pl-half {
+  flex: 1 1 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; text-align: center;
+  padding: 4px 4px; line-height: 1.2; font-variant-numeric: tabular-nums;
 }
-.pl-hours { display: block; padding: 2px 0; }
-.pl-hours.pl-first { background: #ffe27a; color: #6b5200; border-radius: 4px; padding: 3px 4px; margin: 2px 0; font-weight: 600; }
-.pl-hours.pl-open { background: #b7e4c7; color: #166534; border-radius: 4px; padding: 3px 4px; margin: 2px 0; font-weight: 600; }
-.pl-hours.pl-cont { background: #f6bcbc; color: #8a1212; border-radius: 4px; padding: 3px 4px; margin: 2px 0; font-weight: 600; }
+.pl-half + .pl-half { border-top: 1px solid rgba(0,0,0,.10); }
+.pl-half.pl-first { background: #ffe27a; color: #6b5200; font-weight: 600; }
+.pl-half.pl-open { background: #b7e4c7; color: #166534; font-weight: 600; }
+.pl-half.pl-cont { background: #f6bcbc; color: #8a1212; font-weight: 600; }
+.pl-half.pl-demi {
+  background: #e4e4e4; color: #7a7a7a; font-weight: 700;
+  font-size: .7rem; text-transform: uppercase; letter-spacing: .04em;
+}
 .planning .pl-group td {
   background: #faf3e8; color: var(--gold-dark); text-align: left; font-weight: 700;
   text-transform: uppercase; letter-spacing: .06em; font-size: .75rem;

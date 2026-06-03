@@ -526,34 +526,38 @@ function renderPlanning() {
         const parts = [];
         if (isRest) parts.push('<span class="pl-rest-lbl">Repos</span>');
         if (status && status !== 'repos') parts.push(`<span class="pl-badge st-${status}">${STATUS_SHORT[status]}</span>`);
+        let filled = false;
         if (day && day.segments.length) {
           const fmt = (s) => `${fmtTime(s.clockIn)}–${s.open ? '…' : fmtTime(s.clockOut)}`;
           const { cont, midi, soir } = classifyDay(day.segments);
           const isCont = emp.continuous || cont.length > 0;
-          const lines = [];
+          let stack;
           if (isCont) {
-            // Service continu → bloc rouge, compté midi + soir.
-            lines.push(`<span class="pl-hours pl-cont">${day.segments.map(fmt).join('<br>')}</span>`);
+            // Service continu → rouge sur la case entière, compté midi + soir.
+            stack = `<div class="pl-half pl-cont">${day.segments.map(fmt).join('<br>')}</div>`;
             midiCount[d]++; soirCount[d]++;
           } else {
-            // Moitié midi (jaune si 1er arrivé du midi, ex æquo inclus ; sinon « demi »).
-            if (midi.length) {
-              const isFirst = Math.min(...midi.map((s) => s.clockIn)) === firstMidiT[d];
-              lines.push(`<span class="pl-hours${isFirst ? ' pl-first' : ''}">${midi.map(fmt).join('<br>')}</span>`);
-              midiCount[d]++;
-            } else lines.push('<span class="pl-demi">demi</span>');
-            // Moitié soir (vert si 1er arrivé du soir/ouverture, ex æquo inclus ; sinon « demi »).
-            if (soir.length) {
-              const isOpen = Math.min(...soir.map((s) => s.clockIn)) === firstSoirT[d];
-              lines.push(`<span class="pl-hours${isOpen ? ' pl-open' : ''}">${soir.map(fmt).join('<br>')}</span>`);
-              soirCount[d]++;
-            } else lines.push('<span class="pl-demi">demi</span>');
+            // Demi-case midi (jaune si 1er arrivé, ex æquo inclus ; grise « demi » sinon).
+            const isFirst = midi.length && Math.min(...midi.map((s) => s.clockIn)) === firstMidiT[d];
+            const midiHalf = midi.length
+              ? `<div class="pl-half${isFirst ? ' pl-first' : ''}">${midi.map(fmt).join('<br>')}</div>`
+              : '<div class="pl-half pl-demi">demi</div>';
+            // Demi-case soir (verte si 1er arrivé/ouverture ; grise « demi » sinon).
+            const isOpen = soir.length && Math.min(...soir.map((s) => s.clockIn)) === firstSoirT[d];
+            const soirHalf = soir.length
+              ? `<div class="pl-half${isOpen ? ' pl-open' : ''}">${soir.map(fmt).join('<br>')}</div>`
+              : '<div class="pl-half pl-demi">demi</div>';
+            stack = midiHalf + soirHalf;
+            if (midi.length) midiCount[d]++;
+            if (soir.length) soirCount[d]++;
           }
-          parts.push(lines.join(''));
+          parts.length = 0; // jour travaillé : on n'affiche que les horaires (couleur pleine)
+          parts.push(`<div class="pl-stack">${stack}</div>`);
           dayTotals[d] += day.seconds;
+          filled = true;
         }
         const inner = parts.length ? parts.join('<br>') : '<span class="pl-empty">+</span>';
-        const cls = 'pl-cell pl-click' + (isRest ? ' pl-rest' : '');
+        const cls = 'pl-cell pl-click' + (isRest ? ' pl-rest' : '') + (filled ? ' pl-filled' : '');
         rowCells += `<td class="${cls}" data-emp="${emp.id}" data-day="${d}">${inner}</td>`;
       }
       const tot = rep ? rep.totalSeconds : 0;
@@ -572,7 +576,6 @@ function renderPlanning() {
     if (m) midiCount[d]++;
     if (s) soirCount[d]++;
     const sub = (svc, val) => `<div class="pl-extra-sub${val ? ' has' : ''}" data-day="${d}" data-svc="${svc}">`
-      + `<span class="pl-extra-tag">${svc === 'midi' ? 'Midi' : 'Soir'}</span>`
       + (val ? `<span class="pl-extra-txt">${escapeHtml(val)}</span>` : '<span class="pl-empty">+</span>')
       + '</div>';
     html += `<td class="pl-extra-cell">${sub('midi', m)}${sub('soir', s)}</td>`;
@@ -580,10 +583,10 @@ function renderPlanning() {
   html += '<td></td></tr>';
 
   // Nombre de présents par service (par jour).
-  html += '<tr class="pl-svc-row"><td class="pl-name">Présents midi (9h–14h)</td>';
+  html += '<tr class="pl-svc-row"><td class="pl-name">Présents midi</td>';
   for (const d of days) html += `<td>${midiCount[d] || '—'}</td>`;
   html += '<td></td></tr>';
-  html += '<tr class="pl-svc-row"><td class="pl-name">Présents soir (18h–21h)</td>';
+  html += '<tr class="pl-svc-row"><td class="pl-name">Présents soir</td>';
   for (const d of days) html += `<td>${soirCount[d] || '—'}</td>`;
   html += '<td></td></tr>';
 

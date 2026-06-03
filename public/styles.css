@@ -273,8 +273,8 @@ td.num { font-variant-numeric: tabular-nums; }
 .planning .pl-name { width: 80px; text-align: left; font-weight: 600; background: #faf3e8; position: sticky; left: 0; }
 /* Rangées salariés : séparateurs horizontaux noirs sur toute la largeur (jusqu'à Total). */
 .planning tbody tr.pl-emp-row > td { border-top-color: #1f2120; border-bottom-color: #1f2120; }
-.planning tbody .pl-name { display: flex; align-items: flex-start; justify-content: flex-start; gap: 5px; }
-.pl-name-txt { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.planning tbody .pl-name { display: flex; align-items: center; justify-content: space-between; gap: 5px; }
+.pl-name-txt { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pl-demi-count {
   flex: 0 0 auto; min-width: 15px; height: 15px; padding: 0 3px;
   display: inline-flex; align-items: center; justify-content: center;

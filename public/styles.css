@@ -292,7 +292,7 @@ td.num { font-variant-numeric: tabular-nums; }
 /* Ligne « Extra » : deux cases par jour (midi / soir), texte libre cliquable. */
 .planning .pl-extra-row .pl-name { background: #fff7ec; }
 .planning .pl-extra-cell { padding: 0; vertical-align: top; }
-.pl-extra-sub { display: block; padding: 4px 6px; cursor: pointer; min-height: 22px; text-align: center; }
+.pl-extra-sub { display: block; padding: 0 4px; cursor: pointer; min-height: 0; text-align: center; font-size: .63rem; line-height: 1.15; }
 .pl-extra-sub + .pl-extra-sub { border-top: 1px dashed var(--border); }
 .pl-extra-sub:hover { background: #fff3df; }
 .pl-extra-sub.has { background: #fff0d6; }

@@ -234,7 +234,9 @@ app.get('/api/planning', (req, res) => {
   ).all(from, to);
   let extra = {};
   try { const v = JSON.parse(getSetting('extra_notes') || '{}'); if (v && typeof v === 'object') extra = v; } catch { /* ignore */ }
-  res.json({ employees, report, statuses, extra });
+  let events = {};
+  try { const v = JSON.parse(getSetting('event_notes') || '{}'); if (v && typeof v === 'object') events = v; } catch { /* ignore */ }
+  res.json({ employees, report, statuses, extra, events });
 });
 
 // Arrivées encore ouvertes (sans départ) de la journée de travail en cours,
@@ -804,6 +806,26 @@ app.put('/api/admin/extra', requireAdmin, (req, res) => {
   const t = String(text == null ? '' : text).trim().slice(0, 200);
   if (t) map[key] = t; else delete map[key];
   setSetting('extra_notes', JSON.stringify(map));
+  res.json({ ok: true });
+});
+
+// --- Ligne « Événement / Groupe » du planning (texte libre par jour) -------
+function readEvents() {
+  try {
+    const v = JSON.parse(getSetting('event_notes') || '{}');
+    return (v && typeof v === 'object' && !Array.isArray(v)) ? v : {};
+  } catch { return {}; }
+}
+app.get('/api/admin/event', requireAdmin, (req, res) => {
+  res.json(readEvents());
+});
+app.put('/api/admin/event', requireAdmin, (req, res) => {
+  const { date, text } = req.body || {};
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) return res.status(400).json({ error: 'Date invalide' });
+  const map = readEvents();
+  const t = String(text == null ? '' : text).trim().slice(0, 200);
+  if (t) map[date] = t; else delete map[date];
+  setSetting('event_notes', JSON.stringify(map));
   res.json({ ok: true });
 });
 

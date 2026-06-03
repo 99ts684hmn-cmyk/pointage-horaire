@@ -68,6 +68,7 @@
     const statusMap = new Map();
     for (const s of (data.statuses || [])) statusMap.set(s.employeeId + '|' + s.day, s.status);
     const extraMap = (data.extra && typeof data.extra === 'object') ? data.extra : {};
+    const eventMap = (data.events && typeof data.events === 'object') ? data.events : {};
 
     const actives = (data.employees || [])
       .filter((e) => e.active || (e.endDate && e.endDate >= from))
@@ -96,6 +97,14 @@
       }
       firstMidiT[d] = bmT; firstSoirT[d] = bsT;
     }
+
+    // Ligne « Événement / Groupe » (lecture seule) en haut du planning.
+    html += '<tr class="pl-event-row"><td class="pl-name">Événement / Groupe</td>';
+    for (const d of days) {
+      const txt = (eventMap[d] || '').trim();
+      html += `<td class="pl-event-cell">${txt ? `<span class="pl-event-txt">${escapeHtml(txt)}</span>` : '<span class="pl-empty">&nbsp;</span>'}</td>`;
+    }
+    html += '<td></td></tr>';
 
     for (const emp of actives) {
       const rep = byId.get(emp.id);

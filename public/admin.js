@@ -443,6 +443,8 @@ let statusMap = new Map(); // clé "empId|day" → 'cp'|'am'|'ecole'
 let extraMap = {}; // clé "YYYY-MM-DD|midi" / "…|soir" → texte libre (ligne « Extra »)
 const STATUS_SHORT = { cp: 'CP', am: 'AM', ecole: 'École', absent: 'Abs', repos: 'Repos' };
 const STATUS_FULL = { cp: 'Congés payés', am: 'Arrêt maladie', ecole: 'École', absent: 'Absent', repos: 'Repos' };
+// Croix (X) en coin à coin, remplit la case (repos) ou la demi-case (demi).
+const CROSS_SVG = '<svg class="pl-cross" viewBox="0 0 10 10" preserveAspectRatio="none" aria-hidden="true"><line x1="0" y1="0" x2="10" y2="10"/><line x1="10" y1="0" x2="0" y2="10"/></svg>';
 
 async function loadPlanning() {
   const from = $('rep-from').value;
@@ -526,7 +528,7 @@ function renderPlanning() {
         const parts = [];
         const awayStatus = AWAY_STATUSES.includes(status) ? status : null; // cp/am/absent/ecole
         if (awayStatus) parts.push(`<span class="pl-status-lbl">${STATUS_SHORT[awayStatus]}</span>`);
-        else if (isRest) parts.push('<span class="pl-rest-lbl">Repos</span>');
+        else if (isRest) parts.push(CROSS_SVG);
         let filled = false;
         if (day && day.segments.length) {
           const fmt = (s) => (s.open ? fmtTime(s.clockIn) : `${fmtTime(s.clockIn)}–${fmtTime(s.clockOut)}`);
@@ -542,12 +544,12 @@ function renderPlanning() {
             const isFirst = midi.length && Math.min(...midi.map((s) => s.clockIn)) === firstMidiT[d];
             const midiHalf = midi.length
               ? `<div class="pl-half${isFirst ? ' pl-first' : ''}">${midi.map(fmt).join('<br>')}</div>`
-              : '<div class="pl-half pl-demi">demi</div>';
-            // Demi-case soir (verte si 1er arrivé/ouverture ; grise « demi » sinon).
+              : `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;
+            // Demi-case soir (verte si 1er arrivé/ouverture ; croix sinon).
             const isOpen = soir.length && Math.min(...soir.map((s) => s.clockIn)) === firstSoirT[d];
             const soirHalf = soir.length
               ? `<div class="pl-half${isOpen ? ' pl-open' : ''}">${soir.map(fmt).join('<br>')}</div>`
-              : '<div class="pl-half pl-demi">demi</div>';
+              : `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;
             stack = midiHalf + soirHalf;
             if (midi.length) midiCount[d]++;
             if (soir.length) soirCount[d]++;

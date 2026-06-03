@@ -571,7 +571,7 @@ function renderPlanning() {
       const nameCell = `<td class="pl-name"><span class="pl-name-txt">${escapeHtml(emp.name)}</span>`
         + (demiCount ? `<span class="pl-demi-count" title="${demiCount} demi cette semaine">${demiCount}</span>` : '')
         + '</td>';
-      html += `<tr>${nameCell}${dayCells}<td class="pl-total">${fmtH(tot)}</td></tr>`;
+      html += `<tr class="pl-emp-row">${nameCell}${dayCells}<td class="pl-total">${fmtH(tot)}</td></tr>`;
   }
 
   // Ligne « Extra » : saisie libre par service ; chaque texte saisi compte +1 présent.

@@ -286,8 +286,10 @@ td.num { font-variant-numeric: tabular-nums; }
 .planning .pl-tot-row td { background: #f0eadf; font-weight: 700; }
 .planning .pl-svc-row td { background: #eef4ff; font-weight: 700; color: #1e3a8a; }
 .planning .pl-svc-row .pl-name { background: #eef4ff; }
-.planning .pl-rest { background: #e4e4e4; }
-.planning .pl-rest:hover { background: #dcdcdc; }
+/* Zébrures : une ligne sur deux légèrement grisée (meilleure lisibilité). */
+.planning tbody tr.pl-emp-row:nth-of-type(even) { background: #f3f1ec; }
+.planning .pl-rest { background: #d7d7d4; }
+.planning .pl-rest:hover { background: #cdcdc9; }
 .pl-rest-lbl { font-weight: 700; font-size: .7rem; text-transform: uppercase; color: #8a8a8a; letter-spacing: .04em; }
 /* Statuts CP / AM / École / Absent : couleur sur toute la case (comme Repos). */
 .planning .pl-statusfill.st-cp { background: #dbeafe; color: #1e40af; }
@@ -340,13 +342,13 @@ td.num { font-variant-numeric: tabular-nums; }
 .pl-half.pl-first { background: #ffe27a; color: #6b5200; font-weight: 600; }
 .pl-half.pl-open { background: #b7e4c7; color: #166534; font-weight: 600; }
 .pl-half.pl-cont { background: #f6bcbc; color: #8a1212; font-weight: 600; }
-.pl-half.pl-demi { background: #e4e4e4; padding: 0; min-height: 14px; }
+.pl-half.pl-demi { background: #d7d7d4; padding: 0; min-height: 14px; }
 /* Croix (X) coin à coin : en position absolue, elle épouse la hauteur de la
    case/demi-case sans imposer sa propre taille (donc lignes restent compactes). */
 .planning td.pl-rest { position: relative; padding: 0; }
 .planning td.pl-rest::after { content: ""; display: block; height: 14px; }
 .pl-cross { position: absolute; top: 0; right: 0; bottom: 0; left: 0; width: 100%; height: 100%; display: block; }
-.pl-cross line { stroke: #9a9a9a; stroke-width: 1.4; vector-effect: non-scaling-stroke; }
+.pl-cross line { stroke: #888; stroke-width: 1.4; vector-effect: non-scaling-stroke; }
 .planning .pl-group td {
   background: #faf3e8; color: var(--gold-dark); text-align: left; font-weight: 700;
   text-transform: uppercase; letter-spacing: .06em; font-size: .75rem;

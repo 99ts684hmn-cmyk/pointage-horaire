@@ -292,7 +292,7 @@ td.num { font-variant-numeric: tabular-nums; }
 /* Ligne « Extra » : deux cases par jour (midi / soir), texte libre cliquable. */
 .planning .pl-extra-row .pl-name { background: #fff7ec; }
 .planning .pl-extra-cell { padding: 0; vertical-align: top; }
-.pl-extra-sub { display: block; padding: 0 4px; cursor: pointer; min-height: 0; text-align: center; font-size: .63rem; line-height: 1.15; }
+.pl-extra-sub { display: block; padding: 0 4px; cursor: pointer; min-height: 0; text-align: center; font-size: .63rem; line-height: 1.45; }
 .pl-extra-sub + .pl-extra-sub { border-top: 1px dashed var(--border); }
 .pl-extra-sub:hover { background: #fff3df; }
 .pl-extra-sub.has { background: #fff0d6; }
@@ -306,23 +306,23 @@ td.num { font-variant-numeric: tabular-nums; }
 .toast.show { opacity: 1; }
 /* Cases du planning remplies : les couleurs occupent toute la demi-case
    (midi en haut, soir en bas) ; le service continu remplit la case entière. */
-.planning td.pl-filled { padding: 0; }
+.planning td.pl-filled { padding: 0; height: 1px; } /* height:1px → pl-stack height:100% se résout (rouge plein) */
 .pl-stack { display: flex; flex-direction: column; height: 100%; }
 .pl-half {
   position: relative;
   flex: 1 1 0; display: flex; flex-direction: column;
   align-items: center; justify-content: center; text-align: center;
-  padding: 0 2px; line-height: 1.1; font-size: .63rem; font-variant-numeric: tabular-nums;
+  padding: 0 2px; line-height: 1.45; font-size: .63rem; font-variant-numeric: tabular-nums;
 }
 .pl-half + .pl-half { border-top: 1px solid rgba(0,0,0,.10); }
 .pl-half.pl-first { background: #ffe27a; color: #6b5200; font-weight: 600; }
 .pl-half.pl-open { background: #b7e4c7; color: #166534; font-weight: 600; }
 .pl-half.pl-cont { background: #f6bcbc; color: #8a1212; font-weight: 600; }
-.pl-half.pl-demi { background: #e4e4e4; padding: 0; min-height: 13px; }
+.pl-half.pl-demi { background: #e4e4e4; padding: 0; min-height: 16px; }
 /* Croix (X) coin à coin : en position absolue, elle épouse la hauteur de la
    case/demi-case sans imposer sa propre taille (donc lignes restent compactes). */
 .planning td.pl-rest { position: relative; padding: 0; }
-.planning td.pl-rest::after { content: ""; display: block; height: 13px; }
+.planning td.pl-rest::after { content: ""; display: block; height: 16px; }
 .pl-cross { position: absolute; top: 0; right: 0; bottom: 0; left: 0; width: 100%; height: 100%; display: block; }
 .pl-cross line { stroke: #9a9a9a; stroke-width: 1.4; vector-effect: non-scaling-stroke; }
 .planning .pl-group td {

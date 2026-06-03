@@ -394,7 +394,6 @@ td.num { font-variant-numeric: tabular-nums; }
   .planning .pl-name, .planning .pl-group td { position: static; }
   /* À l'impression : noms + jours + horaires + ligne des présents (sans totaux). */
   .planning .pl-group, .planning .pl-tot-row { display: none !important; }
-  .planning .pl-print-hide { display: none !important; } /* absent toute la semaine */
   .planning thead th:last-child, .planning tbody td:last-child { display: none !important; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   @page { size: A4 landscape; margin: 8mm; }

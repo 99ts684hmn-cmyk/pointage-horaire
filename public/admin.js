@@ -517,12 +517,9 @@ function renderPlanning() {
   for (const emp of actives) {
       const rep = byId.get(emp.id);
       let rowCells = `<td class="pl-name">${escapeHtml(emp.name)}</td>`;
-      let worked = false; let away = false; // pour masquer en PDF les absents toute la semaine
       for (const d of days) {
         const day = rep && rep.days.find((x) => x.day === d);
         const status = statusMap.get(emp.id + '|' + d);
-        if (day && day.segments.length) worked = true;
-        if (AWAY_STATUSES.includes(status)) away = true;
         // Repos = motif récurrent du jour OU repos ponctuel (statut, ex. apprentis).
         const isRest = restDaysOn(emp.restPeriods, d).includes(weekday[d]) || status === 'repos';
         const parts = [];
@@ -570,9 +567,7 @@ function renderPlanning() {
       const tot = rep ? rep.totalSeconds : 0;
       grand += tot;
       rowCells += `<td class="pl-total">${fmtH(tot)}</td>`;
-      // Absent toute la semaine (CP / maladie / absent / école et aucune heure) → masqué dans le PDF.
-      const hideInPdf = !worked && away;
-      html += `<tr${hideInPdf ? ' class="pl-print-hide"' : ''}>${rowCells}</tr>`;
+      html += `<tr>${rowCells}</tr>`;
   }
 
   // Ligne « Extra » : saisie libre par service ; chaque texte saisi compte +1 présent.

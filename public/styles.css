@@ -279,6 +279,7 @@ td.num { font-variant-numeric: tabular-nums; }
 .pl-rest-lbl { font-weight: 700; font-size: .7rem; text-transform: uppercase; color: #8a8a8a; letter-spacing: .04em; }
 .planning .pl-day-head { cursor: pointer; }
 .planning .pl-day-head:hover { text-decoration: underline; background: #2a2c29; }
+.wk-print-dates { display: none; } /* visible uniquement à l'impression (PDF) */
 /* Ligne « Extra » : deux cases par jour (midi / soir), texte libre cliquable. */
 .planning .pl-extra-row .pl-name { background: #fff7ec; }
 .planning .pl-extra-cell { padding: 0; vertical-align: top; }
@@ -365,14 +366,17 @@ td.num { font-variant-numeric: tabular-nums; }
   .topbar, .login-wrap { display: none !important; }
   #admin-view > .panel:not(#planning-panel) { display: none !important; }
   #planning-panel { box-shadow: none; padding: 0; margin: 0; }
+  #planning-panel .row { display: none !important; } /* barre de navigation + boutons */
+  .wk-print-dates { display: inline; font-weight: 400; font-size: .82em; }
   button { display: none !important; }
   .table-wrap { overflow: visible !important; }
   .planning { min-width: 0; width: 100%; font-size: 9px; }
   .planning th, .planning td { padding: 3px 4px; }
   .planning .pl-name, .planning .pl-group td { position: static; }
-  /* À l'impression : seulement noms + jours + horaires. */
-  .planning .pl-group, .planning .pl-svc-row, .planning .pl-tot-row { display: none !important; }
-  .planning thead th:last-child, .planning td.pl-total { display: none !important; }
+  /* À l'impression : noms + jours + horaires + ligne des présents (sans totaux). */
+  .planning .pl-group, .planning .pl-tot-row { display: none !important; }
+  .planning .pl-print-hide { display: none !important; } /* absent toute la semaine */
+  .planning thead th:last-child, .planning tbody td:last-child { display: none !important; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   @page { size: A4 landscape; margin: 8mm; }
 }

@@ -560,7 +560,7 @@ function restDaysOn(periods, dateStr) {
 
 app.get('/api/admin/employees', requireAdmin, (req, res) => {
   const rows = db.prepare(
-    'SELECT id, name, category, rest_days, continuous_service, sort_order, active, created_at FROM employees ORDER BY active DESC, sort_order ASC, name COLLATE NOCASE'
+    'SELECT id, name, category, rest_days, continuous_service, sort_order, active, end_date, created_at FROM employees ORDER BY active DESC, sort_order ASC, name COLLATE NOCASE'
   ).all();
   const today = localDay(Date.now());
   res.json(rows.map((r) => {
@@ -570,6 +570,8 @@ app.get('/api/admin/employees', requireAdmin, (req, res) => {
       name: r.name,
       category: r.category,
       active: r.active,
+      endDate: r.end_date || null, // dernier jour dans l'entreprise (si désactivé)
+      sortOrder: r.sort_order,
       created_at: r.created_at,
       restDays: restDaysOn(periods, today), // applicables aujourd'hui (affichage profil)
       restPeriods: periods, // historique complet (utilisé par le planning, par jour)
@@ -636,7 +638,17 @@ app.put('/api/admin/employees/:id', requireAdmin, (req, res) => {
     db.prepare('UPDATE employees SET pin_hash = ? WHERE id = ?').run(hashSecret(pin), id);
   }
   if (active !== undefined) {
-    db.prepare('UPDATE employees SET active = ? WHERE id = ?').run(active ? 1 : 0, id);
+    if (!active) {
+      // Désactivation : le dernier jour dans l'entreprise est obligatoire.
+      const endDate = req.body.endDate;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(endDate || '')) {
+        return res.status(400).json({ error: "Le dernier jour dans l'entreprise est obligatoire." });
+      }
+      db.prepare('UPDATE employees SET active = 0, end_date = ? WHERE id = ?').run(endDate, id);
+    } else {
+      // Réactivation : on efface la date de fin.
+      db.prepare('UPDATE employees SET active = 1, end_date = NULL WHERE id = ?').run(id);
+    }
   }
   res.json({ ok: true });
 });

@@ -65,6 +65,11 @@ if (!empCols.some((c) => c.name === 'sort_order')) {
   db.exec('ALTER TABLE employees ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0');
   db.exec('UPDATE employees SET sort_order = id');
 }
+// Dernier jour dans l'entreprise (à la désactivation). Le salarié reste visible
+// sur les plannings jusqu'à la semaine de cette date incluse, puis disparaît.
+if (!empCols.some((c) => c.name === 'end_date')) {
+  db.exec('ALTER TABLE employees ADD COLUMN end_date TEXT');
+}
 
 // --- Hachage des secrets (PIN, mot de passe admin) ------------------------
 function hashSecret(secret) {

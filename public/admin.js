@@ -150,7 +150,7 @@ async function loadEmployees() {
       <td class="drag-handle" title="Glisser pour réordonner">⠿</td>
       <td>${escapeHtml(emp.name)}</td>
       <td><select class="cat-select" data-id="${emp.id}">${opts}</select></td>
-      <td><span class="tag ${emp.active ? 'active' : 'inactive'}">${emp.active ? 'Actif' : 'Inactif'}</span></td>
+      <td><span class="tag ${emp.active ? 'active' : 'inactive'}">${emp.active ? 'Actif' : 'Inactif'}</span>${(!emp.active && emp.endDate) ? `<div class="sub" style="font-size:.72rem">Dernier jour : ${frDate(emp.endDate)}</div>` : ''}</td>
       <td style="text-align:right">
         <button class="link-btn" data-act="profile" data-id="${emp.id}">Profil</button>
         <button class="link-btn" data-act="toggle" data-id="${emp.id}" data-active="${emp.active}">${emp.active ? 'Désactiver' : 'Réactiver'}</button>
@@ -200,12 +200,48 @@ async function handleEmpAction(btn) {
   if (btn.dataset.act === 'profile') { openProfile(Number(id)); return; }
   if (btn.dataset.act === 'toggle') {
     const active = btn.dataset.active === '1';
-    await api(`/api/admin/employees/${id}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ active: !active }),
-    });
-    loadEmployees();
+    if (active) {
+      const emp = allEmployees.find((e) => e.id === Number(id));
+      openDeactivateModal(Number(id), emp ? emp.name : '');
+    } else {
+      // Réactivation directe (efface la date de fin côté serveur).
+      await api(`/api/admin/employees/${id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: true }),
+      });
+      loadEmployees();
+    }
   }
+}
+
+// Désactivation : demande le dernier jour dans l'entreprise (obligatoire).
+function openDeactivateModal(empId, empName) {
+  cellModal.innerHTML = `
+    <h2>Désactiver ${escapeHtml(empName)}</h2>
+    <div class="field" style="margin-top:12px">
+      <label for="deact-date">Dernier jour dans l'entreprise</label>
+      <input type="date" id="deact-date" value="${localISO(new Date())}">
+      <div class="sub" style="font-size:.78rem;margin-top:6px">Le salarié reste sur les plannings jusqu'à la semaine de cette date incluse, puis disparaît des semaines suivantes. Les plannings précédents restent intacts.</div>
+    </div>
+    <div class="msg error" id="deact-msg"></div>
+    <div class="action-buttons" style="margin-top:14px;grid-template-columns:1fr 1fr">
+      <button class="btn btn-red" id="deact-confirm">Désactiver</button>
+      <button class="btn btn-ghost" id="deact-cancel">Annuler</button>
+    </div>`;
+  cellModal.querySelector('#deact-confirm').addEventListener('click', async () => {
+    const endDate = cellModal.querySelector('#deact-date').value;
+    const m = $('deact-msg');
+    if (!endDate) { m.textContent = 'La date du dernier jour est obligatoire.'; m.className = 'msg show error'; return; }
+    const { ok, data } = await api(`/api/admin/employees/${empId}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: false, endDate }),
+    });
+    if (!ok) { m.textContent = (data && data.error) || 'Erreur'; m.className = 'msg show error'; return; }
+    cellOverlay.classList.remove('show');
+    loadEmployees();
+  });
+  cellModal.querySelector('#deact-cancel').addEventListener('click', () => cellOverlay.classList.remove('show'));
+  cellOverlay.classList.add('show');
 }
 
 $('add-btn').addEventListener('click', async () => {
@@ -477,7 +513,11 @@ function renderPlanning() {
 
   const days = daysBetween(from, to);
   const byId = new Map((planningReport || []).map((e) => [e.employeeId, e]));
-  const actives = allEmployees.filter((e) => e.active);
+  // Salariés visibles cette semaine : actifs, OU sortis mais dont le dernier jour
+  // tombe cette semaine ou après (ils restent sur les plannings jusque-là).
+  const actives = allEmployees
+    .filter((e) => e.active || (e.endDate && e.endDate >= from))
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
   if (!actives.length) { out.innerHTML = '<div class="empty">Aucun salarié.</div>'; return; }
 
   let html = '<table class="planning"><thead><tr><th class="pl-name">Salarié</th>';

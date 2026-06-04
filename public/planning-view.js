@@ -108,7 +108,8 @@
         const awayStatus = AWAY_STATUSES.includes(status) ? status : null;
         const isRest = restDaysOn(emp.restPeriods, d).includes(weekday[d]) || status === 'repos';
         const demiMidi = status === 'demi_midi'; const demiSoir = status === 'demi_soir';
-        const echMidi = status === 'echange_midi'; const echSoir = status === 'echange_soir';
+        const echMidi = status === 'echange_midi' || status === 'echange_both';
+        const echSoir = status === 'echange_soir' || status === 'echange_both';
         let inner; let fillCls = ''; let exchangeMark = '';
 
         if (awayStatus && !hasHours) {

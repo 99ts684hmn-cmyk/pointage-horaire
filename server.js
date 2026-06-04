@@ -753,7 +753,7 @@ app.delete('/api/admin/entries/:id', requireAdmin, (req, res) => {
 
 // --- Statuts de journée (CP / AM / École) ---------------------------------
 
-const DAY_STATUSES = ['cp', 'am', 'ecole', 'absent', 'repos', 'demi_midi', 'demi_soir', 'echange_midi', 'echange_soir'];
+const DAY_STATUSES = ['cp', 'am', 'ecole', 'absent', 'repos', 'demi_midi', 'demi_soir', 'echange_midi', 'echange_soir', 'echange_both'];
 
 app.get('/api/admin/day-statuses', requireAdmin, (req, res) => {
   const { from, to } = req.query;

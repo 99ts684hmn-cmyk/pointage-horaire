@@ -545,7 +545,8 @@ let planningReport = [];
 let statusMap = new Map(); // clé "empId|day" → 'cp'|'am'|'ecole'
 let extraMap = {}; // clé "YYYY-MM-DD|midi" / "…|soir" → texte libre (ligne « Extra »)
 const STATUS_SHORT = { cp: 'CP', am: 'AM', ecole: 'École', absent: 'Abs', repos: 'Repos' };
-const STATUS_FULL = { cp: 'Congés payés', am: 'Arrêt maladie', ecole: 'École', absent: 'Absent', repos: 'Repos' };
+const STATUS_FULL = { cp: 'Congés payés', am: 'Arrêt maladie', ecole: 'École', absent: 'Absent', repos: 'Repos', demi_midi: 'Demi — midi seul', demi_soir: 'Demi — soir seul' };
+const AWAY_STATUSES = ['cp', 'am', 'absent', 'ecole'];
 // Croix (X) en coin à coin, remplit la case (repos) ou la demi-case (demi).
 const CROSS_SVG = '<svg class="pl-cross" viewBox="0 0 10 10" preserveAspectRatio="none" aria-hidden="true"><line x1="0" y1="0" x2="10" y2="10"/><line x1="10" y1="0" x2="0" y2="10"/></svg>';
 
@@ -620,58 +621,65 @@ function renderPlanning() {
     firstMidiT[d] = bmT; firstSoirT[d] = bsT;
   }
 
-  const AWAY_STATUSES = ['cp', 'am', 'absent', 'ecole'];
   for (const emp of actives) {
       const rep = byId.get(emp.id);
       let dayCells = '';
-      let demiCount = 0; // nombre de demi-journées (un seul service travaillé) sur la semaine
+      let demiCount = 0; // nombre de demi-journées (un seul service) sur la semaine
       for (const d of days) {
         const day = rep && rep.days.find((x) => x.day === d);
+        const hasHours = !!(day && day.segments.length);
         const status = statusMap.get(emp.id + '|' + d);
-        // Repos = motif récurrent du jour OU repos ponctuel (statut, ex. apprentis).
-        const isRest = restDaysOn(emp.restPeriods, d).includes(weekday[d]) || status === 'repos';
-        const parts = [];
         const awayStatus = AWAY_STATUSES.includes(status) ? status : null; // cp/am/absent/ecole
-        if (awayStatus) parts.push(`<span class="pl-status-lbl">${STATUS_SHORT[awayStatus]}</span>`);
-        else if (isRest) parts.push(CROSS_SVG);
-        let filled = false;
-        if (day && day.segments.length) {
+        const isRest = restDaysOn(emp.restPeriods, d).includes(weekday[d]) || status === 'repos';
+        const demiMidi = status === 'demi_midi'; const demiSoir = status === 'demi_soir';
+        let inner; let fillCls = ''; let exchangeMark = '';
+
+        if (awayStatus && !hasHours) {
+          inner = `<span class="pl-status-lbl">${STATUS_SHORT[awayStatus]}</span>`;
+          fillCls = ` pl-statusfill st-${awayStatus}`;
+        } else if (isRest && !hasHours) {
+          inner = CROSS_SVG;
+          fillCls = ' pl-rest';
+        } else {
+          // Jour travaillé (ou repos avec heures = échange) : demi-cases midi + soir.
+          // Sans heures : « PM » (présent midi) / « PS » (présent soir) par défaut ;
+          // demi manuel → croix sur le service non travaillé.
           const fmt = (s) => (s.open ? fmtTime(s.clockIn) : `${fmtTime(s.clockIn)}–${fmtTime(s.clockOut)}`);
-          const { cont, midi, soir } = classifyDay(day.segments);
-          const isCont = emp.continuous || cont.length > 0;
+          const { cont, midi, soir } = hasHours ? classifyDay(day.segments) : { cont: [], midi: [], soir: [] };
+          const isCont = hasHours && (emp.continuous || cont.length > 0);
           let stack;
           if (isCont) {
-            // Service continu → rouge sur la case entière, compté midi + soir.
             stack = `<div class="pl-half pl-cont">${day.segments.map(fmt).join('<br>')}</div>`;
             midiCount[d]++; soirCount[d]++;
           } else {
-            // Demi-case midi (jaune si 1er arrivé, ex æquo inclus ; grise « demi » sinon).
-            const isFirst = midi.length && Math.min(...midi.map((s) => s.clockIn)) === firstMidiT[d];
-            const midiHalf = midi.length
-              ? `<div class="pl-half${isFirst ? ' pl-first' : ''}">${midi.map(fmt).join('<br>')}</div>`
-              : `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;
-            // Demi-case soir (verte si 1er arrivé/ouverture ; croix sinon).
-            const isOpen = soir.length && Math.min(...soir.map((s) => s.clockIn)) === firstSoirT[d];
-            const soirHalf = soir.length
-              ? `<div class="pl-half${isOpen ? ' pl-open' : ''}">${soir.map(fmt).join('<br>')}</div>`
-              : `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;
+            let midiHalf;
+            if (midi.length) {
+              const isFirst = Math.min(...midi.map((s) => s.clockIn)) === firstMidiT[d];
+              midiHalf = `<div class="pl-half${isFirst ? ' pl-first' : ''}">${midi.map(fmt).join('<br>')}</div>`;
+              midiCount[d]++;
+            } else if (demiSoir) {
+              midiHalf = `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;
+            } else {
+              midiHalf = '<div class="pl-half pl-pres">PM</div>'; midiCount[d]++;
+            }
+            let soirHalf;
+            if (soir.length) {
+              const isOpen = Math.min(...soir.map((s) => s.clockIn)) === firstSoirT[d];
+              soirHalf = `<div class="pl-half${isOpen ? ' pl-open' : ''}">${soir.map(fmt).join('<br>')}</div>`;
+              soirCount[d]++;
+            } else if (demiMidi) {
+              soirHalf = `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;
+            } else {
+              soirHalf = '<div class="pl-half pl-pres">PS</div>'; soirCount[d]++;
+            }
             stack = midiHalf + soirHalf;
-            if (!midi.length || !soir.length) demiCount++; // un seul service → demi
-            if (midi.length) midiCount[d]++;
-            if (soir.length) soirCount[d]++;
+            if (demiMidi || demiSoir) demiCount++;
           }
-          parts.length = 0; // jour travaillé : on n'affiche que les horaires (couleur pleine)
-          parts.push(`<div class="pl-stack">${stack}</div>`);
-          dayTotals[d] += day.seconds;
-          filled = true;
+          inner = `<div class="pl-stack">${stack}</div>`;
+          fillCls = ' pl-filled';
+          if (hasHours) dayTotals[d] += day.seconds;
+          if (isRest && hasHours) exchangeMark = '<span class="pl-exchange" title="Échange — travaillé un jour de repos">E</span>';
         }
-        const inner = parts.length ? parts.join('<br>') : '<span class="pl-empty">+</span>';
-        // Échange : des horaires sont saisis sur un jour de repos → petit « E » à gauche.
-        const exchangeMark = (isRest && filled) ? '<span class="pl-exchange" title="Échange — travaillé un jour de repos">E</span>' : '';
-        let fillCls = '';
-        if (filled) fillCls = ' pl-filled';
-        else if (awayStatus) fillCls = ` pl-statusfill st-${awayStatus}`;
-        else if (isRest) fillCls = ' pl-rest';
         const cls = 'pl-cell pl-click' + fillCls;
         dayCells += `<td class="${cls}" data-emp="${emp.id}" data-day="${d}">${exchangeMark}${inner}</td>`;
       }
@@ -1047,7 +1055,18 @@ function openCellEditor(empId, day) {
     <div class="sub">${planningDayLabel(day).replace('<br>', ' ')}</div>
     ${statusLine}
     ${existingHtml}
-    <div class="field" style="margin-top:14px"><label>Ajouter des horaires (un ou deux services)</label></div>
+    <div class="field" style="margin-top:14px"><label>Marquer la journée</label></div>
+    <div class="action-buttons" style="grid-template-columns:repeat(2,1fr)">
+      <button class="btn btn-ghost st-btn st-repos" data-st="repos">Repos</button>
+      <button class="btn btn-ghost st-btn st-cp" data-st="cp">Congés payés</button>
+      <button class="btn btn-ghost st-btn st-am" data-st="am">Arrêt maladie</button>
+      <button class="btn btn-ghost st-btn st-absent" data-st="absent">Absent</button>
+      ${isApprenti ? '<button class="btn btn-ghost st-btn st-ecole" data-st="ecole">École</button>' : ''}
+      <button class="btn btn-ghost st-btn st-demi" data-st="demi_midi">Demi midi</button>
+      <button class="btn btn-ghost st-btn st-demi" data-st="demi_soir">Demi soir</button>
+      ${status ? '<button class="btn btn-ghost" id="ce-clear">Effacer le statut</button>' : ''}
+    </div>
+    <div class="field" style="margin-top:18px"><label>Ou ajouter des horaires (un ou deux services)</label></div>
     <div class="shift-block">
       <div class="shift-title">☀️ Service du matin / midi</div>
       <div class="field"><label for="ce-start1">Arrivée</label><input type="time" id="ce-start1"><div class="preset-chips" id="ce-arr1"></div></div>
@@ -1059,15 +1078,6 @@ function openCellEditor(empId, day) {
       <div class="field" style="margin-top:8px"><label for="ce-end2">Départ</label><input type="time" id="ce-end2"></div>
     </div>
     <button class="btn btn-green" id="ce-add" style="width:100%">Ajouter ces horaires</button>
-    <div class="field" style="margin-top:8px"><label>Ou marquer la journée</label></div>
-    <div class="action-buttons" style="grid-template-columns:repeat(2,1fr)">
-      <button class="btn btn-ghost st-btn st-repos" data-st="repos">Repos</button>
-      <button class="btn btn-ghost st-btn st-cp" data-st="cp">Congés payés</button>
-      <button class="btn btn-ghost st-btn st-am" data-st="am">Arrêt maladie</button>
-      <button class="btn btn-ghost st-btn st-absent" data-st="absent">Absent</button>
-      ${isApprenti ? '<button class="btn btn-ghost st-btn st-ecole" data-st="ecole">École</button>' : ''}
-      ${status ? '<button class="btn btn-ghost" id="ce-clear">Effacer le statut</button>' : ''}
-    </div>
     <div class="msg error" id="ce-msg"></div>
     <div style="margin-top:14px"><button class="btn btn-ghost" id="ce-close">Fermer</button></div>
   `;

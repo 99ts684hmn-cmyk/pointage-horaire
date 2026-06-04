@@ -103,46 +103,56 @@
       let demiCount = 0;
       for (const d of days) {
         const day = rep && rep.days.find((x) => x.day === d);
+        const hasHours = !!(day && day.segments.length);
         const status = statusMap.get(emp.id + '|' + d);
-        const isRest = restDaysOn(emp.restPeriods, d).includes(weekday[d]) || status === 'repos';
-        const parts = [];
         const awayStatus = AWAY_STATUSES.includes(status) ? status : null;
-        if (awayStatus) parts.push(`<span class="pl-status-lbl">${STATUS_SHORT[awayStatus]}</span>`);
-        else if (isRest) parts.push(CROSS_SVG);
-        let filled = false;
-        if (day && day.segments.length) {
+        const isRest = restDaysOn(emp.restPeriods, d).includes(weekday[d]) || status === 'repos';
+        const demiMidi = status === 'demi_midi'; const demiSoir = status === 'demi_soir';
+        let inner; let fillCls = ''; let exchangeMark = '';
+
+        if (awayStatus && !hasHours) {
+          inner = `<span class="pl-status-lbl">${STATUS_SHORT[awayStatus]}</span>`;
+          fillCls = ` pl-statusfill st-${awayStatus}`;
+        } else if (isRest && !hasHours) {
+          inner = CROSS_SVG;
+          fillCls = ' pl-rest';
+        } else {
           const fmt = (s) => (s.open ? fmtTime(s.clockIn) : `${fmtTime(s.clockIn)}–${fmtTime(s.clockOut)}`);
-          const { cont, midi, soir } = classifyDay(day.segments);
-          const isCont = emp.continuous || cont.length > 0;
+          const { cont, midi, soir } = hasHours ? classifyDay(day.segments) : { cont: [], midi: [], soir: [] };
+          const isCont = hasHours && (emp.continuous || cont.length > 0);
           let stack;
           if (isCont) {
             stack = `<div class="pl-half pl-cont">${day.segments.map(fmt).join('<br>')}</div>`;
             midiCount[d]++; soirCount[d]++;
           } else {
-            const isFirst = midi.length && Math.min(...midi.map((s) => s.clockIn)) === firstMidiT[d];
-            const midiHalf = midi.length
-              ? `<div class="pl-half${isFirst ? ' pl-first' : ''}">${midi.map(fmt).join('<br>')}</div>`
-              : `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;
-            const isOpen = soir.length && Math.min(...soir.map((s) => s.clockIn)) === firstSoirT[d];
-            const soirHalf = soir.length
-              ? `<div class="pl-half${isOpen ? ' pl-open' : ''}">${soir.map(fmt).join('<br>')}</div>`
-              : `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;
+            let midiHalf;
+            if (midi.length) {
+              const isFirst = Math.min(...midi.map((s) => s.clockIn)) === firstMidiT[d];
+              midiHalf = `<div class="pl-half${isFirst ? ' pl-first' : ''}">${midi.map(fmt).join('<br>')}</div>`;
+              midiCount[d]++;
+            } else if (demiSoir) {
+              midiHalf = `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;
+            } else {
+              midiHalf = '<div class="pl-half pl-pres">PM</div>'; midiCount[d]++;
+            }
+            let soirHalf;
+            if (soir.length) {
+              const isOpen = Math.min(...soir.map((s) => s.clockIn)) === firstSoirT[d];
+              soirHalf = `<div class="pl-half${isOpen ? ' pl-open' : ''}">${soir.map(fmt).join('<br>')}</div>`;
+              soirCount[d]++;
+            } else if (demiMidi) {
+              soirHalf = `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;
+            } else {
+              soirHalf = '<div class="pl-half pl-pres">PS</div>'; soirCount[d]++;
+            }
             stack = midiHalf + soirHalf;
-            if (!midi.length || !soir.length) demiCount++;
-            if (midi.length) midiCount[d]++;
-            if (soir.length) soirCount[d]++;
+            if (demiMidi || demiSoir) demiCount++;
           }
-          parts.length = 0;
-          parts.push(`<div class="pl-stack">${stack}</div>`);
-          dayTotals[d] += day.seconds;
-          filled = true;
+          inner = `<div class="pl-stack">${stack}</div>`;
+          fillCls = ' pl-filled';
+          if (hasHours) dayTotals[d] += day.seconds;
+          if (isRest && hasHours) exchangeMark = '<span class="pl-exchange" title="Échange">E</span>';
         }
-        const inner = parts.length ? parts.join('<br>') : '<span class="pl-empty">—</span>';
-        const exchangeMark = (isRest && filled) ? '<span class="pl-exchange" title="Échange">E</span>' : '';
-        let fillCls = '';
-        if (filled) fillCls = ' pl-filled';
-        else if (awayStatus) fillCls = ` pl-statusfill st-${awayStatus}`;
-        else if (isRest) fillCls = ' pl-rest';
         dayCells += `<td class="pl-cell${fillCls}">${exchangeMark}${inner}</td>`;
       }
       const tot = rep ? rep.totalSeconds : 0;

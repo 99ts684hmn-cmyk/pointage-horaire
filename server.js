@@ -242,12 +242,14 @@ app.get('/api/planning', (req, res) => {
 // de saisie des départs : seuls les salariés présents ce jour apparaissent.
 app.get('/api/open-entries', (req, res) => {
   const today = businessDay(Date.now());
+  // Actifs OU sortants pas encore partis (end_date >= aujourd'hui) : ils peuvent
+  // encore pointer leur départ jusqu'à leur dernier jour.
   const rows = db.prepare(`
     SELECT t.id, t.clock_in, t.employee_id, e.name, e.category
     FROM time_entries t JOIN employees e ON e.id = t.employee_id
-    WHERE t.clock_out IS NULL AND e.active = 1
+    WHERE t.clock_out IS NULL AND (e.active = 1 OR (e.end_date IS NOT NULL AND e.end_date >= ?))
     ORDER BY t.clock_in ASC
-  `).all();
+  `).all(today);
   const out = [];
   for (const r of rows) {
     if (businessDay(r.clock_in) !== today) continue;
@@ -270,13 +272,15 @@ const EDIT_WINDOW_DAYS = 7;
 const EDIT_WINDOW_MS = EDIT_WINDOW_DAYS * 24 * 60 * 60 * 1000;
 
 // Identifie un employé. Le code PIN a été retiré : on vérifie seulement que
-// l'employé existe et est actif (l'argument pin est ignoré, conservé pour
-// compatibilité au cas où le PIN serait réactivé plus tard).
+// l'employé existe et est encore présent (actif, OU sortant pas encore parti :
+// end_date >= aujourd'hui). L'argument pin est ignoré (conservé pour compat.).
 function authEmployee(employeeId, pin) {
-  const emp = db.prepare(
-    'SELECT * FROM employees WHERE id = ? AND active = 1'
-  ).get(employeeId);
+  const emp = db.prepare('SELECT * FROM employees WHERE id = ?').get(employeeId);
   if (!emp) return { status: 404, error: 'Employé introuvable' };
+  const today = businessDay(Date.now());
+  if (!emp.active && !(emp.end_date && emp.end_date >= today)) {
+    return { status: 404, error: 'Employé introuvable' };
+  }
   return { emp };
 }
 

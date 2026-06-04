@@ -965,10 +965,18 @@ function openGroupArrival() {
   fillChips(cellModal.querySelector('#grp-chips'), ['11:50', '18:00', '18:50'], cellModal.querySelector('#grp-time'));
   const daySel = cellModal.querySelector('#grp-day');
   const refreshList = () => {
+    const list = cellModal.querySelector('#grp-list');
     const elig = eligibleForGroup(daySel.value);
-    cellModal.querySelector('#grp-list').innerHTML = elig.length
-      ? elig.map((e) => `<label class="grp-row"><input type="checkbox" class="grp-emp" value="${e.id}"> ${escapeHtml(e.name)}</label>`).join('')
-      : '<div class="sub" style="padding:8px 4px">Personne à proposer : tout le monde a déjà une arrivée, est en repos ou absent ce jour.</div>';
+    if (!elig.length) {
+      list.innerHTML = '<div class="sub" style="padding:8px 4px">Personne à proposer : tout le monde a déjà une arrivée, est en repos ou absent ce jour.</div>';
+      return;
+    }
+    list.innerHTML = '<label class="grp-row grp-all"><input type="checkbox" id="grp-all"> <strong>Tout sélectionner</strong></label>'
+      + elig.map((e) => `<label class="grp-row"><input type="checkbox" class="grp-emp" value="${e.id}"> ${escapeHtml(e.name)}</label>`).join('');
+    const allCb = list.querySelector('#grp-all');
+    const indiv = [...list.querySelectorAll('.grp-emp')];
+    allCb.addEventListener('change', () => { indiv.forEach((c) => { c.checked = allCb.checked; }); });
+    indiv.forEach((c) => c.addEventListener('change', () => { allCb.checked = indiv.every((x) => x.checked); }));
   };
   daySel.addEventListener('change', refreshList);
   refreshList();

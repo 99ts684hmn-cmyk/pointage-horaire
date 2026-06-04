@@ -149,6 +149,7 @@ body {
 .grp-row { display: flex; align-items: center; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--border); font-size: 1rem; cursor: pointer; }
 .grp-row:last-child { border-bottom: none; }
 .grp-row input { width: auto; transform: scale(1.25); }
+.grp-row.grp-all { position: sticky; top: 0; background: #faf3e8; border-bottom: 2px solid var(--border); }
 
 /* Saisie du départ du jour (écran de pointage) */
 .dep-row {

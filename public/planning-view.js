@@ -130,7 +130,7 @@
               const isFirst = Math.min(...midi.map((s) => s.clockIn)) === firstMidiT[d];
               midiHalf = `<div class="pl-half${isFirst ? ' pl-first' : ''}">${midi.map(fmt).join('<br>')}</div>`;
               midiCount[d]++;
-            } else if (demiSoir) {
+            } else if (demiMidi) {
               midiHalf = `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;
             } else {
               midiHalf = '<div class="pl-half pl-pres">PM</div>'; midiCount[d]++;
@@ -140,7 +140,7 @@
               const isOpen = Math.min(...soir.map((s) => s.clockIn)) === firstSoirT[d];
               soirHalf = `<div class="pl-half${isOpen ? ' pl-open' : ''}">${soir.map(fmt).join('<br>')}</div>`;
               soirCount[d]++;
-            } else if (demiMidi) {
+            } else if (demiSoir) {
               soirHalf = `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;
             } else {
               soirHalf = '<div class="pl-half pl-pres">PS</div>'; soirCount[d]++;

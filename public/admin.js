@@ -545,7 +545,7 @@ let planningReport = [];
 let statusMap = new Map(); // clé "empId|day" → 'cp'|'am'|'ecole'
 let extraMap = {}; // clé "YYYY-MM-DD|midi" / "…|soir" → texte libre (ligne « Extra »)
 const STATUS_SHORT = { cp: 'CP', am: 'AM', ecole: 'École', absent: 'Abs', repos: 'Repos' };
-const STATUS_FULL = { cp: 'Congés payés', am: 'Arrêt maladie', ecole: 'École', absent: 'Absent', repos: 'Repos', demi_midi: 'Demi — midi seul', demi_soir: 'Demi — soir seul' };
+const STATUS_FULL = { cp: 'Congés payés', am: 'Arrêt maladie', ecole: 'École', absent: 'Absent', repos: 'Repos', demi_midi: 'Demi midi (présent soir)', demi_soir: 'Demi soir (présent midi)' };
 const AWAY_STATUSES = ['cp', 'am', 'absent', 'ecole'];
 // Croix (X) en coin à coin, remplit la case (repos) ou la demi-case (demi).
 const CROSS_SVG = '<svg class="pl-cross" viewBox="0 0 10 10" preserveAspectRatio="none" aria-hidden="true"><line x1="0" y1="0" x2="10" y2="10"/><line x1="10" y1="0" x2="0" y2="10"/></svg>';
@@ -657,7 +657,7 @@ function renderPlanning() {
               const isFirst = Math.min(...midi.map((s) => s.clockIn)) === firstMidiT[d];
               midiHalf = `<div class="pl-half${isFirst ? ' pl-first' : ''}">${midi.map(fmt).join('<br>')}</div>`;
               midiCount[d]++;
-            } else if (demiSoir) {
+            } else if (demiMidi) {
               midiHalf = `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;
             } else {
               midiHalf = '<div class="pl-half pl-pres">PM</div>'; midiCount[d]++;
@@ -667,7 +667,7 @@ function renderPlanning() {
               const isOpen = Math.min(...soir.map((s) => s.clockIn)) === firstSoirT[d];
               soirHalf = `<div class="pl-half${isOpen ? ' pl-open' : ''}">${soir.map(fmt).join('<br>')}</div>`;
               soirCount[d]++;
-            } else if (demiMidi) {
+            } else if (demiSoir) {
               soirHalf = `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;
             } else {
               soirHalf = '<div class="pl-half pl-pres">PS</div>'; soirCount[d]++;

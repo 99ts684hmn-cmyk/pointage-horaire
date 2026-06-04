@@ -108,6 +108,7 @@
         const awayStatus = AWAY_STATUSES.includes(status) ? status : null;
         const isRest = restDaysOn(emp.restPeriods, d).includes(weekday[d]) || status === 'repos';
         const demiMidi = status === 'demi_midi'; const demiSoir = status === 'demi_soir';
+        const echMidi = status === 'echange_midi'; const echSoir = status === 'echange_soir';
         let inner; let fillCls = ''; let exchangeMark = '';
 
         if (awayStatus && !hasHours) {
@@ -132,6 +133,8 @@
               midiCount[d]++;
             } else if (demiMidi) {
               midiHalf = `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;
+            } else if (echMidi) {
+              midiHalf = '<div class="pl-half pl-echange" title="Échange midi">É</div>';
             } else {
               midiHalf = '<div class="pl-half pl-pres">PM</div>'; midiCount[d]++;
             }
@@ -142,6 +145,8 @@
               soirCount[d]++;
             } else if (demiSoir) {
               soirHalf = `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;
+            } else if (echSoir) {
+              soirHalf = '<div class="pl-half pl-echange" title="Échange soir">É</div>';
             } else {
               soirHalf = '<div class="pl-half pl-pres">PS</div>'; soirCount[d]++;
             }

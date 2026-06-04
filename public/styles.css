@@ -346,6 +346,8 @@ td.num { font-variant-numeric: tabular-nums; }
 .pl-half.pl-demi { background: #d7d7d4; padding: 0; min-height: 19px; }
 /* « PM » / « PS » : présent par défaut (horaires non encore saisis). */
 .pl-half.pl-pres { color: #9aa0a6; font-weight: 700; font-size: .72rem; letter-spacing: .03em; }
+/* « É » : échange (non compté dans les présents). */
+.pl-half.pl-echange { background: #fff0d6; color: #b08400; font-weight: 800; }
 /* Croix (X) coin à coin : en position absolue, elle épouse la hauteur de la
    case/demi-case sans imposer sa propre taille (donc lignes restent compactes). */
 .planning td.pl-rest { position: relative; padding: 0; }
@@ -389,6 +391,7 @@ td.num { font-variant-numeric: tabular-nums; }
 .st-btn.st-absent { background: #e5e7eb; color: #374151; }
 .st-btn.st-repos { background: #e4e4e4; color: #555; }
 .st-btn.st-demi { background: #fff0d6; color: #6b4e00; }
+.st-btn.st-echange { background: #fde8c0; color: #8a5a00; }
 .cell-existing {
   background: #faf3e8; border-radius: 10px; padding: 10px 12px; margin-top: 10px;
   font-size: .9rem; color: var(--text);

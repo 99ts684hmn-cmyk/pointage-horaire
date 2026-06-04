@@ -545,7 +545,7 @@ let planningReport = [];
 let statusMap = new Map(); // clé "empId|day" → 'cp'|'am'|'ecole'
 let extraMap = {}; // clé "YYYY-MM-DD|midi" / "…|soir" → texte libre (ligne « Extra »)
 const STATUS_SHORT = { cp: 'CP', am: 'AM', ecole: 'École', absent: 'Abs', repos: 'Repos' };
-const STATUS_FULL = { cp: 'Congés payés', am: 'Arrêt maladie', ecole: 'École', absent: 'Absent', repos: 'Repos', demi_midi: 'Demi midi (présent soir)', demi_soir: 'Demi soir (présent midi)' };
+const STATUS_FULL = { cp: 'Congés payés', am: 'Arrêt maladie', ecole: 'École', absent: 'Absent', repos: 'Repos', demi_midi: 'Demi midi (présent soir)', demi_soir: 'Demi soir (présent midi)', echange_midi: 'Échange midi', echange_soir: 'Échange soir' };
 const AWAY_STATUSES = ['cp', 'am', 'absent', 'ecole'];
 // Croix (X) en coin à coin, remplit la case (repos) ou la demi-case (demi).
 const CROSS_SVG = '<svg class="pl-cross" viewBox="0 0 10 10" preserveAspectRatio="none" aria-hidden="true"><line x1="0" y1="0" x2="10" y2="10"/><line x1="10" y1="0" x2="0" y2="10"/></svg>';
@@ -632,6 +632,7 @@ function renderPlanning() {
         const awayStatus = AWAY_STATUSES.includes(status) ? status : null; // cp/am/absent/ecole
         const isRest = restDaysOn(emp.restPeriods, d).includes(weekday[d]) || status === 'repos';
         const demiMidi = status === 'demi_midi'; const demiSoir = status === 'demi_soir';
+        const echMidi = status === 'echange_midi'; const echSoir = status === 'echange_soir';
         let inner; let fillCls = ''; let exchangeMark = '';
 
         if (awayStatus && !hasHours) {
@@ -659,6 +660,8 @@ function renderPlanning() {
               midiCount[d]++;
             } else if (demiMidi) {
               midiHalf = `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;
+            } else if (echMidi) {
+              midiHalf = '<div class="pl-half pl-echange" title="Échange midi">É</div>'; // non compté
             } else {
               midiHalf = '<div class="pl-half pl-pres">PM</div>'; midiCount[d]++;
             }
@@ -669,6 +672,8 @@ function renderPlanning() {
               soirCount[d]++;
             } else if (demiSoir) {
               soirHalf = `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;
+            } else if (echSoir) {
+              soirHalf = '<div class="pl-half pl-echange" title="Échange soir">É</div>'; // non compté
             } else {
               soirHalf = '<div class="pl-half pl-pres">PS</div>'; soirCount[d]++;
             }
@@ -1072,6 +1077,8 @@ function openCellEditor(empId, day) {
       ${isApprenti ? '<button class="btn btn-ghost st-btn st-ecole" data-st="ecole">École</button>' : ''}
       <button class="btn btn-ghost st-btn st-demi" data-st="demi_midi">Demi midi</button>
       <button class="btn btn-ghost st-btn st-demi" data-st="demi_soir">Demi soir</button>
+      <button class="btn btn-ghost st-btn st-echange" data-st="echange_midi">Échange midi</button>
+      <button class="btn btn-ghost st-btn st-echange" data-st="echange_soir">Échange soir</button>
       ${status ? '<button class="btn btn-ghost" id="ce-clear">Effacer le statut</button>' : ''}
     </div>
     <div class="field" style="margin-top:18px"><label>Ou ajouter des horaires (un ou deux services)</label></div>

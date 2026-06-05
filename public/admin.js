@@ -569,7 +569,9 @@ function renderPlanning() {
   const from = $('rep-from').value;
   const to = $('rep-to').value;
   const lbl = $('wk-label');
-  if (lbl) lbl.textContent = (from && to) ? `du ${frDate(from)} au ${frDate(to)}` : '';
+  if (lbl) lbl.textContent = (from && to) ? `📅 du ${frDate(from)} au ${frDate(to)}` : '';
+  const wkDate = $('wk-date');
+  if (wkDate && from) wkDate.value = from;
   const lblPrint = $('wk-print-dates');
   if (lblPrint) lblPrint.textContent = (from && to) ? ` — du ${frDate(from)} au ${frDate(to)}` : '';
   if (!from || !to) { out.innerHTML = '<div class="empty">Choisissez une semaine.</div>'; return; }
@@ -862,6 +864,16 @@ function shiftWeek(delta) {
 }
 $('wk-prev').addEventListener('click', () => shiftWeek(-1));
 $('wk-next').addEventListener('click', () => shiftWeek(1));
+// Saut direct à une semaine via le calendrier : la date choisie est ramenée au lundi.
+$('wk-date').addEventListener('change', () => {
+  const v = $('wk-date').value;
+  if (!v) return;
+  const { monday, sunday } = weekBounds(new Date(v + 'T12:00:00'));
+  $('rep-from').value = localISO(monday);
+  $('rep-to').value = localISO(sunday);
+  loadReport();
+  loadPlanning();
+});
 $('rep-prev').addEventListener('click', () => shiftWeek(-1));
 $('rep-next').addEventListener('click', () => shiftWeek(1));
 // --- Hors entreprise : statut sur toute la semaine (CP/AM/Absent/École) ----

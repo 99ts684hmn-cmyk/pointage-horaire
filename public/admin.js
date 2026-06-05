@@ -920,13 +920,17 @@ function feriesForYear(year) {
 const FERIES = new Set([...feriesForYear(2026), ...feriesForYear(2027), ...feriesForYear(2028)]);
 
 let recapCP = new Map(); let recapEcole = new Map();
+let recapOffset = 0; // décalage de la fenêtre, par pas de RECAP_MONTHS
+const RECAP_MONTHS = 6;
+const RECAP_MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 
 async function loadRecap() {
   const out = $('recap-output');
   if (!out) return;
   const base = new Date(); base.setHours(0, 0, 0, 0); base.setDate(1);
+  base.setMonth(base.getMonth() + recapOffset);
   const from = localISO(base);
-  const to = localISO(new Date(base.getFullYear(), base.getMonth() + 12, 0));
+  const to = localISO(new Date(base.getFullYear(), base.getMonth() + RECAP_MONTHS, 0));
   const { ok, data } = await api(`/api/admin/day-statuses?from=${from}&to=${to}`);
   recapCP = new Map(); recapEcole = new Map();
   const nameById = new Map(allEmployees.map((e) => [e.id, e.name]));
@@ -938,14 +942,19 @@ async function loadRecap() {
     }
   }
   renderRecap(base);
+  const last = new Date(base.getFullYear(), base.getMonth() + RECAP_MONTHS - 1, 1);
+  const lbl = $('rc-label');
+  if (lbl) lbl.textContent = `${RECAP_MOIS[base.getMonth()]} ${base.getFullYear()} → ${RECAP_MOIS[last.getMonth()]} ${last.getFullYear()}`;
 }
+$('rc-prev').addEventListener('click', () => { recapOffset -= RECAP_MONTHS; loadRecap(); });
+$('rc-next').addEventListener('click', () => { recapOffset += RECAP_MONTHS; loadRecap(); });
 
 function renderRecap(baseMonth) {
   const out = $('recap-output');
   const JJ = ['Di', 'Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa'];
   const MN = ['Janv.', 'Févr.', 'Mars', 'Avril', 'Mai', 'Juin', 'Juil.', 'Août', 'Sept.', 'Oct.', 'Nov.', 'Déc.'];
   const months = [];
-  for (let i = 0; i < 12; i++) months.push(new Date(baseMonth.getFullYear(), baseMonth.getMonth() + i, 1));
+  for (let i = 0; i < RECAP_MONTHS; i++) months.push(new Date(baseMonth.getFullYear(), baseMonth.getMonth() + i, 1));
   let html = '<table class="recap"><thead><tr>';
   for (const m of months) html += `<th>${MN[m.getMonth()]}<br>${m.getFullYear()}</th>`;
   html += '</tr></thead><tbody>';

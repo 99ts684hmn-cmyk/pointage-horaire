@@ -988,7 +988,8 @@ function renderRecap(baseMonth) {
       if (zones.has('C')) barHtml += '<i class="rc-b rc-zc"></i>';
       if (hasCP) barHtml += '<i class="rc-b rc-cp"></i>';
       if (hasEc) barHtml += '<i class="rc-b rc-ec"></i>';
-      const bars = barHtml ? `<span class="rc-bars">${barHtml}</span>` : '';
+      // Chaque trait a sa colonne fixe (positionné en CSS) — pas de conteneur flex.
+      const bars = barHtml;
       // Étiquettes « Nom (CP)/(E) » au 1er jour de période.
       const labels = recapLabels.get(iso);
       const lblHtml = labels

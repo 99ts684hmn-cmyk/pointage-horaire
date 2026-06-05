@@ -261,7 +261,7 @@ td.num { font-variant-numeric: tabular-nums; }
 .lg-fe { background: #d11; }
 .recap { border-collapse: collapse; table-layout: fixed; }
 .recap th { background: #1f2120; color: var(--cream); padding: 6px 2px; text-align: center; font-weight: 600; font-size: .8rem; border: 1px solid var(--border); width: 110px; }
-.recap td { border: 1px solid var(--border); height: 26px; padding: 0 18px 0 7px; position: relative; vertical-align: middle; white-space: nowrap; font-size: .8rem; }
+.recap td { border: 1px solid var(--border); height: 26px; padding: 0 28px 0 7px; position: relative; vertical-align: middle; white-space: nowrap; font-size: .8rem; }
 .recap td.rc-empty { background: #f4f3ef; }
 .recap .rc-num { font-weight: 700; }
 .recap .rc-dow { color: #999; margin-left: 3px; }
@@ -269,8 +269,11 @@ td.num { font-variant-numeric: tabular-nums; }
 .recap td.rc-ferie .rc-num, .recap td.rc-ferie .rc-dow { color: #d11; font-weight: 800; }
 .recap td.rc-click { cursor: pointer; }
 .recap td.rc-click:hover { background: #fff3df; }
-.rc-bars { position: absolute; top: 0; right: 0; bottom: 0; display: flex; }
-.rc-b { width: 5px; height: 100%; }
+/* Chaque trait occupe une colonne fixe à droite de la case : il reste donc
+   aligné verticalement d'un jour à l'autre, même si d'autres traits manquent. */
+.recap td .rc-b { position: absolute; top: 0; bottom: 0; width: 5px; }
+.recap td .rc-za { right: 20px; } .recap td .rc-zb { right: 15px; } .recap td .rc-zc { right: 10px; }
+.recap td .rc-cp { right: 5px; } .recap td .rc-ec { right: 0; }
 .rc-za { background: #f47b20; } .rc-zb { background: #3b6fb5; } .rc-zc { background: #7cb342; }
 .rc-cp { background: #f5b700; } .rc-ec { background: #ec4899; }
 .recap .rc-lbl { display: block; white-space: normal; font-size: .62rem; line-height: 1.12; font-weight: 700; margin-top: 1px; }

@@ -919,10 +919,35 @@ function feriesForYear(year) {
 }
 const FERIES = new Set([...feriesForYear(2026), ...feriesForYear(2027), ...feriesForYear(2028)]);
 
-let recapCP = new Map(); let recapEcole = new Map();
+let recapCP = new Map(); let recapEcole = new Map(); // jour -> [noms] (pour la fenêtre de détail)
+let recapBars = new Map(); // jour -> [{ status, lane }] : périodes ≥ 6 jours (traits)
+let recapDots = new Map(); // jour -> [{ status, lane }] : périodes < 6 jours (pastilles)
 let recapLabels = new Map(); // 'YYYY-MM-DD' -> [{ text, kind }] (1er jour d'une période)
+let recapLayout = { ecLanes: 0, cpLanes: 0, dotLanes: 0, zoneOrder: [] };
 let recapOffset = 0; // décalage de la fenêtre, par pas de RECAP_MONTHS
 function prevISO(iso) { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() - 1); return localISO(d); }
+// Découpe un ensemble de jours (triés) en périodes de jours consécutifs.
+function consecutiveRuns(daysSet) {
+  const sorted = [...daysSet].sort();
+  const runs = []; let cur = null;
+  for (const d of sorted) {
+    if (cur && prevISO(d) === cur[cur.length - 1]) cur.push(d);
+    else { cur = [d]; runs.push(cur); }
+  }
+  return runs;
+}
+// Affecte une « voie » (colonne) à chaque période pour que deux périodes qui se
+// chevauchent dans le temps ne partagent pas la même colonne. Renvoie le nb de voies.
+function assignLanes(periods) {
+  const sorted = periods.slice().sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
+  const laneEnd = [];
+  for (const p of sorted) {
+    let lane = laneEnd.findIndex((end) => end < p.start);
+    if (lane < 0) { lane = laneEnd.length; laneEnd.push(p.end); } else laneEnd[lane] = p.end;
+    p.lane = lane;
+  }
+  return laneEnd.length;
+}
 const RECAP_MONTHS = 6;
 const RECAP_MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 
@@ -934,7 +959,8 @@ async function loadRecap() {
   const from = localISO(base);
   const to = localISO(new Date(base.getFullYear(), base.getMonth() + RECAP_MONTHS, 0));
   const { ok, data } = await api(`/api/admin/day-statuses?from=${from}&to=${to}`);
-  recapCP = new Map(); recapEcole = new Map(); recapLabels = new Map();
+  recapCP = new Map(); recapEcole = new Map();
+  recapBars = new Map(); recapDots = new Map(); recapLabels = new Map();
   const nameById = new Map(allEmployees.map((e) => [e.id, e.name]));
   const cpByPerson = new Map(); const ecByPerson = new Map(); // empId -> Set(jours)
   if (ok && Array.isArray(data)) {
@@ -949,10 +975,34 @@ async function loadRecap() {
       }
     }
   }
-  // Étiquette « Nom (CP) » / « Nom (E) » au 1er jour de chaque période (jour dont la veille n'est pas du même statut).
-  const addLbl = (day, text, kind) => { if (!recapLabels.has(day)) recapLabels.set(day, []); recapLabels.get(day).push({ text, kind }); };
-  for (const [id, days] of cpByPerson) for (const day of days) if (!days.has(prevISO(day))) addLbl(day, `${nameById.get(id) || '?'} (CP)`, 'cp');
-  for (const [id, days] of ecByPerson) for (const day of days) if (!days.has(prevISO(day))) addLbl(day, `${nameById.get(id) || '?'} (E)`, 'ec');
+  // Construit les périodes (jours consécutifs) par personne et par statut.
+  const allRuns = []; // { id, status, days, start, end, len }
+  const addRuns = (byPerson, status) => {
+    for (const [id, daysSet] of byPerson) {
+      for (const days of consecutiveRuns(daysSet)) {
+        allRuns.push({ id, status, days, start: days[0], end: days[days.length - 1], len: days.length });
+      }
+    }
+  };
+  addRuns(cpByPerson, 'cp'); addRuns(ecByPerson, 'ecole');
+  // ≥ 6 jours consécutifs => trait ; < 6 jours => pastille.
+  const bars = allRuns.filter((r) => r.len >= 6);
+  const dots = allRuns.filter((r) => r.len < 6);
+  // Voies (colonnes) : séparées par statut pour les traits ; communes pour les pastilles.
+  const ecLanes = assignLanes(bars.filter((r) => r.status === 'ecole'));
+  const cpLanes = assignLanes(bars.filter((r) => r.status === 'cp'));
+  const dotLanes = assignLanes(dots);
+  const addTo = (map, day, o) => { if (!map.has(day)) map.set(day, []); map.get(day).push(o); };
+  for (const r of bars) for (const d of r.days) addTo(recapBars, d, { status: r.status, lane: r.lane });
+  for (const r of dots) for (const d of r.days) addTo(recapDots, d, { status: r.status, lane: r.lane });
+  // Étiquette « Nom (CP) » / « Nom (E) » au 1er jour de chaque période.
+  for (const r of allRuns) addTo(recapLabels, r.start, { text: `${nameById.get(r.id) || '?'} ${r.status === 'cp' ? '(CP)' : '(E)'}`, kind: r.status === 'cp' ? 'cp' : 'ec' });
+  // Zones de vacances présentes dans la fenêtre (pour réserver les colonnes).
+  const zonesPresent = new Set();
+  { const d = new Date(from + 'T12:00:00'); const end = new Date(to + 'T12:00:00');
+    while (d <= end) { for (const z of zonesEnVacances(localISO(d))) zonesPresent.add(z); d.setDate(d.getDate() + 1); } }
+  const zoneOrder = ['C', 'B', 'A'].filter((z) => zonesPresent.has(z)); // de l'intérieur vers l'extérieur
+  recapLayout = { ecLanes, cpLanes, dotLanes, zoneOrder };
   renderRecap(base);
   const last = new Date(base.getFullYear(), base.getMonth() + RECAP_MONTHS - 1, 1);
   const lbl = $('rc-label');
@@ -967,7 +1017,19 @@ function renderRecap(baseMonth) {
   const MN = ['Janv.', 'Févr.', 'Mars', 'Avril', 'Mai', 'Juin', 'Juil.', 'Août', 'Sept.', 'Oct.', 'Nov.', 'Déc.'];
   const months = [];
   for (let i = 0; i < RECAP_MONTHS; i++) months.push(new Date(baseMonth.getFullYear(), baseMonth.getMonth() + i, 1));
-  let html = '<table class="recap"><thead><tr>';
+  // Disposition des colonnes de traits/pastilles (calculée dans loadRecap).
+  const W = 5; const DOT = 8;
+  const L = recapLayout;
+  const ecBase = 0; const cpBase = L.ecLanes * W; const zoneBase = (L.ecLanes + L.cpLanes) * W;
+  const zoneOff = {}; L.zoneOrder.forEach((z, i) => { zoneOff[z] = zoneBase + i * W; });
+  const padR = zoneBase + L.zoneOrder.length * W + 6;
+  const padL = L.dotLanes ? (7 + L.dotLanes * DOT + 2) : 7;
+  const CP_SHADES = ['#f5b700', '#b9860b', '#7a5600'];
+  const EC_SHADES = ['#ec4899', '#a21d5c', '#6d1640'];
+  const ZONE_COL = { A: '#f47b20', B: '#3b6fb5', C: '#7cb342' };
+  const barRight = (b) => (b.status === 'ecole' ? ecBase : cpBase) + b.lane * W;
+  const barColor = (b) => (b.status === 'ecole' ? EC_SHADES[b.lane % EC_SHADES.length] : CP_SHADES[b.lane % CP_SHADES.length]);
+  let html = `<table class="recap" style="--rc-pl:${padL}px;--rc-pr:${padR}px"><thead><tr>`;
   for (const m of months) html += `<th>${MN[m.getMonth()]}<br>${m.getFullYear()}</th>`;
   html += '</tr></thead><tbody>';
   for (let day = 1; day <= 31; day++) {
@@ -981,15 +1043,13 @@ function renderRecap(baseMonth) {
       const hasCP = recapCP.has(iso); const hasEc = recapEcole.has(iso);
       const ferie = FERIES.has(iso);
       const we = (dow === 0 || dow === 6) ? ' rc-we' : '';
-      // Traits verticaux (droite de la case) : zones scolaires + CP (jaune) + école (rose).
+      // Traits verticaux (droite) : zones scolaires, puis CP/école des périodes ≥ 6 jours.
       let barHtml = '';
-      if (zones.has('A')) barHtml += '<i class="rc-b rc-za"></i>';
-      if (zones.has('B')) barHtml += '<i class="rc-b rc-zb"></i>';
-      if (zones.has('C')) barHtml += '<i class="rc-b rc-zc"></i>';
-      if (hasCP) barHtml += '<i class="rc-b rc-cp"></i>';
-      if (hasEc) barHtml += '<i class="rc-b rc-ec"></i>';
-      // Chaque trait a sa colonne fixe (positionné en CSS) — pas de conteneur flex.
-      const bars = barHtml;
+      for (const z of L.zoneOrder) if (zones.has(z)) barHtml += `<i class="rc-b" style="right:${zoneOff[z]}px;background:${ZONE_COL[z]}"></i>`;
+      for (const b of (recapBars.get(iso) || [])) barHtml += `<i class="rc-b" style="right:${barRight(b)}px;background:${barColor(b)}"></i>`;
+      // Pastilles (gauche) : périodes < 6 jours, alignées par voie.
+      let dotHtml = '';
+      for (const d of (recapDots.get(iso) || [])) dotHtml += `<i class="rc-dot" style="left:${3 + d.lane * DOT}px;background:${d.status === 'ecole' ? EC_SHADES[0] : CP_SHADES[0]}"></i>`;
       // Étiquettes « Nom (CP)/(E) » au 1er jour de période.
       const labels = recapLabels.get(iso);
       const lblHtml = labels
@@ -998,7 +1058,7 @@ function renderRecap(baseMonth) {
       const click = (hasCP || hasEc) ? ' rc-click' : '';
       html += `<td class="rc-day${we}${ferie ? ' rc-ferie' : ''}${click}" data-day="${iso}">`
         + `<span class="rc-num">${day}</span><span class="rc-dow">${JJ[dow]}</span>`
-        + lblHtml + bars + '</td>';
+        + lblHtml + dotHtml + barHtml + '</td>';
     }
     html += '</tr>';
   }

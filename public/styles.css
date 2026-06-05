@@ -250,6 +250,30 @@ td.num { font-variant-numeric: tabular-nums; }
 .pv-nav { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; }
 .pv-nav .btn { padding: 7px 12px; }
 .pv-nav .btn:disabled { opacity: .35; cursor: default; pointer-events: none; }
+
+/* --- Récapitulatif annuel (vacances scolaires, CP, école) --- */
+.recap-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: .82rem; align-items: center; }
+.recap-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.recap-legend .lg { display: inline-block; width: 14px; height: 14px; border-radius: 3px; }
+.lg-za { background: #f47b20; } .lg-zb { background: #3b6fb5; } .lg-zc { background: #7cb342; }
+.lg-cp { background: #2563eb; border-radius: 50%; } .lg-ec { background: #7c3aed; border-radius: 50%; }
+.lg-fe { background: #d11; }
+.recap { border-collapse: collapse; table-layout: fixed; }
+.recap th { background: #1f2120; color: var(--cream); padding: 5px 2px; text-align: center; font-weight: 600; font-size: .68rem; border: 1px solid var(--border); width: 60px; }
+.recap td { border: 1px solid var(--border); height: 20px; padding: 0 14px 0 4px; position: relative; vertical-align: middle; white-space: nowrap; font-size: .64rem; }
+.recap td.rc-empty { background: #f4f3ef; }
+.recap .rc-num { font-weight: 700; }
+.recap .rc-dow { color: #999; margin-left: 3px; }
+.recap td.rc-we { background: #f1efe9; }
+.recap td.rc-ferie .rc-num, .recap td.rc-ferie .rc-dow { color: #d11; font-weight: 800; }
+.recap td.rc-click { cursor: pointer; }
+.recap td.rc-click:hover { background: #fff3df; }
+.rc-bars { position: absolute; top: 0; right: 0; bottom: 0; display: flex; }
+.rc-b { width: 4px; height: 100%; }
+.rc-za { background: #f47b20; } .rc-zb { background: #3b6fb5; } .rc-zc { background: #7cb342; }
+.rc-marks { display: inline-flex; gap: 2px; margin-left: 4px; vertical-align: middle; }
+.rc-m { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.rc-cp { background: #2563eb; } .rc-ec { background: #7c3aed; }
 .planning .pl-day-head { cursor: pointer; }
 .planning .pl-day-head:hover { text-decoration: underline; background: #2a2c29; }
 .wk-print-dates { display: none; } /* visible uniquement à l'impression (PDF) */

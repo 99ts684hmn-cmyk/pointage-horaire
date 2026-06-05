@@ -72,6 +72,7 @@ async function showAdmin() {
   $('rep-to').value = localISO(sunday);
   loadReport();
   loadPlanning();
+  loadRecap();
 }
 
 // --- Établissement --------------------------------------------------------
@@ -876,6 +877,120 @@ $('wk-date').addEventListener('change', () => {
 });
 $('rep-prev').addEventListener('click', () => shiftWeek(-1));
 $('rep-next').addEventListener('click', () => shiftWeek(1));
+
+// --- Récapitulatif annuel (vacances scolaires 3 zones, CP, école apprentis) ---
+// Vacances scolaires : jours OÙ les élèves sont en vacances, par zone (dates officielles).
+const VACANCES = [
+  { z: 'ALL', from: '2026-07-04', to: '2026-08-31' }, // Été 2026
+  { z: 'ALL', from: '2026-10-17', to: '2026-11-01' }, // Toussaint
+  { z: 'ALL', from: '2026-12-19', to: '2027-01-03' }, // Noël
+  { z: 'C', from: '2027-02-06', to: '2027-02-21' }, // Hiver C
+  { z: 'A', from: '2027-02-13', to: '2027-02-28' }, // Hiver A
+  { z: 'B', from: '2027-02-20', to: '2027-03-07' }, // Hiver B
+  { z: 'C', from: '2027-04-03', to: '2027-04-18' }, // Printemps C
+  { z: 'A', from: '2027-04-10', to: '2027-04-25' }, // Printemps A
+  { z: 'B', from: '2027-04-17', to: '2027-05-02' }, // Printemps B
+  { z: 'ALL', from: '2027-07-03', to: '2027-08-31' }, // Été 2027
+];
+function zonesEnVacances(iso) {
+  const out = new Set();
+  for (const v of VACANCES) {
+    if (iso >= v.from && iso <= v.to) {
+      if (v.z === 'ALL') { out.add('A'); out.add('B'); out.add('C'); } else out.add(v.z);
+    }
+  }
+  return out;
+}
+function easterSunday(year) {
+  const a = year % 19, b = Math.floor(year / 100), c = year % 100;
+  const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+  return new Date(year, Math.floor((h + l - 7 * m + 114) / 31) - 1, ((h + l - 7 * m + 114) % 31) + 1);
+}
+function feriesForYear(year) {
+  const easter = easterSunday(year);
+  const add = (dt, n) => { const x = new Date(dt); x.setDate(x.getDate() + n); return x; };
+  return [
+    `${year}-01-01`, `${year}-05-01`, `${year}-05-08`, `${year}-07-14`,
+    `${year}-08-15`, `${year}-11-01`, `${year}-11-11`, `${year}-12-25`,
+    localISO(add(easter, 1)), localISO(add(easter, 39)), localISO(add(easter, 50)),
+  ];
+}
+const FERIES = new Set([...feriesForYear(2026), ...feriesForYear(2027), ...feriesForYear(2028)]);
+
+let recapCP = new Map(); let recapEcole = new Map();
+
+async function loadRecap() {
+  const out = $('recap-output');
+  if (!out) return;
+  const base = new Date(); base.setHours(0, 0, 0, 0); base.setDate(1);
+  const from = localISO(base);
+  const to = localISO(new Date(base.getFullYear(), base.getMonth() + 12, 0));
+  const { ok, data } = await api(`/api/admin/day-statuses?from=${from}&to=${to}`);
+  recapCP = new Map(); recapEcole = new Map();
+  const nameById = new Map(allEmployees.map((e) => [e.id, e.name]));
+  if (ok && Array.isArray(data)) {
+    for (const s of data) {
+      const nm = nameById.get(s.employeeId) || '?';
+      if (s.status === 'cp') { if (!recapCP.has(s.day)) recapCP.set(s.day, []); recapCP.get(s.day).push(nm); }
+      else if (s.status === 'ecole') { if (!recapEcole.has(s.day)) recapEcole.set(s.day, []); recapEcole.get(s.day).push(nm); }
+    }
+  }
+  renderRecap(base);
+}
+
+function renderRecap(baseMonth) {
+  const out = $('recap-output');
+  const JJ = ['Di', 'Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa'];
+  const MN = ['Janv.', 'Févr.', 'Mars', 'Avril', 'Mai', 'Juin', 'Juil.', 'Août', 'Sept.', 'Oct.', 'Nov.', 'Déc.'];
+  const months = [];
+  for (let i = 0; i < 12; i++) months.push(new Date(baseMonth.getFullYear(), baseMonth.getMonth() + i, 1));
+  let html = '<table class="recap"><thead><tr>';
+  for (const m of months) html += `<th>${MN[m.getMonth()]}<br>${m.getFullYear()}</th>`;
+  html += '</tr></thead><tbody>';
+  for (let day = 1; day <= 31; day++) {
+    html += '<tr>';
+    for (const m of months) {
+      const dt = new Date(m.getFullYear(), m.getMonth(), day);
+      if (dt.getMonth() !== m.getMonth()) { html += '<td class="rc-empty"></td>'; continue; }
+      const iso = localISO(dt);
+      const dow = dt.getDay();
+      const zones = zonesEnVacances(iso);
+      const hasCP = recapCP.has(iso); const hasEc = recapEcole.has(iso);
+      const ferie = FERIES.has(iso);
+      const we = (dow === 0 || dow === 6) ? ' rc-we' : '';
+      const bars = zones.size
+        ? `<span class="rc-bars">${zones.has('A') ? '<i class="rc-b rc-za"></i>' : ''}${zones.has('B') ? '<i class="rc-b rc-zb"></i>' : ''}${zones.has('C') ? '<i class="rc-b rc-zc"></i>' : ''}</span>`
+        : '';
+      const marks = (hasCP ? '<i class="rc-m rc-cp"></i>' : '') + (hasEc ? '<i class="rc-m rc-ec"></i>' : '');
+      const click = (hasCP || hasEc) ? ' rc-click' : '';
+      html += `<td class="rc-day${we}${ferie ? ' rc-ferie' : ''}${click}" data-day="${iso}">`
+        + `<span class="rc-num">${day}</span><span class="rc-dow">${JJ[dow]}</span>`
+        + bars + (marks ? `<span class="rc-marks">${marks}</span>` : '') + '</td>';
+    }
+    html += '</tr>';
+  }
+  html += '</tbody></table>';
+  out.innerHTML = html;
+  out.querySelectorAll('.rc-click').forEach((td) => td.addEventListener('click', () => openRecapDay(td.dataset.day)));
+}
+
+function openRecapDay(iso) {
+  const cp = recapCP.get(iso) || []; const ec = recapEcole.get(iso) || [];
+  const dt = new Date(iso + 'T12:00:00');
+  let lbl = dt.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  lbl = lbl.charAt(0).toUpperCase() + lbl.slice(1);
+  cellModal.innerHTML = `
+    <h2>${lbl}</h2>
+    ${cp.length ? `<div class="field"><label>🟦 Congés payés (${cp.length})</label><div class="sub">${cp.map(escapeHtml).join(', ')}</div></div>` : ''}
+    ${ec.length ? `<div class="field" style="margin-top:10px"><label>🟪 École — apprentis (${ec.length})</label><div class="sub">${ec.map(escapeHtml).join(', ')}</div></div>` : ''}
+    ${(!cp.length && !ec.length) ? '<div class="sub">Aucun CP ni école ce jour.</div>' : ''}
+    <div style="margin-top:14px"><button class="btn btn-ghost" id="rc-close">Fermer</button></div>`;
+  cellModal.querySelector('#rc-close').addEventListener('click', () => cellOverlay.classList.remove('show'));
+  cellOverlay.classList.add('show');
+}
+
 // --- Hors entreprise : statut sur toute la semaine (CP/AM/Absent/École) ----
 $('he-btn').addEventListener('click', openOffWork);
 
@@ -921,6 +1036,7 @@ async function submitOffWork() {
   if (data.skippedEcole) alert(`${data.skippedEcole} non-apprenti(s) ignoré(s) pour le statut École.`);
   cellOverlay.classList.remove('show');
   loadPlanning();
+  loadRecap();
 }
 
 // --- Arrivée groupée (admin, jour choisi dans la semaine) -----------------
@@ -1190,6 +1306,7 @@ async function setCellStatus(empId, day, status) {
 async function refreshAfterCell(empId, day) {
   await loadPlanning();
   loadReport();
+  loadRecap();
   openCellEditor(empId, day); // ré-ouvre avec les données à jour
 }
 

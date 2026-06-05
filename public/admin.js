@@ -985,24 +985,28 @@ async function loadRecap() {
     }
   };
   addRuns(cpByPerson, 'cp'); addRuns(ecByPerson, 'ecole');
-  // ≥ 6 jours consécutifs => trait ; < 6 jours => pastille.
-  const bars = allRuns.filter((r) => r.len >= 6);
-  const dots = allRuns.filter((r) => r.len < 6);
-  // Voies (colonnes) : séparées par statut pour les traits ; communes pour les pastilles.
-  const ecLanes = assignLanes(bars.filter((r) => r.status === 'ecole'));
-  const cpLanes = assignLanes(bars.filter((r) => r.status === 'cp'));
-  const dotLanes = assignLanes(dots);
+  // Voies (colonnes) par statut : toutes les périodes d'un même statut (traits ET
+  // pastilles) partagent le même système de colonnes. Ainsi une pastille occupe la
+  // colonne où serait le trait (collée aux traits) et deux périodes qui se chevauchent
+  // ne se superposent jamais.
+  const ecLanes = assignLanes(allRuns.filter((r) => r.status === 'ecole'));
+  const cpLanes = assignLanes(allRuns.filter((r) => r.status === 'cp'));
   const addTo = (map, day, o) => { if (!map.has(day)) map.set(day, []); map.get(day).push(o); };
-  for (const r of bars) for (const d of r.days) addTo(recapBars, d, { status: r.status, lane: r.lane });
-  for (const r of dots) for (const d of r.days) addTo(recapDots, d, { status: r.status, lane: r.lane });
-  // Étiquette « Nom (CP) » / « Nom (E) » au 1er jour de chaque période.
-  for (const r of allRuns) addTo(recapLabels, r.start, { text: `${nameById.get(r.id) || '?'} ${r.status === 'cp' ? '(CP)' : '(E)'}`, kind: r.status === 'cp' ? 'cp' : 'ec' });
+  for (const r of allRuns) {
+    const target = r.len >= 6 ? recapBars : recapDots; // ≥ 6 jours => trait ; < 6 => pastille
+    for (const d of r.days) addTo(target, d, { status: r.status, lane: r.lane });
+  }
+  // Étiquette « Nom (CP) » / « Nom (E) » au 1er jour de chaque période (porte la période).
+  for (const r of allRuns) {
+    const nm = nameById.get(r.id) || '?';
+    addTo(recapLabels, r.start, { text: `${nm} ${r.status === 'cp' ? '(CP)' : '(E)'}`, kind: r.status === 'cp' ? 'cp' : 'ec', name: nm, start: r.start, end: r.end });
+  }
   // Zones de vacances présentes dans la fenêtre (pour réserver les colonnes).
   const zonesPresent = new Set();
   { const d = new Date(from + 'T12:00:00'); const end = new Date(to + 'T12:00:00');
     while (d <= end) { for (const z of zonesEnVacances(localISO(d))) zonesPresent.add(z); d.setDate(d.getDate() + 1); } }
   const zoneOrder = ['C', 'B', 'A'].filter((z) => zonesPresent.has(z)); // de l'intérieur vers l'extérieur
-  recapLayout = { ecLanes, cpLanes, dotLanes, zoneOrder };
+  recapLayout = { ecLanes, cpLanes, zoneOrder };
   renderRecap(base);
   const last = new Date(base.getFullYear(), base.getMonth() + RECAP_MONTHS - 1, 1);
   const lbl = $('rc-label');
@@ -1017,13 +1021,15 @@ function renderRecap(baseMonth) {
   const MN = ['Janv.', 'Févr.', 'Mars', 'Avril', 'Mai', 'Juin', 'Juil.', 'Août', 'Sept.', 'Oct.', 'Nov.', 'Déc.'];
   const months = [];
   for (let i = 0; i < RECAP_MONTHS; i++) months.push(new Date(baseMonth.getFullYear(), baseMonth.getMonth() + i, 1));
-  // Disposition des colonnes de traits/pastilles (calculée dans loadRecap).
-  const W = 5; const DOT = 8;
+  // Disposition des colonnes (de droite à gauche) : statut école, statut CP, zones.
+  // Traits et pastilles d'un même statut partagent les mêmes colonnes.
+  const W = 5;
   const L = recapLayout;
-  const ecBase = 0; const cpBase = L.ecLanes * W; const zoneBase = (L.ecLanes + L.cpLanes) * W;
+  const ecBase = 0; const cpBase = L.ecLanes * W;
+  const zoneBase = (L.ecLanes + L.cpLanes) * W;
   const zoneOff = {}; L.zoneOrder.forEach((z, i) => { zoneOff[z] = zoneBase + i * W; });
   const padR = zoneBase + L.zoneOrder.length * W + 6;
-  const padL = L.dotLanes ? (7 + L.dotLanes * DOT + 2) : 7;
+  const padL = 7;
   const CP_SHADES = ['#f5b700', '#b9860b', '#7a5600'];
   const EC_SHADES = ['#ec4899', '#a21d5c', '#6d1640'];
   const ZONE_COL = { A: '#f47b20', B: '#3b6fb5', C: '#7cb342' };
@@ -1047,13 +1053,13 @@ function renderRecap(baseMonth) {
       let barHtml = '';
       for (const z of L.zoneOrder) if (zones.has(z)) barHtml += `<i class="rc-b" style="right:${zoneOff[z]}px;background:${ZONE_COL[z]}"></i>`;
       for (const b of (recapBars.get(iso) || [])) barHtml += `<i class="rc-b" style="right:${barRight(b)}px;background:${barColor(b)}"></i>`;
-      // Pastilles (gauche) : périodes < 6 jours, alignées par voie.
+      // Pastilles (périodes < 6 jours) : même colonne que le trait du même statut.
       let dotHtml = '';
-      for (const d of (recapDots.get(iso) || [])) dotHtml += `<i class="rc-dot" style="left:${3 + d.lane * DOT}px;background:${d.status === 'ecole' ? EC_SHADES[0] : CP_SHADES[0]}"></i>`;
-      // Étiquettes « Nom (CP)/(E) » au 1er jour de période.
+      for (const d of (recapDots.get(iso) || [])) dotHtml += `<i class="rc-dot" style="right:${barRight(d)}px;background:${d.status === 'ecole' ? EC_SHADES[0] : CP_SHADES[0]}"></i>`;
+      // Étiquettes « Nom (CP)/(E) » au 1er jour de période (cliquables → période complète).
       const labels = recapLabels.get(iso);
       const lblHtml = labels
-        ? labels.map((l) => `<span class="rc-lbl rc-lbl-${l.kind}">${escapeHtml(l.text)}</span>`).join('')
+        ? labels.map((l) => `<span class="rc-lbl rc-lbl-${l.kind} rc-lbl-click" data-name="${escapeHtml(l.name)}" data-kind="${l.kind}" data-start="${l.start}" data-end="${l.end}">${escapeHtml(l.text)}</span>`).join('')
         : '';
       const click = (hasCP || hasEc) ? ' rc-click' : '';
       html += `<td class="rc-day${we}${ferie ? ' rc-ferie' : ''}${click}" data-day="${iso}">`
@@ -1065,6 +1071,26 @@ function renderRecap(baseMonth) {
   html += '</tbody></table>';
   out.innerHTML = html;
   out.querySelectorAll('.rc-click').forEach((td) => td.addEventListener('click', () => openRecapDay(td.dataset.day)));
+  out.querySelectorAll('.rc-lbl-click').forEach((el) => el.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openRecapPeriod(el.dataset.name, el.dataset.kind, el.dataset.start, el.dataset.end);
+  }));
+}
+
+function openRecapPeriod(name, kind, start, end) {
+  const statut = kind === 'cp' ? 'Congés payés' : 'École (apprenti)';
+  const icon = kind === 'cp' ? '🟡' : '🌸';
+  const nbJours = Math.round((new Date(end + 'T12:00:00') - new Date(start + 'T12:00:00')) / 86400000) + 1;
+  const periode = start === end ? `le ${frDate(start)}` : `du ${frDate(start)} au ${frDate(end)}`;
+  cellModal.innerHTML = `
+    <h2>${escapeHtml(name)}</h2>
+    <div class="field"><label>${icon} ${statut}</label>
+      <div class="sub">Période : ${periode}</div>
+      <div class="sub">${nbJours} jour${nbJours > 1 ? 's' : ''}</div>
+    </div>
+    <div style="margin-top:14px"><button class="btn btn-ghost" id="rc-close">Fermer</button></div>`;
+  cellModal.querySelector('#rc-close').addEventListener('click', () => cellOverlay.classList.remove('show'));
+  cellOverlay.classList.add('show');
 }
 
 function openRecapDay(iso) {
@@ -1074,8 +1100,8 @@ function openRecapDay(iso) {
   lbl = lbl.charAt(0).toUpperCase() + lbl.slice(1);
   cellModal.innerHTML = `
     <h2>${lbl}</h2>
-    ${cp.length ? `<div class="field"><label>🟦 Congés payés (${cp.length})</label><div class="sub">${cp.map(escapeHtml).join(', ')}</div></div>` : ''}
-    ${ec.length ? `<div class="field" style="margin-top:10px"><label>🟪 École — apprentis (${ec.length})</label><div class="sub">${ec.map(escapeHtml).join(', ')}</div></div>` : ''}
+    ${cp.length ? `<div class="field"><label>🟡 Congés payés (${cp.length})</label><div class="sub">${cp.map(escapeHtml).join(', ')}</div></div>` : ''}
+    ${ec.length ? `<div class="field" style="margin-top:10px"><label>🌸 École — apprentis (${ec.length})</label><div class="sub">${ec.map(escapeHtml).join(', ')}</div></div>` : ''}
     ${(!cp.length && !ec.length) ? '<div class="sub">Aucun CP ni école ce jour.</div>' : ''}
     <div style="margin-top:14px"><button class="btn btn-ghost" id="rc-close">Fermer</button></div>`;
   cellModal.querySelector('#rc-close').addEventListener('click', () => cellOverlay.classList.remove('show'));

@@ -272,9 +272,11 @@ td.num { font-variant-numeric: tabular-nums; }
 /* Périodes ≥ 6 jours : traits verticaux pleine hauteur (colonne + couleur posées
    en style inline depuis le JS, donc chaque voie reste alignée verticalement). */
 .recap td .rc-b { position: absolute; top: 0; bottom: 0; width: 5px; }
-/* Périodes < 6 jours : pastilles rondes alignées à gauche (voie posée en inline). */
+/* Périodes < 6 jours : pastille ronde dans la colonne du statut (voie posée en inline). */
 .recap td .rc-dot { position: absolute; top: 50%; transform: translateY(-50%); width: 7px; height: 7px; border-radius: 50%; }
 .recap .rc-lbl { display: block; white-space: normal; font-size: .62rem; line-height: 1.12; font-weight: 700; margin-top: 1px; }
+.recap .rc-lbl-click { cursor: pointer; }
+.recap .rc-lbl-click:hover { text-decoration: underline; }
 .rc-lbl-cp { color: #9a7400; }
 .rc-lbl-ec { color: #be185d; }
 .planning .pl-day-head { cursor: pointer; }

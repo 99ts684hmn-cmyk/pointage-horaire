@@ -14,10 +14,6 @@ function fmtH(seconds) {
 function fmtTime(ts) {
   return ts == null ? '—' : new Date(ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 }
-function fmtDay(dayStr) {
-  return new Date(dayStr + 'T12:00:00').toLocaleDateString('fr-FR',
-    { weekday: 'short', day: 'numeric', month: 'short' });
-}
 function showMsg(el, text, type) {
   el.textContent = text;
   el.className = 'msg show ' + (type || 'error');
@@ -126,7 +122,6 @@ $('logout-link').addEventListener('click', async (e) => {
 // --- Employés -------------------------------------------------------------
 let allEmployees = []; // liste complète, pour le planning hebdomadaire
 const CAT_LABELS = { responsable: 'Responsable', chef_de_rang: 'Chef de rang', apprenti: 'Apprenti' };
-const CAT_PLURAL = { responsable: 'Responsables', chef_de_rang: 'Chefs de rang', apprenti: 'Apprentis' };
 const CAT_ORDER = ['responsable', 'chef_de_rang', 'apprenti'];
 const catOf = (e) => (CAT_ORDER.includes(e.category) ? e.category : 'chef_de_rang');
 
@@ -601,7 +596,6 @@ function renderPlanning() {
     weekday[d] = new Date(d + 'T12:00:00').getDay();
   });
   let grand = 0;
-  const colspan = days.length + 2;
 
   // Heure de la PREMIÈRE arrivée de chaque service (par jour), hors service
   // continu. On retient l'heure : tous les salariés arrivés à cette heure

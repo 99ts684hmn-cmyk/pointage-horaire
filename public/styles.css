@@ -64,14 +64,6 @@ body {
 .clock .time { font-size: 3rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .clock .date { opacity: .75; text-transform: capitalize; margin-top: 4px; }
 
-/* --- Sections par catégorie --- */
-.emp-section { margin-bottom: 24px; }
-.section-title {
-  color: var(--gold); font-weight: 700; text-transform: uppercase; letter-spacing: .1em;
-  font-size: .82rem; margin: 0 0 10px; padding-bottom: 6px;
-  border-bottom: 1px solid rgba(255, 248, 240, .18);
-}
-
 /* --- Grille d'employés --- */
 .employees-grid {
   display: grid;
@@ -125,23 +117,6 @@ body {
 .modal h2 { font-size: 1.25rem; margin-bottom: 4px; }
 .modal .sub { color: var(--muted); font-size: .9rem; margin-bottom: 18px; }
 
-.pin-display { display: flex; gap: 12px; justify-content: center; margin: 8px 0 20px; }
-.pin-dot {
-  width: 16px; height: 16px; border-radius: 50%;
-  border: 2px solid var(--border); background: transparent; transition: .1s;
-}
-.pin-dot.filled { background: var(--primary); border-color: var(--primary); }
-
-.keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-.key {
-  font-size: 1.5rem; font-weight: 600; padding: 16px 0;
-  border: none; border-radius: 14px; background: #f1f5f9; color: var(--text);
-  cursor: pointer; transition: background .1s;
-}
-.key:hover { background: #e2e8f0; }
-.key:active { background: #cbd5e1; }
-.key.wide { font-size: 1rem; }
-
 .action-buttons { display: grid; gap: 12px; margin-top: 4px; }
 
 /* Arrivée groupée */
@@ -151,16 +126,7 @@ body {
 .grp-row input { width: auto; transform: scale(1.25); }
 .grp-row.grp-all { position: sticky; top: 0; background: #faf3e8; border-bottom: 2px solid var(--border); }
 
-/* Saisie du départ du jour (écran de pointage) */
-.dep-row {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  margin: 10px 0; padding: 12px; background: #faf3e8; border-radius: 10px;
-}
-.dep-row .dep-info { font-size: .98rem; }
-.dep-row .dep-pickers { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.dep-row select { padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 1.05rem; background: #fff; color: var(--text); }
-.dep-row .dep-time { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 1rem; background: #fff; color: var(--text); }
-.dep-row .dep-save { flex: 0 0 auto; padding: 9px 18px; }
+/* Sélecteurs de l'heure de départ (écran de pointage) */
 .dep-pickers { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .dep-pickers select { padding: 11px 14px; border: 1px solid var(--border); border-radius: 10px; font-family: inherit; font-size: 1.15rem; background: #fff; color: var(--text); }
 
@@ -194,13 +160,6 @@ body {
 .chip:hover { background: #eef2ff; border-color: #c7d2fe; }
 .chip.active { background: var(--primary); border-color: var(--primary); color: #fff; }
 
-/* Liste des pointages (modification) */
-.entries-list { max-height: 320px; overflow-y: auto; margin-top: 8px; }
-.entry-row {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--border);
-}
-.entry-row:last-child { border-bottom: none; }
 .btn {
   border: none; border-radius: 14px; padding: 16px; font-size: 1.05rem;
   font-weight: 600; cursor: pointer; color: #fff; transition: filter .1s;
@@ -217,18 +176,6 @@ body {
 .msg.show { display: block; }
 .msg.error { background: #fef2f2; color: var(--red); }
 .msg.success { background: #f0fdf4; color: var(--green-dark); }
-
-/* --- Écran de confirmation --- */
-.confirm { text-align: center; }
-.confirm .icon {
-  width: 72px; height: 72px; border-radius: 50%; margin: 0 auto 16px;
-  display: flex; align-items: center; justify-content: center; font-size: 2rem; color: #fff;
-}
-.confirm .icon.in { background: var(--green); }
-.confirm .icon.out { background: var(--orange); }
-.confirm h2 { font-size: 1.4rem; }
-.confirm .detail { color: var(--muted); margin: 8px 0 20px; }
-.confirm .total { font-size: 1.1rem; font-weight: 600; margin-bottom: 20px; }
 
 /* --- Admin --- */
 .panel {
@@ -291,7 +238,6 @@ td.num { font-variant-numeric: tabular-nums; }
 .planning tbody tr.pl-emp-row:nth-of-type(even) { background: #f3f1ec; }
 .planning .pl-rest { background: #d7d7d4; }
 .planning .pl-rest:hover { background: #cdcdc9; }
-.pl-rest-lbl { font-weight: 700; font-size: .7rem; text-transform: uppercase; color: #8a8a8a; letter-spacing: .04em; }
 /* Statuts CP / AM / École / Absent : couleur sur toute la case (comme Repos). */
 .planning .pl-statusfill.st-cp { background: #dbeafe; color: #1e40af; }
 .planning .pl-statusfill.st-am { background: #fee2e2; color: #b91c1c; }
@@ -314,7 +260,6 @@ td.num { font-variant-numeric: tabular-nums; }
 .pl-extra-sub + .pl-extra-sub { border-top: 1px dashed var(--border); }
 .pl-extra-sub:hover { background: #fff3df; }
 .pl-extra-sub.has { background: #fff0d6; }
-.pl-extra-tag { display: block; font-size: .6rem; text-transform: uppercase; letter-spacing: .04em; color: #b08400; font-weight: 700; }
 .pl-extra-txt { font-weight: 600; color: #5a4500; white-space: pre-wrap; }
 .toast {
   position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
@@ -354,10 +299,6 @@ td.num { font-variant-numeric: tabular-nums; }
 .planning td.pl-rest::after { content: ""; display: block; height: 19px; }
 .pl-cross { position: absolute; top: 0; right: 0; bottom: 0; left: 0; width: 100%; height: 100%; display: block; }
 .pl-cross line { stroke: #888; stroke-width: 1.4; vector-effect: non-scaling-stroke; }
-.planning .pl-group td {
-  background: #faf3e8; color: var(--gold-dark); text-align: left; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .06em; font-size: .75rem;
-}
 .cat-select {
   padding: 5px 8px; font-size: .85rem; border: 1px solid var(--border);
   border-radius: 8px; background: #fff; color: var(--text); font-family: inherit;
@@ -376,10 +317,6 @@ td.num { font-variant-numeric: tabular-nums; }
 .pl-click { cursor: pointer; }
 .pl-click:hover { background: #fdf6ec; }
 .pl-empty { color: #cdc8c0; font-weight: 700; }
-.pl-badge {
-  display: inline-block; padding: 2px 7px; border-radius: 6px;
-  font-weight: 700; font-size: .72rem;
-}
 .st-cp { background: #dbeafe; color: #1e40af; }
 .st-am { background: #fee2e2; color: #b91c1c; }
 .st-ecole { background: #ede9fe; color: #6d28d9; }
@@ -424,9 +361,9 @@ td.num { font-variant-numeric: tabular-nums; }
   .table-wrap { overflow: visible !important; }
   .planning { min-width: 0; width: 100%; font-size: 9px; }
   .planning th, .planning td { padding: 3px 4px; }
-  .planning .pl-name, .planning .pl-group td { position: static; }
+  .planning .pl-name { position: static; }
   /* À l'impression : noms + jours + horaires + ligne des présents (sans totaux). */
-  .planning .pl-group, .planning .pl-tot-row { display: none !important; }
+  .planning .pl-tot-row { display: none !important; }
   .planning thead th:last-child, .planning tbody td:last-child { display: none !important; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   @page { size: A4 landscape; margin: 8mm; }

@@ -920,7 +920,9 @@ function feriesForYear(year) {
 const FERIES = new Set([...feriesForYear(2026), ...feriesForYear(2027), ...feriesForYear(2028)]);
 
 let recapCP = new Map(); let recapEcole = new Map();
+let recapLabels = new Map(); // 'YYYY-MM-DD' -> [{ text, kind }] (1er jour d'une période)
 let recapOffset = 0; // décalage de la fenêtre, par pas de RECAP_MONTHS
+function prevISO(iso) { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() - 1); return localISO(d); }
 const RECAP_MONTHS = 6;
 const RECAP_MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 
@@ -932,15 +934,25 @@ async function loadRecap() {
   const from = localISO(base);
   const to = localISO(new Date(base.getFullYear(), base.getMonth() + RECAP_MONTHS, 0));
   const { ok, data } = await api(`/api/admin/day-statuses?from=${from}&to=${to}`);
-  recapCP = new Map(); recapEcole = new Map();
+  recapCP = new Map(); recapEcole = new Map(); recapLabels = new Map();
   const nameById = new Map(allEmployees.map((e) => [e.id, e.name]));
+  const cpByPerson = new Map(); const ecByPerson = new Map(); // empId -> Set(jours)
   if (ok && Array.isArray(data)) {
     for (const s of data) {
       const nm = nameById.get(s.employeeId) || '?';
-      if (s.status === 'cp') { if (!recapCP.has(s.day)) recapCP.set(s.day, []); recapCP.get(s.day).push(nm); }
-      else if (s.status === 'ecole') { if (!recapEcole.has(s.day)) recapEcole.set(s.day, []); recapEcole.get(s.day).push(nm); }
+      if (s.status === 'cp') {
+        if (!recapCP.has(s.day)) recapCP.set(s.day, []); recapCP.get(s.day).push(nm);
+        if (!cpByPerson.has(s.employeeId)) cpByPerson.set(s.employeeId, new Set()); cpByPerson.get(s.employeeId).add(s.day);
+      } else if (s.status === 'ecole') {
+        if (!recapEcole.has(s.day)) recapEcole.set(s.day, []); recapEcole.get(s.day).push(nm);
+        if (!ecByPerson.has(s.employeeId)) ecByPerson.set(s.employeeId, new Set()); ecByPerson.get(s.employeeId).add(s.day);
+      }
     }
   }
+  // Étiquette « Nom (CP) » / « Nom (E) » au 1er jour de chaque période (jour dont la veille n'est pas du même statut).
+  const addLbl = (day, text, kind) => { if (!recapLabels.has(day)) recapLabels.set(day, []); recapLabels.get(day).push({ text, kind }); };
+  for (const [id, days] of cpByPerson) for (const day of days) if (!days.has(prevISO(day))) addLbl(day, `${nameById.get(id) || '?'} (CP)`, 'cp');
+  for (const [id, days] of ecByPerson) for (const day of days) if (!days.has(prevISO(day))) addLbl(day, `${nameById.get(id) || '?'} (E)`, 'ec');
   renderRecap(base);
   const last = new Date(base.getFullYear(), base.getMonth() + RECAP_MONTHS - 1, 1);
   const lbl = $('rc-label');
@@ -969,14 +981,23 @@ function renderRecap(baseMonth) {
       const hasCP = recapCP.has(iso); const hasEc = recapEcole.has(iso);
       const ferie = FERIES.has(iso);
       const we = (dow === 0 || dow === 6) ? ' rc-we' : '';
-      const bars = zones.size
-        ? `<span class="rc-bars">${zones.has('A') ? '<i class="rc-b rc-za"></i>' : ''}${zones.has('B') ? '<i class="rc-b rc-zb"></i>' : ''}${zones.has('C') ? '<i class="rc-b rc-zc"></i>' : ''}</span>`
+      // Traits verticaux (droite de la case) : zones scolaires + CP (jaune) + école (rose).
+      let barHtml = '';
+      if (zones.has('A')) barHtml += '<i class="rc-b rc-za"></i>';
+      if (zones.has('B')) barHtml += '<i class="rc-b rc-zb"></i>';
+      if (zones.has('C')) barHtml += '<i class="rc-b rc-zc"></i>';
+      if (hasCP) barHtml += '<i class="rc-b rc-cp"></i>';
+      if (hasEc) barHtml += '<i class="rc-b rc-ec"></i>';
+      const bars = barHtml ? `<span class="rc-bars">${barHtml}</span>` : '';
+      // Étiquettes « Nom (CP)/(E) » au 1er jour de période.
+      const labels = recapLabels.get(iso);
+      const lblHtml = labels
+        ? labels.map((l) => `<span class="rc-lbl rc-lbl-${l.kind}">${escapeHtml(l.text)}</span>`).join('')
         : '';
-      const marks = (hasCP ? '<i class="rc-m rc-cp"></i>' : '') + (hasEc ? '<i class="rc-m rc-ec"></i>' : '');
       const click = (hasCP || hasEc) ? ' rc-click' : '';
       html += `<td class="rc-day${we}${ferie ? ' rc-ferie' : ''}${click}" data-day="${iso}">`
         + `<span class="rc-num">${day}</span><span class="rc-dow">${JJ[dow]}</span>`
-        + bars + (marks ? `<span class="rc-marks">${marks}</span>` : '') + '</td>';
+        + lblHtml + bars + '</td>';
     }
     html += '</tr>';
   }

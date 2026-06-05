@@ -999,7 +999,7 @@ async function loadRecap() {
   // Étiquette « Nom (CP) » / « Nom (E) » au 1er jour de chaque période (porte la période).
   for (const r of allRuns) {
     const nm = nameById.get(r.id) || '?';
-    addTo(recapLabels, r.start, { text: `${nm} ${r.status === 'cp' ? '(CP)' : '(E)'}`, kind: r.status === 'cp' ? 'cp' : 'ec', name: nm, start: r.start, end: r.end });
+    addTo(recapLabels, r.start, { text: `${nm} (${r.len} ${r.status === 'cp' ? 'CP' : 'E'})`, kind: r.status === 'cp' ? 'cp' : 'ec', name: nm, start: r.start, end: r.end });
   }
   // Zones de vacances présentes dans la fenêtre (pour réserver les colonnes).
   const zonesPresent = new Set();

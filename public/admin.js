@@ -1263,6 +1263,32 @@ $('pdf-btn').addEventListener('click', () => {
 const ARR_MORNING = ['09:00', '09:30', '10:00', '10:30', '11:00', '11:50'];
 const ARR_EVENING = ['17:00', '17:30', '18:00', '18:50'];
 
+// Sélecteurs d'heure défilants : heures de 8h à 2h (en passant par la nuit), minutes 00/15/30/45/50.
+const HOUR_ORDER = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2];
+const MIN_OPTIONS = ['00', '15', '30', '45', '50'];
+function timeSelect(cls, id, value) {
+  let hh = '', mm = '';
+  if (value && /^\d{1,2}:\d{2}$/.test(value)) {
+    const [h, m] = value.split(':');
+    hh = String(parseInt(h, 10)); mm = m;
+  }
+  const hOpts = ['<option value="">--</option>']
+    .concat(HOUR_ORDER.map((h) => `<option value="${h}"${String(h) === hh ? ' selected' : ''}>${String(h).padStart(2, '0')}h</option>`))
+    .join('');
+  const mOpts = ['<option value="">--</option>']
+    .concat(MIN_OPTIONS.map((m) => `<option value="${m}"${m === mm ? ' selected' : ''}>${m}</option>`))
+    .join('');
+  return `<span class="time-sel"><select class="${cls}-h" data-id="${id}">${hOpts}</select><span class="time-colon">:</span><select class="${cls}-m" data-id="${id}">${mOpts}</select></span>`;
+}
+function readTimeSel(scope, cls, id) {
+  const hSel = scope.querySelector(`.${cls}-h[data-id="${id}"]`);
+  const mSel = scope.querySelector(`.${cls}-m[data-id="${id}"]`);
+  const h = hSel ? hSel.value : '';
+  const m = mSel ? mSel.value : '';
+  if (!h && !m) return '';
+  return `${String(h || 0).padStart(2, '0')}:${m || '00'}`;
+}
+
 function fillChips(container, presets, input) {
   if (!container) return;
   container.innerHTML = presets.map((t) => `<button type="button" class="chip" data-t="${t}">${t}</button>`).join('');
@@ -1293,8 +1319,8 @@ function openCellEditor(empId, day) {
     existingHtml = '<div class="cell-existing"><div style="font-weight:600;margin-bottom:6px">Horaires saisis</div>';
     for (const s of dayData.segments) {
       existingHtml += `<div class="seg-edit">
-        <label>Arrivée</label><input type="time" class="seg-start" data-id="${s.id}" value="${fmtTime(s.clockIn)}">
-        <label>Départ</label><input type="time" class="seg-end" data-id="${s.id}" value="${s.open ? '' : fmtTime(s.clockOut)}">
+        <label>Arrivée</label>${timeSelect('seg-start', s.id, fmtTime(s.clockIn))}
+        <label>Départ</label>${timeSelect('seg-end', s.id, s.open ? '' : fmtTime(s.clockOut))}
         <button class="link-btn seg-save" data-id="${s.id}">Enregistrer</button>
         <button class="link-btn danger seg-del" data-id="${s.id}">Supprimer</button>
       </div>`;
@@ -1365,8 +1391,8 @@ function openCellEditor(empId, day) {
   cellModal.querySelectorAll('.seg-save').forEach((b) => {
     b.addEventListener('click', async () => {
       const id = b.dataset.id;
-      const start = cellModal.querySelector(`.seg-start[data-id="${id}"]`).value;
-      const end = cellModal.querySelector(`.seg-end[data-id="${id}"]`).value;
+      const start = readTimeSel(cellModal, 'seg-start', id);
+      const end = readTimeSel(cellModal, 'seg-end', id);
       if (!start) { cellMsg("L'heure d'arrivée est obligatoire."); return; }
       const { ok, data } = await api(`/api/admin/entries/${id}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },

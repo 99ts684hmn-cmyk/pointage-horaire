@@ -371,6 +371,9 @@ td.num { font-variant-numeric: tabular-nums; }
 .seg-edit label { font-size: .78rem; color: var(--muted); }
 .seg-edit input { padding: 5px 8px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; background: #fff; color: var(--text); }
 .seg-edit .seg-save { margin-left: auto; }
+.time-sel { display: inline-flex; align-items: center; gap: 2px; }
+.time-sel select { padding: 5px 6px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: .85rem; background: #fff; color: var(--text); }
+.time-sel .time-colon { color: var(--muted); font-weight: 700; }
 
 .report-day { color: var(--text); background: #faf3e8; padding: 8px 12px; box-shadow: inset 3px 0 0 var(--gold); }
 .report-total td { font-weight: 700; background: #f0eadf; color: var(--text); }

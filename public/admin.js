@@ -676,7 +676,10 @@ function renderPlanning() {
               soirHalf = '<div class="pl-half pl-pres">PS</div>'; soirCount[d]++;
             }
             stack = midiHalf + soirHalf;
-            if (demiMidi || demiSoir) demiCount++;
+            // Ne compter une demi que si le service marqué « demi » est réellement vide.
+            // Si des heures ont été saisies sur ce service, la personne a travaillé :
+            // ce n'est plus une demi (sinon le compteur gonfle à tort).
+            if ((demiMidi && !midi.length) || (demiSoir && !soir.length)) demiCount++;
           }
           inner = `<div class="pl-stack">${stack}</div>`;
           fillCls = ' pl-filled';

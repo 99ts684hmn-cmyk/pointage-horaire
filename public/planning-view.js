@@ -152,7 +152,9 @@
               soirHalf = '<div class="pl-half pl-pres">PS</div>'; soirCount[d]++;
             }
             stack = midiHalf + soirHalf;
-            if (demiMidi || demiSoir) demiCount++;
+            // Ne compter une demi que si le service marqué « demi » est réellement vide
+            // (mêmes règles que côté admin : si des heures existent, la personne a travaillé).
+            if ((demiMidi && !midi.length) || (demiSoir && !soir.length)) demiCount++;
           }
           inner = `<div class="pl-stack">${stack}</div>`;
           fillCls = ' pl-filled';

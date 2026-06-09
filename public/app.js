@@ -178,6 +178,7 @@ const pvBaseMonday = (() => {
 })();
 let pvOffset = 0;
 const PV_MIN = -2; const PV_MAX = 2;
+let pvLastSig = null; // signature du dernier rendu, pour ne re-render que si ça a changé
 
 async function loadPlanningView() {
   const out = document.getElementById('pv-output');
@@ -195,6 +196,10 @@ async function loadPlanningView() {
     if (!res.ok) { out.innerHTML = '<div class="empty">Erreur de chargement.</div>'; return; }
     const data = await res.json();
     data.from = from; data.to = to;
+    // On ne re-rend que si les données ont changé (évite le clignotement à chaque rafraîchissement).
+    const sig = JSON.stringify(data);
+    if (sig === pvLastSig && out.querySelector('table')) return;
+    pvLastSig = sig;
     window.PlanningView.render(out, data);
   } catch {
     out.innerHTML = '<div class="empty">Impossible de charger le planning.</div>';
@@ -213,3 +218,8 @@ applyEstablishment();
 loadOpenEntries();
 setInterval(loadOpenEntries, 30000);
 loadPlanningView();
+// Rafraîchit le planning automatiquement pour refléter les modifications faites
+// côté admin (toutes les 15 s ; ne re-rend que si quelque chose a changé).
+setInterval(loadPlanningView, 15000);
+// Rafraîchit aussi dès qu'on revient sur l'onglet/écran.
+document.addEventListener('visibilitychange', () => { if (!document.hidden) loadPlanningView(); });

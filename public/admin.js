@@ -1260,6 +1260,65 @@ $('pdf-btn').addEventListener('click', () => {
   window.print();
 });
 
+// --- Audit des demi -------------------------------------------------------
+// Liste toutes les demi-journées (statut « demi midi/soir ») sur ~1 an et
+// signale les « fantômes » : une demi posée sur un service où la personne a
+// pourtant des heures (elle a travaillé) => ne devrait pas compter.
+function frDateLong(iso) {
+  const jj = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+  const dt = new Date(iso + 'T12:00:00');
+  return `${jj[dt.getDay()]} ${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}/${dt.getFullYear()}`;
+}
+async function openDemiAudit() {
+  const today = new Date();
+  const fromD = new Date(today); fromD.setDate(fromD.getDate() - 365);
+  const toD = new Date(today); toD.setDate(toD.getDate() + 60);
+  const F = localISO(fromD), T = localISO(toD);
+  cellModal.innerHTML = '<h2>🔎 Audit des demi</h2><div class="sub">Analyse en cours…</div>';
+  cellOverlay.classList.add('show');
+  const q = `from=${F}&to=${T}`;
+  const [stRes, repRes] = await Promise.all([
+    api(`/api/admin/day-statuses?${q}`),
+    api(`/api/admin/report?${q}`),
+  ]);
+  const closeBtn = '<div style="margin-top:14px"><button class="btn btn-ghost" id="ad-close">Fermer</button></div>';
+  const wireClose = () => cellModal.querySelector('#ad-close').addEventListener('click', () => cellOverlay.classList.remove('show'));
+  if (!stRes.ok || !repRes.ok) {
+    cellModal.innerHTML = '<h2>🔎 Audit des demi</h2><div class="msg error show">Erreur de chargement des données.</div>' + closeBtn;
+    wireClose(); return;
+  }
+  const statuses = stRes.data || [];
+  const report = repRes.data || [];
+  const segMap = new Map(); const nameById = new Map();
+  for (const e of report) {
+    nameById.set(e.employeeId, e.name);
+    for (const d of e.days) segMap.set(e.employeeId + '|' + d.day, d.segments || []);
+  }
+  const rows = [];
+  for (const s of statuses) {
+    if (s.status !== 'demi_midi' && s.status !== 'demi_soir') continue;
+    const { cont, midi, soir } = classifyDay(segMap.get(s.employeeId + '|' + s.day) || []);
+    const dm = s.status === 'demi_midi';
+    const phantom = cont.length > 0 || (dm ? midi.length > 0 : soir.length > 0);
+    rows.push({ name: nameById.get(s.employeeId) || ('#' + s.employeeId), day: s.day, demi: dm ? 'Demi midi' : 'Demi soir', phantom });
+  }
+  rows.sort((a, b) => a.name.localeCompare(b.name) || a.day.localeCompare(b.day));
+  const phantoms = rows.filter((r) => r.phantom);
+  const tr = (r) => `<tr class="${r.phantom ? 'ad-phantom' : ''}"><td>${escapeHtml(r.name)}</td><td>${frDateLong(r.day)}</td><td>${r.demi}</td><td>${r.phantom ? '⚠️ fantôme' : '✅ réelle'}</td></tr>`;
+  const table = rows.length
+    ? `<table class="ad-table"><thead><tr><th>Salarié</th><th>Jour</th><th>Demi</th><th>État</th></tr></thead><tbody>${rows.map(tr).join('')}</tbody></table>`
+    : '<div class="sub">Aucune demi sur la période.</div>';
+  cellModal.innerHTML = `
+    <h2>🔎 Audit des demi</h2>
+    <div class="sub">Période analysée : ${frDateLong(F)} → ${frDateLong(T)}</div>
+    <div class="sub" style="margin-top:6px"><strong>${rows.length}</strong> demi au total, dont <strong style="color:#b91c1c">${phantoms.length}</strong> à nettoyer (posée sur un service où la personne a en fait travaillé).</div>
+    <div class="ad-wrap">${table}</div>
+    ${phantoms.length ? '<div class="sub" style="margin-top:10px">Pour corriger une demi <strong>fantôme</strong> : ouvre ce jour dans le planning, puis enlève le statut « Demi » (re-clic sur le bouton déjà actif, ou « Effacer le statut »). La case garde les heures travaillées.</div>' : ''}
+    ${closeBtn}`;
+  wireClose();
+}
+$('audit-demi-btn').addEventListener('click', openDemiAudit);
+
 // --- Éditeur de case du planning ------------------------------------------
 // Raccourcis d'horaires d'arrivée proposés dans l'éditeur de case (deux services).
 // Les départs se saisissent manuellement (pas de raccourcis).

@@ -1336,13 +1336,13 @@ function openCellEditor(empId, day) {
     ${existingHtml}
     <div class="field" style="margin-top:14px"><label>Marquer la journée</label></div>
     <div class="action-buttons" style="grid-template-columns:repeat(2,1fr)">
-      <button class="btn btn-ghost st-btn st-repos" data-st="repos">Repos</button>
-      <button class="btn btn-ghost st-btn st-cp" data-st="cp">Congés payés</button>
-      <button class="btn btn-ghost st-btn st-am" data-st="am">Arrêt maladie</button>
-      <button class="btn btn-ghost st-btn st-absent" data-st="absent">Absent</button>
-      ${isApprenti ? '<button class="btn btn-ghost st-btn st-ecole" data-st="ecole">École</button>' : ''}
-      <button class="btn btn-ghost st-btn st-demi" data-st="demi_midi">Demi midi</button>
-      <button class="btn btn-ghost st-btn st-demi" data-st="demi_soir">Demi soir</button>
+      <button class="btn btn-ghost st-btn st-repos${status === 'repos' ? ' active' : ''}" data-st="repos">Repos</button>
+      <button class="btn btn-ghost st-btn st-cp${status === 'cp' ? ' active' : ''}" data-st="cp">Congés payés</button>
+      <button class="btn btn-ghost st-btn st-am${status === 'am' ? ' active' : ''}" data-st="am">Arrêt maladie</button>
+      <button class="btn btn-ghost st-btn st-absent${status === 'absent' ? ' active' : ''}" data-st="absent">Absent</button>
+      ${isApprenti ? `<button class="btn btn-ghost st-btn st-ecole${status === 'ecole' ? ' active' : ''}" data-st="ecole">École</button>` : ''}
+      <button class="btn btn-ghost st-btn st-demi${status === 'demi_midi' ? ' active' : ''}" data-st="demi_midi">Demi midi</button>
+      <button class="btn btn-ghost st-btn st-demi${status === 'demi_soir' ? ' active' : ''}" data-st="demi_soir">Demi soir</button>
       <button class="btn btn-ghost ech-btn st-echange${(status === 'echange_midi' || status === 'echange_both') ? ' active' : ''}" data-ech="midi">Échange midi</button>
       <button class="btn btn-ghost ech-btn st-echange${(status === 'echange_soir' || status === 'echange_both') ? ' active' : ''}" data-ech="soir">Échange soir</button>
       ${status ? '<button class="btn btn-ghost" id="ce-clear">Effacer le statut</button>' : ''}
@@ -1411,7 +1411,8 @@ function openCellEditor(empId, day) {
     });
   });
   cellModal.querySelectorAll('.st-btn').forEach((b) => {
-    b.addEventListener('click', () => setCellStatus(empId, day, b.dataset.st));
+    // Clic sur le statut déjà actif => on l'enlève (bascule), comme les boutons Échange.
+    b.addEventListener('click', () => setCellStatus(empId, day, status === b.dataset.st ? null : b.dataset.st));
   });
   cellModal.querySelectorAll('.ech-btn').forEach((b) => {
     b.addEventListener('click', () => toggleEchange(empId, day, b.dataset.ech));

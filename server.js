@@ -564,7 +564,7 @@ app.put('/api/admin/breaks', requireAdmin, (req, res) => {
 // --- Gestion des employés -------------------------------------------------
 
 function parseRestDays(s) {
-  return String(s || '').split(',').map((x) => Number(x)).filter((n) => Number.isInteger(n) && n >= 0 && n <= 6);
+  return String(s || '').split(',').map((x) => x.trim()).filter((x) => x !== '').map(Number).filter((n) => Number.isInteger(n) && n >= 0 && n <= 6);
 }
 
 // Jours de repos HISTORISÉS : liste de périodes { from:'AAAA-MM-JJ', days:[...] }.

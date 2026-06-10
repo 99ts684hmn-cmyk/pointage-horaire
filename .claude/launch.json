@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["start"],
       "port": 3000
+    },
+    {
+      "name": "pointage-test",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "DB_PATH=/tmp/test-pointage.db PORT=3100 node server.js"],
+      "port": 3100
     }
   ]
 }

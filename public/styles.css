@@ -218,7 +218,13 @@ td.num { font-variant-numeric: tabular-nums; }
 .planning .pl-day-head { width: 82px; }
 .planning thead th:last-child { width: 48px; }
 .planning thead th { background: #1f2120; color: var(--cream); font-weight: 600; text-transform: none; letter-spacing: 0; }
-.planning .pl-name { width: 80px; text-align: left; font-weight: 600; background: #faf3e8; }
+.planning .pl-name {
+  width: 80px; text-align: left; font-weight: 600; background: #faf3e8;
+  /* Colonne des noms figée : reste visible quand on fait défiler les jours (mobile). */
+  position: sticky; left: 0; z-index: 2;
+  box-shadow: 1px 0 0 var(--border); /* séparateur droit toujours visible pendant le défilement */
+}
+.planning thead th.pl-name { z-index: 3; } /* coin haut-gauche au-dessus des autres */
 /* Rangées salariés : séparateurs horizontaux noirs sur toute la largeur (jusqu'à Total). */
 .planning tbody tr.pl-emp-row > td { border-top-color: #1f2120; border-bottom-color: #1f2120; }
 .pl-name-inner { display: flex; align-items: center; justify-content: space-between; gap: 5px; }
@@ -404,7 +410,7 @@ td.num { font-variant-numeric: tabular-nums; }
   .table-wrap { overflow: visible !important; }
   .planning { min-width: 0; width: 100%; font-size: 9px; }
   .planning th, .planning td { padding: 3px 4px; }
-  .planning .pl-name { position: static; }
+  .planning .pl-name { position: static; box-shadow: none; }
   /* À l'impression : noms + jours + horaires + ligne des présents (sans totaux). */
   .planning .pl-tot-row { display: none !important; }
   .planning thead th:last-child, .planning tbody td:last-child { display: none !important; }

@@ -27,6 +27,14 @@ async function addTask(templateId, input) {
   });
   await fetchData();
 }
+async function saveOrder(templateId, order) {
+  // Met à jour l'ordre local pour que les re-rendus respectent le nouvel ordre.
+  const tm = templates.find((t) => t.id === templateId);
+  if (tm) tm.tasks.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+  await fetch(`api/templates/${encodeURIComponent(templateId)}/tasks/order`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order }),
+  });
+}
 async function deleteTask(taskId) {
   if (!confirm('Supprimer cette tâche ?')) return;
   await fetch(`api/tasks/${encodeURIComponent(taskId)}`, { method: 'DELETE' });
@@ -52,7 +60,9 @@ function render() {
     content.innerHTML = templates.map((tm) => {
       const open = expanded === tm.id;
       const body = open ? `<div class="acc-body">
-        ${tm.tasks.map((task, i) => `<div class="trow"><span class="t">${i + 1}. ${esc(task.title)}</span><button class="del" data-del-task="${esc(task.id)}">Supprimer</button></div>`).join('')}
+        <div class="tlist" data-tmpl="${esc(tm.id)}">
+          ${tm.tasks.map((task) => `<div class="trow" data-id="${esc(task.id)}"><span class="drag" title="Glisser pour réordonner">⠿</span><span class="t">${esc(task.title)}</span><button class="del" data-del-task="${esc(task.id)}">Supprimer</button></div>`).join('')}
+        </div>
         <div class="addrow"><input type="text" placeholder="Nouvelle tâche…" data-add-input="${esc(tm.id)}"><button class="btn btn-red" data-add-task="${esc(tm.id)}">+ Ajouter</button></div>
       </div>` : '';
       return `<div class="card acc">
@@ -76,6 +86,14 @@ function render() {
     content.querySelectorAll('[data-add-input]').forEach((inp) => inp.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') addTask(inp.dataset.addInput, inp);
     }));
+    // Glisser-déposer pour réordonner les tâches (souris + tactile via SortableJS).
+    content.querySelectorAll('.tlist').forEach((list) => {
+      if (!window.Sortable) return;
+      window.Sortable.create(list, {
+        handle: '.drag', animation: 150,
+        onEnd: () => saveOrder(list.dataset.tmpl, [...list.querySelectorAll('.trow')].map((r) => r.dataset.id)),
+      });
+    });
   } else {
     const list = employees.length
       ? employees.map((e) => `<div class="emp-line"><div class="l"><div class="av">${esc((e.name[0] || '?').toUpperCase())}</div><span class="nm">${esc(e.name)}</span></div><button class="del" data-del-emp="${esc(e.id)}">Supprimer</button></div>`).join('')

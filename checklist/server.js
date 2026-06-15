@@ -202,6 +202,15 @@ app.post('/api/templates/:id/tasks', (req, res) => {
   res.status(201).json({ id, title });
 });
 
+// PUT /api/templates/:id/tasks/order — réordonner les tâches (glisser-déposer)
+app.put('/api/templates/:id/tasks/order', (req, res) => {
+  const order = req.body && req.body.order;
+  if (!Array.isArray(order)) return res.status(400).json({ error: 'Format invalide' });
+  const upd = db.prepare('UPDATE tasks SET ord = ? WHERE id = ? AND template_id = ?');
+  db.transaction(() => { order.forEach((taskId, i) => upd.run(i + 1, String(taskId), req.params.id)); })();
+  res.json({ ok: true });
+});
+
 // PATCH /api/tasks/:id — renommer
 app.patch('/api/tasks/:id', (req, res) => {
   const title = (req.body && req.body.title || '').trim();

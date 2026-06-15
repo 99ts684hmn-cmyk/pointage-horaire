@@ -62,6 +62,8 @@ body {
   text-transform: uppercase; letter-spacing: .04em;
 }
 .topbar a.cuisine-btn:hover { color: #1f2120; filter: brightness(1.08); }
+.topbar a.checklist-btn { background: var(--primary); color: var(--cream); }
+.topbar a.checklist-btn:hover { color: var(--cream); filter: brightness(1.08); }
 
 .container { max-width: 1040px; margin: 0 auto; padding: 8px 20px 60px; }
 

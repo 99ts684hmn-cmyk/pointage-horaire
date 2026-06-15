@@ -16,7 +16,10 @@
   <div class="topbar">
     <div class="brand-col">
       <div class="brand"><span class="brand-name">Bœuf <span class="amp">&amp;</span> Cow</span><span class="brand-tag">Saisie des horaires de départ</span></div>
-      <a class="cuisine-btn" href="/cuisine/">🍳 Cuisine</a>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <a class="cuisine-btn" href="/cuisine/">🍳 Cuisine</a>
+        <a class="cuisine-btn checklist-btn" id="checklist-link" href="#">✅ Check-lists</a>
+      </div>
     </div>
     <a href="admin.html">Administration →</a>
   </div>
@@ -50,5 +53,8 @@
 
   <script src="planning-view.js"></script>
   <script src="app.js"></script>
+  <script>
+    document.getElementById('checklist-link').href = 'http://' + window.location.hostname + ':3333';
+  </script>
 </body>
 </html>

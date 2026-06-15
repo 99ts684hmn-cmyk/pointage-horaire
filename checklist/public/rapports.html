@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Bœuf & Cow — Check-lists · Rapports</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <div class="brand">
+        <div class="logo">B</div>
+        <span class="name">BŒUF <span class="amp">&amp;</span> COW</span>
+        <span class="tag">Check-lists</span>
+      </div>
+      <nav class="nav-links">
+        <a href="index.html">Accueil</a>
+        <a href="rapports.html" class="active">Rapports</a>
+        <a href="admin.html">Admin</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div>
+      <h1 class="page-title">Rapports</h1>
+      <p class="page-sub" style="color:var(--gold)">Historique des check-lists effectuées</p>
+    </div>
+
+    <div class="card filters">
+      <div class="f"><label>Du</label><input type="date" id="from"></div>
+      <div class="f"><label>Au</label><input type="date" id="to"></div>
+      <div class="f"><label>Type</label>
+        <select id="type">
+          <option value="">Tous les types</option>
+          <option value="OUVERTURE">🌅 Ouverture</option>
+          <option value="FERMETURE">🌙 Fermeture</option>
+          <option value="NETTOYAGE">🧹 Nettoyage</option>
+          <option value="INVENTAIRE">📦 Inventaire</option>
+          <option value="HEBDOMADAIRE">📅 Hebdomadaire</option>
+          <option value="MANAGER_MATIN">👔 Manager Matin</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="card stat"><div class="n" id="st-total">0</div><div class="l">Total check-lists</div></div>
+      <div class="card stat"><div class="n" id="st-done" style="color:var(--green)">0</div><div class="l">Terminées</div></div>
+      <div class="card stat"><div class="n" id="st-prog" style="color:var(--gold)">0</div><div class="l">En cours</div></div>
+    </div>
+
+    <div id="content"><div class="loading pulse">Chargement…</div></div>
+  </main>
+
+  <script src="rapports.js"></script>
+</body>
+</html>

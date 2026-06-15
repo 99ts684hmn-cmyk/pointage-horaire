@@ -43,6 +43,22 @@ try {
   console.error('  ⚠ Planning Cuisine NON chargé (le pointage continue) :', e.message);
 }
 
+// --- Check-lists : appli montée sous /checklist --------------------------
+// Application indépendante (sa propre base checklist.db). Accessible via le
+// bouton « Check-lists » du bandeau. Même protection que la cuisine : tout le
+// montage est sous try/catch, une panne ne doit jamais bloquer le pointage.
+try {
+  const checklistApp = require('./checklist/server');
+  app.use((req, res, next) => {
+    if (req.originalUrl === '/checklist') return res.redirect(301, '/checklist/');
+    next();
+  });
+  app.use('/checklist', checklistApp);
+  console.log('  Check-lists monté sur /checklist');
+} catch (e) {
+  console.error('  ⚠ Check-lists NON chargé (le pointage continue) :', e.message);
+}
+
 // Configuration publique (nom de l'établissement affiché dans l'interface).
 // Priorité : variable d'environnement ETABLISSEMENT, sinon réglage en base.
 app.get('/api/config', (req, res) => {

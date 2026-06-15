@@ -75,7 +75,7 @@ function render() {
     const at = (t.isDone && t.doneAt) ? `<p class="at">Fait à ${frTime(t.doneAt)}</p>` : '';
     return `<div class="${cls}" data-id="${esc(t.id)}">
       <div class="chk">${t.isDone ? CHECK_SVG : ''}</div>
-      <div class="body"><span class="title">${i + 1}. ${esc(t.title)}</span>${tag}${at}</div>
+      <div class="body"><span class="title">${esc(t.title)}</span>${tag}${at}</div>
     </div>`;
   }).join('');
 

@@ -119,26 +119,38 @@ const WEEKLY_TASKS = [
   { title: 'Aiguiser les couteaux', dayOfWeek: 7 },
 ];
 
+// Onglet « CL manager ouv matin »
 const MANAGER_MATIN_TASKS = [
   'Vérifier que la terrasse soit bien mise, pot de fleur chaise table',
   'Vérifier que la devanture soit propre : pas de cigarette, pas de cendre',
   'Vérifier porte et fenetre propre',
-  'Vérifier cave à vin bas et haut allumées X3 petites X2 grandes, + frigo',
-  'Vérifier chauffage / clim bas / haut allumé si besoin',
+  'Vérifier cave a vin bas et haut allumées X3 petites X2 grandes, + frigo',
+  'Vérifier chauffage/',
   'Prendre le téléphone',
   'Vérifier les resa tombées la nuit et le matin, rentrer et placer et fermer les créneaux',
   'Faire un tour complet du restau : banquette table bord de fenêtre sol trace de doigt sur écran et bar toilette bar prêt à accueillir les clients',
-  'Lancer pointex et vérifier que tout est ok',
-  'Déposer cash',
+  'Lancer la caisse et verifier que tout est ok',
+  'Déposer cash (mardi & samedi)',
   'Vérifier les demi pour le soir et le lendemain et poster les horaires si on a le temps',
   'Mettre les bougies à charger',
   'Vérif réception pain',
-  'Vérifier Resa pour le soir et les jours suivants',
+  'Verifier Resa pour le soir et les jours suivants',
   'Vérifier que les téléphones et tablettes aient de la batterie et donner le tel bis au barman',
-  'Stock pour le service et menu du jour',
+  'Stock pour le service et menu du jour et mettre a jour les autres',
+  'verif clim haut allumé si besoin',
   'Vérifier les stocks : bidon ethanol stock en cave, gel flambage, verre, couvert, serviette, carte visite, carte anniversaire, rouleau tpe etc',
-  'Faire le tour du restaurant y compris réserve, vestiaire, frigo, cave, placard, et faire en sorte que cela soit niquel',
-  'Faire le tour du restaurant en détail : exemple : les plinthes qui ne sont pas faite, les coins qu\'on ne voit plus, chariot à viande etc',
+  'Faire le tour du restaurant y compris réserve, vestiaire, frigo, cave, placard, et faire en sorte que cela soit niquel.',
+  'Faire le tour du restaurant en détail : exemple : les plinthes qui ne sont pas faite, les coins qu’on ne voit plus, chariot à viande etc.',
+];
+
+// Onglet « CL manager Hebdo »
+const MANAGER_HEBDO_TASKS = [
+  'Vérifier les stocks : bidon ethanol stock en cave, gel flambage, verre, couvert, serviette, carte visite, carte anniversaire, rouleau tpe etc',
+  'Faire le tour du restaurant y compris réserve, vestiaire, frigo, cave, placard, et faire en sorte que cela soit niquel.',
+];
+
+// Onglet « Brief Manager 11 45 »
+const BRIEF_MANAGER_TASKS = [
   'Menu du jour / Suggestion',
   'Qui prend quel rang : à définir en fonction des forces et ensuite des envies de chacun',
   'Information sur les resa de chaque rang',
@@ -199,9 +211,14 @@ function ensureTemplateByType(type, build) {
   build();
 }
 
-function seedIfNeeded() {
+// Version de schéma/migrations appliquée à cette base (PRAGMA user_version).
+const SCHEMA_VERSION = 1;
+
+function seedAndMigrate() {
   const count = db.prepare('SELECT COUNT(*) c FROM templates').get().c;
-  if (count === 0) {
+  const freshDb = count === 0;
+
+  if (freshDb) {
     for (const t of DEFAULT_TEMPLATES) {
       const id = insertTemplate(t);
       t.tasks.forEach((title, i) => insertTask(id, title, i + 1));
@@ -212,7 +229,9 @@ function seedIfNeeded() {
       }
     }
   }
-  // Idempotent : garantit les templates hebdo + manager (migration douce).
+
+  // Idempotent : crée les check-lists manquantes (sur base neuve ET sur base
+  // existante au prochain démarrage). Ne touche jamais une check-list déjà là.
   ensureTemplateByType('HEBDOMADAIRE', () => {
     const id = insertTemplate({ name: 'Tâches hebdo salle', type: 'HEBDOMADAIRE', color: 'bg-purple-500', icon: '📅', resetMode: 'WEEKLY_CARRY_OVER', order: 5 });
     WEEKLY_TASKS.forEach((t, i) => insertTask(id, t.title, i + 1, t.dayOfWeek));
@@ -221,8 +240,33 @@ function seedIfNeeded() {
     const id = insertTemplate({ name: 'Check Manager Matin', type: 'MANAGER_MATIN', color: 'bg-red-600', icon: '👔', resetMode: 'AUTO_DAILY', order: 6 });
     MANAGER_MATIN_TASKS.forEach((title, i) => insertTask(id, title, i + 1));
   });
+  ensureTemplateByType('MANAGER_HEBDO', () => {
+    const id = insertTemplate({ name: 'Manager Hebdo', type: 'MANAGER_HEBDO', color: 'bg-purple-500', icon: '🗓️', resetMode: 'AUTO_DAILY', order: 7 });
+    MANAGER_HEBDO_TASKS.forEach((title, i) => insertTask(id, title, i + 1));
+  });
+  ensureTemplateByType('BRIEF_MANAGER', () => {
+    const id = insertTemplate({ name: 'Brief Manager', type: 'BRIEF_MANAGER', color: 'bg-rose-600', icon: '🗣️', resetMode: 'AUTO_DAILY', order: 8 });
+    BRIEF_MANAGER_TASKS.forEach((title, i) => insertTask(id, title, i + 1));
+  });
+
+  // Migration 1 : remplacer les tâches de « Check Manager Matin » par celles de
+  // l'onglet « CL manager ouv matin ». Uniquement sur une base DÉJÀ existante
+  // (sur base neuve, le seed ci-dessus a déjà mis les bonnes tâches). On ne
+  // SUPPRIME pas : on désactive les anciennes (l'historique des sessions reste
+  // intact) puis on insère les nouvelles. Exécutée une seule fois (user_version).
+  const version = db.pragma('user_version', { simple: true });
+  if (version < 1) {
+    if (!freshDb) {
+      const mm = db.prepare("SELECT id FROM templates WHERE type = 'MANAGER_MATIN'").get();
+      if (mm) {
+        db.prepare('UPDATE tasks SET is_active = 0 WHERE template_id = ? AND is_active = 1').run(mm.id);
+        MANAGER_MATIN_TASKS.forEach((title, i) => insertTask(mm.id, title, i + 1));
+      }
+    }
+    db.pragma('user_version = ' + SCHEMA_VERSION);
+  }
 }
 
-seedIfNeeded();
+seedAndMigrate();
 
 module.exports = { db, uid, nowISO, DB_PATH };

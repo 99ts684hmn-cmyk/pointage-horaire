@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Administration — Boeuf &amp; Cow</title>
+  <title>Planning Cuisine — Boeuf &amp; Cow</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -14,12 +14,9 @@
 </head>
 <body>
   <div class="topbar">
-    <div class="brand-col">
-      <div class="brand"><span class="brand-name">Bœuf <span class="amp">&amp;</span> Cow</span><span class="brand-tag">Administration</span></div>
-      <a class="cuisine-btn" href="/cuisine/">🍳 Cuisine</a>
-    </div>
+    <div class="brand"><span class="brand-name">Bœuf <span class="amp">&amp;</span> Cow</span><span class="brand-tag">Planning Cuisine</span></div>
     <div>
-      <a href="index.html">← Écran de pointage</a>
+      <a href="/">← Pointage</a>
       <a href="#" id="logout-link" style="display:none; margin-left:16px">Déconnexion</a>
     </div>
   </div>
@@ -28,7 +25,7 @@
     <!-- Connexion -->
     <div id="login-view" class="login-wrap" style="display:none">
       <div class="panel">
-        <h2>Connexion administrateur</h2>
+        <h2>Connexion</h2>
         <div class="field">
           <label for="login-password">Mot de passe</label>
           <input type="password" id="login-password" autocomplete="current-password" placeholder="••••••••">
@@ -41,6 +38,10 @@
     <!-- Tableau de bord -->
     <div id="admin-view" style="display:none">
 
+      <!-- Période de la semaine affichée (lundi → dimanche), pilotée par la navigation. -->
+      <input type="hidden" id="rep-from">
+      <input type="hidden" id="rep-to">
+
       <div class="panel" id="planning-panel">
         <h2>Planning de la semaine<span class="wk-print-dates" id="wk-print-dates"></span></h2>
         <div class="row" style="margin-bottom:14px; align-items:center; gap:14px">
@@ -50,32 +51,12 @@
             <input type="date" id="wk-date" aria-label="Choisir une semaine" style="position:absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer; border:0; padding:0; margin:0;">
           </div>
           <button class="btn btn-ghost" id="wk-next" style="flex:0 0 auto">Suivante ›</button>
+          <button class="btn btn-green" id="tpl-btn" style="flex:0 0 auto">⚡ Semaine type</button>
           <button class="btn btn-blue" id="he-btn" style="flex:0 0 auto">🏖️ Hors entreprise</button>
           <button class="btn btn-green" id="grp-btn" style="flex:0 0 auto">👥 Arrivée groupée</button>
           <button class="btn btn-blue" id="pdf-btn" style="flex:0 0 auto">📄 PDF</button>
-          <button class="btn btn-ghost" id="audit-demi-btn" style="flex:0 0 auto">🔎 Audit des demi</button>
         </div>
         <div class="table-wrap"><div id="planning-output"></div></div>
-      </div>
-
-      <div class="panel" id="recap-panel">
-        <h2>Récapitulatif</h2>
-        <div class="pv-head" style="margin-bottom:12px">
-          <div class="pv-nav">
-            <button class="btn btn-ghost" id="rc-prev" style="flex:0 0 auto">‹ Précédents</button>
-            <span id="rc-label"></span>
-            <button class="btn btn-ghost" id="rc-next" style="flex:0 0 auto">Suivants ›</button>
-          </div>
-          <div class="recap-legend">
-            <span><i class="lg lg-za"></i> Zone A</span>
-            <span><i class="lg lg-zb"></i> Zone B</span>
-            <span><i class="lg lg-zc"></i> Zone C</span>
-            <span><i class="lg lg-cp"></i> CP</span>
-            <span><i class="lg lg-ec"></i> École</span>
-            <span><i class="lg lg-fe"></i> Férié</span>
-          </div>
-        </div>
-        <div class="table-wrap"><div id="recap-output"><div class="empty">Chargement…</div></div></div>
       </div>
 
       <div class="panel">
@@ -88,9 +69,12 @@
           <div class="field" style="max-width:190px">
             <label for="new-cat">Catégorie</label>
             <select id="new-cat">
-              <option value="responsable">Responsable</option>
-              <option value="chef_de_rang" selected>Chef de rang</option>
+              <option value="chef">Chef</option>
+              <option value="manager">Manager</option>
+              <option value="chef_de_partie">Chef de partie</option>
+              <option value="cuisinier" selected>Cuisinier</option>
               <option value="apprenti">Apprenti</option>
+              <option value="plongeur">Plongeur</option>
             </select>
           </div>
           <button class="btn btn-green" id="add-btn" style="flex:0 0 auto">+ Ajouter</button>
@@ -103,45 +87,6 @@
           </table>
           <div class="sub" style="font-size:.8rem;margin-top:8px">Glissez la poignée ⠿ pour réordonner — l'ordre s'applique au planning.</div>
         </div>
-      </div>
-
-      <div class="panel">
-        <h2>Pauses obligatoires déduites</h2>
-        <p style="color:#64748b;font-size:.9rem;margin-bottom:14px">
-          Ces créneaux sont automatiquement déduits du temps de travail lorsque le salarié
-          est présent (pointé) pendant la plage. Format 24h (HH:MM).
-        </p>
-        <div id="breaks-list"></div>
-        <div style="margin-top:12px">
-          <button class="link-btn" id="add-break">+ Ajouter un créneau</button>
-        </div>
-        <div style="margin-top:14px">
-          <button class="btn btn-blue" id="save-breaks" style="flex:0 0 auto">Enregistrer les pauses</button>
-        </div>
-        <div class="msg" id="breaks-msg"></div>
-      </div>
-
-      <div class="panel">
-        <h2>Rapport des heures (détail)</h2>
-        <div class="row" style="margin-bottom:18px; align-items:flex-end">
-          <button class="btn btn-ghost" id="rep-prev" style="flex:0 0 auto">‹ Précédente</button>
-          <button class="btn btn-ghost" id="rep-next" style="flex:0 0 auto">Suivante ›</button>
-          <div class="field">
-            <label for="rep-from">Du</label>
-            <input type="date" id="rep-from">
-          </div>
-          <div class="field">
-            <label for="rep-to">Au</label>
-            <input type="date" id="rep-to">
-          </div>
-          <div class="field">
-            <label for="rep-emp">Employé</label>
-            <select id="rep-emp"><option value="">Tous</option></select>
-          </div>
-          <button class="btn btn-blue" id="rep-btn" style="flex:0 0 auto">Afficher</button>
-          <button class="btn btn-ghost" id="csv-btn" style="flex:0 0 auto">⬇ Export CSV</button>
-        </div>
-        <div id="report-output"></div>
       </div>
 
       <div class="panel">

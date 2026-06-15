@@ -9,8 +9,8 @@ const {
 } = require('./db');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-const COOKIE_NAME = 'ph_session';
+const PORT = process.env.PORT || 3200;
+const COOKIE_NAME = 'plc_session';
 // Nom de l'établissement (optionnel) : permet, en cas de plusieurs sites,
 // de distinguer chaque instance. Défini par établissement via la variable
 // d'environnement ETABLISSEMENT. Vide = comportement actuel inchangé.
@@ -20,28 +20,6 @@ const COOKIE_SECURE = process.env.COOKIE_SECURE === '1' ? '; Secure' : '';
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
-
-// --- Planning Cuisine : appli montée sous /cuisine ------------------------
-// Application indépendante (sa propre base cuisine.db, son propre mot de passe,
-// son cookie plc_session). Accessible via le bouton « Cuisine » du bandeau.
-// SÉCURITÉ : tout le montage est sous try/catch. Si la cuisine échoue à charger
-// (base, fichier manquant…), le POINTAGE continue de fonctionner normalement —
-// une panne de la cuisine ne doit jamais empêcher les salariés de pointer.
-try {
-  const cuisineApp = require('./cuisine/server');
-  // Sans la barre finale, on redirige vers /cuisine/ pour que les fichiers
-  // (styles.css, admin.js…) se résolvent correctement. Test EXACT sur l'URL :
-  // app.get('/cuisine') attraperait aussi '/cuisine/' (slash non significatif)
-  // et créerait une boucle de redirection.
-  app.use((req, res, next) => {
-    if (req.originalUrl === '/cuisine') return res.redirect(301, '/cuisine/');
-    next();
-  });
-  app.use('/cuisine', cuisineApp);
-  console.log('  Planning Cuisine monté sur /cuisine');
-} catch (e) {
-  console.error('  ⚠ Planning Cuisine NON chargé (le pointage continue) :', e.message);
-}
 
 // Configuration publique (nom de l'établissement affiché dans l'interface).
 // Priorité : variable d'environnement ETABLISSEMENT, sinon réglage en base.
@@ -143,14 +121,6 @@ function segmentBreakdown(e, now = Date.now(), windows = getBreakWindows()) {
   return { grossMs, breakMs, netMs: grossMs - breakMs };
 }
 
-// Total de secondes NETTES travaillées (pauses obligatoires déduites).
-function workedSeconds(entries, now = Date.now()) {
-  const windows = getBreakWindows();
-  let netMs = 0;
-  for (const e of entries) netMs += segmentBreakdown(e, now, windows).netMs;
-  return Math.floor(netMs / 1000);
-}
-
 // Clé de jour locale "AAAA-MM-JJ" à partir d'un timestamp.
 function localDay(ts) {
   const d = new Date(ts);
@@ -163,18 +133,14 @@ function localDay(ts) {
 function startOfDay(dateStr) {
   return new Date(`${dateStr}T00:00:00`).getTime();
 }
-function endOfDay(dateStr) {
-  return new Date(`${dateStr}T23:59:59.999`).getTime();
-}
 // Timestamp local à partir d'une date "AAAA-MM-JJ" et d'une heure "HH:MM".
 function tsFromDateTime(dateStr, timeStr) {
   return new Date(`${dateStr}T${timeStr}:00`).getTime();
 }
 
-// Heure de bascule du « jour de travail » (en heures). Un pointage commencé
+// Heure de bascule du « jour de travail » (en heures). Un horaire commencé
 // avant cette heure (travail de nuit) est rattaché au jour PRÉCÉDENT, c.-à-d.
-// au jour de l'arrivée du poste. Les arrivées normales sont à partir de 9h30,
-// donc 5h laisse une large marge sans jamais déplacer un poste de jour.
+// au jour de l'arrivée du poste.
 const DAY_CUTOFF_HOUR = 5;
 const DAY_CUTOFF_MS = DAY_CUTOFF_HOUR * 60 * 60 * 1000;
 
@@ -188,316 +154,9 @@ function businessDayStart(dateStr) {
 }
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function openEntryFor(employeeId) {
-  return db.prepare(
-    'SELECT * FROM time_entries WHERE employee_id = ? AND clock_out IS NULL ORDER BY clock_in DESC LIMIT 1'
-  ).get(employeeId);
-}
-
-// Pointages de la journée de travail en cours (les heures de nuit d'après
-// minuit restent rattachées à la journée commencée la veille).
-function todayEntries(employeeId) {
-  const from = businessDayStart(businessDay(Date.now()));
-  const to = from + DAY_MS;
-  return db.prepare(
-    'SELECT * FROM time_entries WHERE employee_id = ? AND clock_in >= ? AND clock_in < ? ORDER BY clock_in ASC'
-  ).all(employeeId, from, to);
-}
-
-// =========================================================================
-//  API PUBLIQUE (pointage)
-// =========================================================================
-
-// Catégories de salariés (ordre hiérarchique d'affichage).
-const CATEGORIES = ['responsable', 'chef_de_rang', 'apprenti'];
-
-// Liste des employés actifs avec leur statut courant.
-app.get('/api/employees', (req, res) => {
-  const employees = db.prepare(
-    'SELECT id, name, category FROM employees WHERE active = 1 ORDER BY name COLLATE NOCASE'
-  ).all();
-  const result = employees.map((emp) => {
-    const open = openEntryFor(emp.id);
-    const entries = todayEntries(emp.id);
-    return {
-      id: emp.id,
-      name: emp.name,
-      category: emp.category || 'chef_de_rang',
-      working: !!open,
-      since: open ? open.clock_in : null,
-      todaySeconds: workedSeconds(entries),
-      todayCount: entries.length,
-    };
-  });
-  res.json(result);
-});
-
-// Planning d'une semaine en LECTURE SEULE (écran de pointage). Public, sans édition.
-app.get('/api/planning', (req, res) => {
-  const { from, to } = req.query;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(from || '') || !/^\d{4}-\d{2}-\d{2}$/.test(to || '')) {
-    return res.status(400).json({ error: 'Période invalide' });
-  }
-  const employees = db.prepare(
-    'SELECT id, name, category, rest_days, continuous_service, active, end_date, sort_order FROM employees'
-  ).all().map((r) => ({
-    id: r.id,
-    name: r.name,
-    category: r.category,
-    restPeriods: parseRestPeriods(r.rest_days),
-    continuous: !!r.continuous_service,
-    active: r.active,
-    endDate: r.end_date || null,
-    sortOrder: r.sort_order,
-  }));
-  const report = buildReport({ from, to });
-  const statuses = db.prepare(
-    'SELECT employee_id AS employeeId, day, status FROM day_status WHERE day >= ? AND day <= ?'
-  ).all(from, to);
-  let extra = {};
-  try { const v = JSON.parse(getSetting('extra_notes') || '{}'); if (v && typeof v === 'object') extra = v; } catch { /* ignore */ }
-  res.json({ employees, report, statuses, extra });
-});
-
-// Arrivées encore ouvertes (sans départ) de la journée de travail en cours,
-// classées par service (midi / soir) selon l'heure d'arrivée. Sert à l'écran
-// de saisie des départs : seuls les salariés présents ce jour apparaissent.
-app.get('/api/open-entries', (req, res) => {
-  const today = businessDay(Date.now());
-  // Actifs OU sortants pas encore partis (end_date >= aujourd'hui) : ils peuvent
-  // encore pointer leur départ jusqu'à leur dernier jour.
-  const rows = db.prepare(`
-    SELECT t.id, t.clock_in, t.employee_id, e.name, e.category
-    FROM time_entries t JOIN employees e ON e.id = t.employee_id
-    WHERE t.clock_out IS NULL AND (e.active = 1 OR (e.end_date IS NOT NULL AND e.end_date >= ?))
-    ORDER BY t.clock_in ASC
-  `).all(today);
-  const out = [];
-  for (const r of rows) {
-    if (businessDay(r.clock_in) !== today) continue;
-    const h = new Date(r.clock_in).getHours();
-    const service = (h >= DAY_CUTOFF_HOUR && h < 17) ? 'midi' : 'soir';
-    out.push({
-      entryId: r.id,
-      employeeId: r.employee_id,
-      name: r.name,
-      category: r.category || 'chef_de_rang',
-      clockIn: r.clock_in,
-      service,
-    });
-  }
-  res.json(out);
-});
-
-// Délai au-delà duquel un pointage déjà enregistré ne peut plus être modifié.
-const EDIT_WINDOW_DAYS = 7;
-const EDIT_WINDOW_MS = EDIT_WINDOW_DAYS * 24 * 60 * 60 * 1000;
-
-// Identifie un employé. Le code PIN a été retiré : on vérifie seulement que
-// l'employé existe et est encore présent (actif, OU sortant pas encore parti :
-// end_date >= aujourd'hui). L'argument pin est ignoré (conservé pour compat.).
-function authEmployee(employeeId, pin) {
-  const emp = db.prepare('SELECT * FROM employees WHERE id = ?').get(employeeId);
-  if (!emp) return { status: 404, error: 'Employé introuvable' };
-  const today = businessDay(Date.now());
-  if (!emp.active && !(emp.end_date && emp.end_date >= today)) {
-    return { status: 404, error: 'Employé introuvable' };
-  }
-  return { emp };
-}
-
-// Un pointage est modifiable tant qu'il a moins de EDIT_WINDOW_DAYS jours.
-function isEditable(clockIn) {
-  return (Date.now() - clockIn) <= EDIT_WINDOW_MS;
-}
-
-// Pointer avec saisie manuelle de l'heure.
-//   action 'in'  : le salarié (absent) saisit son heure d'ARRIVÉE → ouvre une période.
-//   action 'out' : le salarié (présent) saisit son heure de DÉPART → ferme la période.
-// L'heure saisie peut être dans le passé OU le futur (aucune restriction).
-app.post('/api/punch', (req, res) => {
-  const { employeeId, pin, action, date, time } = req.body || {};
-  if (!employeeId || !['in', 'out'].includes(action)) {
-    return res.status(400).json({ error: 'Requête invalide' });
-  }
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '') || !/^\d{2}:\d{2}$/.test(time || '')) {
-    return res.status(400).json({ error: 'Date ou heure invalide' });
-  }
-  const auth = authEmployee(employeeId, pin);
-  if (auth.error) return res.status(auth.status).json({ error: auth.error });
-  const emp = auth.emp;
-
-  const ts = tsFromDateTime(date, time);
-  if (Number.isNaN(ts)) return res.status(400).json({ error: 'Date ou heure invalide' });
-
-  const open = openEntryFor(emp.id);
-
-  if (action === 'in') {
-    if (open) {
-      return res.status(409).json({ error: "Vous êtes déjà pointé. Saisissez d'abord votre départ." });
-    }
-    db.prepare('INSERT INTO time_entries (employee_id, clock_in) VALUES (?, ?)').run(emp.id, ts);
-  } else {
-    if (!open) {
-      return res.status(409).json({ error: "Vous n'êtes pas pointé." });
-    }
-    if (ts <= open.clock_in) {
-      return res.status(400).json({ error: "Le départ doit être après l'arrivée." });
-    }
-    db.prepare('UPDATE time_entries SET clock_out = ?, ended_by = ? WHERE id = ?')
-      .run(ts, 'manual', open.id);
-  }
-
-  const entries = todayEntries(emp.id);
-  const nowOpen = openEntryFor(emp.id);
-  res.json({
-    name: emp.name,
-    working: !!nowOpen,
-    since: nowOpen ? nowOpen.clock_in : null,
-    todaySeconds: workedSeconds(entries),
-    action,
-    at: ts,
-  });
-});
-
-// Saisie d'une période complète (arrivée + départ optionnel) par le salarié.
-// L'application sert surtout à SAISIR les horaires (pas de notion présent/absent).
-app.post('/api/entry', (req, res) => {
-  const { employeeId, date, start, end } = req.body || {};
-  const emp = db.prepare('SELECT * FROM employees WHERE id = ? AND active = 1').get(Number(employeeId));
-  if (!emp) return res.status(404).json({ error: 'Employé introuvable' });
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '') || !/^\d{2}:\d{2}$/.test(start || '')) {
-    return res.status(400).json({ error: "Date ou heure d'arrivée invalide" });
-  }
-  const inTs = tsFromDateTime(date, start);
-  if (Number.isNaN(inTs)) return res.status(400).json({ error: 'Date ou heure invalide' });
-
-  let outTs = null; // départ optionnel : période ouverte (non comptée) tant qu'absent
-  if (end) {
-    if (!/^\d{2}:\d{2}$/.test(end)) return res.status(400).json({ error: 'Heure de départ invalide' });
-    outTs = tsFromDateTime(date, end);
-    if (Number.isNaN(outTs)) return res.status(400).json({ error: 'Heure de départ invalide' });
-    if (outTs <= inTs) outTs += DAY_MS; // départ après minuit → lendemain
-  }
-  db.prepare(
-    'INSERT INTO time_entries (employee_id, clock_in, clock_out, ended_by) VALUES (?, ?, ?, ?)'
-  ).run(emp.id, inTs, outTs, outTs != null ? 'manual' : null);
-
-  const entries = todayEntries(emp.id);
-  res.json({
-    name: emp.name, date, start, end: end || null,
-    todaySeconds: workedSeconds(entries),
-  });
-});
-
-// Arrivée groupée : une même heure d'arrivée pour plusieurs salariés (arrivée
-// seule, départ à compléter ensuite).
-app.post('/api/entries/bulk', (req, res) => {
-  const { employeeIds, date, start } = req.body || {};
-  if (!Array.isArray(employeeIds) || !employeeIds.length) {
-    return res.status(400).json({ error: 'Aucun salarié sélectionné' });
-  }
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '') || !/^\d{2}:\d{2}$/.test(start || '')) {
-    return res.status(400).json({ error: "Date ou heure d'arrivée invalide" });
-  }
-  const inTs = tsFromDateTime(date, start);
-  if (Number.isNaN(inTs)) return res.status(400).json({ error: 'Date ou heure invalide' });
-  const ins = db.prepare('INSERT INTO time_entries (employee_id, clock_in, clock_out, ended_by) VALUES (?, ?, NULL, NULL)');
-  let count = 0;
-  db.transaction(() => {
-    for (const id of employeeIds) {
-      const emp = db.prepare('SELECT id FROM employees WHERE id = ? AND active = 1').get(Number(id));
-      if (emp) { ins.run(emp.id, inTs); count++; }
-    }
-  })();
-  res.json({ ok: true, count });
-});
-
-// Liste des pointages récents de l'employé (consultation / modification).
-app.post('/api/my-entries', (req, res) => {
-  const { employeeId, pin } = req.body || {};
-  const auth = authEmployee(employeeId, pin);
-  if (auth.error) return res.status(auth.status).json({ error: auth.error });
-  const emp = auth.emp;
-
-  const from = Date.now() - 30 * 24 * 60 * 60 * 1000;
-  const rows = db.prepare(
-    'SELECT * FROM time_entries WHERE employee_id = ? AND clock_in >= ? ORDER BY clock_in DESC'
-  ).all(emp.id, from);
-
-  res.json({
-    name: emp.name,
-    editWindowDays: EDIT_WINDOW_DAYS,
-    entries: rows.map((r) => {
-      const b = segmentBreakdown(r);
-      return {
-        id: r.id,
-        clockIn: r.clock_in,
-        clockOut: r.clock_out,
-        open: r.clock_out == null,
-        grossSeconds: Math.floor(b.grossMs / 1000),
-        breakSeconds: Math.floor(b.breakMs / 1000),
-        netSeconds: Math.floor(b.netMs / 1000),
-        editable: isEditable(r.clock_in),
-      };
-    }),
-  });
-});
-
-// Modification d'un pointage déjà enregistré (verrouillé au-delà de 7 jours).
-app.put('/api/my-entries/:id', (req, res) => {
-  const { employeeId, pin, date, start, end } = req.body || {};
-  const auth = authEmployee(employeeId, pin);
-  if (auth.error) return res.status(auth.status).json({ error: auth.error });
-  const emp = auth.emp;
-
-  const entry = db.prepare(
-    'SELECT * FROM time_entries WHERE id = ? AND employee_id = ?'
-  ).get(Number(req.params.id), emp.id);
-  if (!entry) return res.status(404).json({ error: 'Pointage introuvable' });
-  if (!isEditable(entry.clock_in)) {
-    return res.status(403).json({
-      error: `Ce pointage a plus de ${EDIT_WINDOW_DAYS} jours et ne peut plus être modifié.`,
-    });
-  }
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '') || !/^\d{2}:\d{2}$/.test(start || '')) {
-    return res.status(400).json({ error: "Date ou heure d'arrivée invalide" });
-  }
-  const inTs = tsFromDateTime(date, start);
-  if (Number.isNaN(inTs)) return res.status(400).json({ error: 'Date ou heure invalide' });
-
-  let outTs = null;
-  if (end) {
-    if (!/^\d{2}:\d{2}$/.test(end)) {
-      return res.status(400).json({ error: 'Heure de départ invalide' });
-    }
-    outTs = tsFromDateTime(date, end);
-    if (Number.isNaN(outTs)) return res.status(400).json({ error: 'Heure de départ invalide' });
-    if (outTs <= inTs) outTs += DAY_MS; // départ après minuit → lendemain
-  }
-
-  db.prepare('UPDATE time_entries SET clock_in = ?, clock_out = ?, ended_by = ? WHERE id = ?')
-    .run(inTs, outTs, outTs != null ? 'manual' : null, entry.id);
-  res.json({ ok: true });
-});
-
-// Suppression d'un de ses pointages (verrouillé au-delà de 7 jours).
-app.delete('/api/my-entries/:id', (req, res) => {
-  const { employeeId, pin } = req.body || {};
-  const auth = authEmployee(employeeId, pin);
-  if (auth.error) return res.status(auth.status).json({ error: auth.error });
-  const entry = db.prepare(
-    'SELECT * FROM time_entries WHERE id = ? AND employee_id = ?'
-  ).get(Number(req.params.id), auth.emp.id);
-  if (!entry) return res.status(404).json({ error: 'Pointage introuvable' });
-  if (!isEditable(entry.clock_in)) {
-    return res.status(403).json({
-      error: `Ce pointage a plus de ${EDIT_WINDOW_DAYS} jours et ne peut plus être supprimé.`,
-    });
-  }
-  db.prepare('DELETE FROM time_entries WHERE id = ?').run(entry.id);
-  res.json({ ok: true });
-});
+// Catégories de salariés (cuisine).
+const CATEGORIES = ['chef', 'manager', 'chef_de_partie', 'cuisinier', 'apprenti', 'plongeur'];
+const DEFAULT_CATEGORY = 'cuisinier';
 
 // =========================================================================
 //  API ADMIN
@@ -553,40 +212,12 @@ app.put('/api/admin/establishment', requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-// --- Pauses obligatoires (config) -----------------------------------------
-
-app.get('/api/admin/breaks', requireAdmin, (req, res) => {
-  res.json(getBreakWindows());
-});
-
-app.put('/api/admin/breaks', requireAdmin, (req, res) => {
-  const windows = Array.isArray(req.body) ? req.body : (req.body && req.body.windows);
-  if (!Array.isArray(windows)) {
-    return res.status(400).json({ error: 'Format invalide' });
-  }
-  const clean = [];
-  for (const w of windows) {
-    if (!/^\d{2}:\d{2}$/.test(w.start) || !/^\d{2}:\d{2}$/.test(w.end)) {
-      return res.status(400).json({ error: 'Format des horaires invalide (attendu HH:MM)' });
-    }
-    const [sh, sm] = w.start.split(':').map(Number);
-    const [eh, em] = w.end.split(':').map(Number);
-    if (sh > 23 || eh > 23 || sm > 59 || em > 59) {
-      return res.status(400).json({ error: 'Horaire invalide' });
-    }
-    if (eh * 60 + em <= sh * 60 + sm) {
-      return res.status(400).json({ error: 'La fin doit être après le début' });
-    }
-    clean.push({ start: w.start, end: w.end });
-  }
-  setSetting('break_windows', JSON.stringify(clean));
-  res.json({ ok: true, windows: clean });
-});
-
 // --- Gestion des employés -------------------------------------------------
 
 function parseRestDays(s) {
-  return String(s || '').split(',').map((x) => x.trim()).filter((x) => x !== '').map(Number).filter((n) => Number.isInteger(n) && n >= 0 && n <= 6);
+  // filtre les chaînes vides AVANT Number() : Number('') vaut 0 (= dimanche !)
+  return String(s || '').split(',').map((x) => x.trim()).filter((x) => x !== '')
+    .map(Number).filter((n) => Number.isInteger(n) && n >= 0 && n <= 6);
 }
 
 // Jours de repos HISTORISÉS : liste de périodes { from:'AAAA-MM-JJ', days:[...] }.
@@ -611,9 +242,29 @@ function restDaysOn(periods, dateStr) {
   return best ? best.days : [];
 }
 
+// Postes de cuisine. Préférences par salarié : 1 = poste principal,
+// 2 = bon pour le poste, 3 = dépannage, 4/non renseigné = jamais
+// (seuls 1 à 3 sont stockés ; « jamais » = clé absente).
+const POSTE_KEYS = ['grillade', 'garnitures', 'volant', 'froid', 'plonge'];
+// Valeurs acceptées pour une affectation manuelle (+ renfort « mise en place »).
+const POSTE_ASSIGN_VALUES = [...POSTE_KEYS, 'mise_en_place'];
+function parsePostes(raw) {
+  try {
+    const v = JSON.parse(raw || '{}');
+    const out = {};
+    if (v && typeof v === 'object') {
+      for (const k of POSTE_KEYS) {
+        const n = Number(v[k]);
+        if (Number.isInteger(n) && n >= 1 && n <= 3) out[k] = n;
+      }
+    }
+    return out;
+  } catch { return {}; }
+}
+
 app.get('/api/admin/employees', requireAdmin, (req, res) => {
   const rows = db.prepare(
-    'SELECT id, name, category, rest_days, continuous_service, sort_order, active, end_date, created_at FROM employees ORDER BY active DESC, sort_order ASC, name COLLATE NOCASE'
+    'SELECT id, name, category, rest_days, continuous_service, sort_order, active, end_date, created_at, postes FROM employees ORDER BY active DESC, sort_order ASC, name COLLATE NOCASE'
   ).all();
   const today = localDay(Date.now());
   res.json(rows.map((r) => {
@@ -629,6 +280,7 @@ app.get('/api/admin/employees', requireAdmin, (req, res) => {
       restDays: restDaysOn(periods, today), // applicables aujourd'hui (affichage profil)
       restPeriods: periods, // historique complet (utilisé par le planning, par jour)
       continuous: !!r.continuous_service,
+      postes: parsePostes(r.postes), // préférences de poste (1..3 par poste)
     };
   }));
 });
@@ -643,17 +295,15 @@ app.put('/api/admin/employees/order', requireAdmin, (req, res) => {
 });
 
 app.post('/api/admin/employees', requireAdmin, (req, res) => {
-  const { name, pin, category } = req.body || {};
+  const { name, category } = req.body || {};
   if (!name || !String(name).trim()) {
     return res.status(400).json({ error: 'Le nom est obligatoire' });
   }
-  // Le PIN a été retiré : non requis. On conserve une valeur par défaut en
-  // base (au cas où le PIN serait réactivé un jour).
-  const pinValue = /^\d{4}$/.test(String(pin || '')) ? String(pin) : '0000';
-  const cat = CATEGORIES.includes(category) ? category : 'chef_de_rang';
+  const cat = CATEGORIES.includes(category) ? category : DEFAULT_CATEGORY;
+  // pin_hash conservé dans le schéma (hérité de l'appli pointage) : valeur neutre.
   const info = db.prepare(
     'INSERT INTO employees (name, pin_hash, category, active, created_at) VALUES (?, ?, ?, 1, ?)'
-  ).run(String(name).trim(), hashSecret(pinValue), cat, Date.now());
+  ).run(String(name).trim(), hashSecret('0000'), cat, Date.now());
   res.json({ id: info.lastInsertRowid });
 });
 
@@ -662,7 +312,7 @@ app.put('/api/admin/employees/:id', requireAdmin, (req, res) => {
   const emp = db.prepare('SELECT * FROM employees WHERE id = ?').get(id);
   if (!emp) return res.status(404).json({ error: 'Employé introuvable' });
 
-  const { name, pin, active, category } = req.body || {};
+  const { name, active, category } = req.body || {};
   if (name !== undefined && String(name).trim()) {
     db.prepare('UPDATE employees SET name = ? WHERE id = ?').run(String(name).trim(), id);
   }
@@ -684,11 +334,15 @@ app.put('/api/admin/employees/:id', requireAdmin, (req, res) => {
   if (req.body && req.body.continuous !== undefined) {
     db.prepare('UPDATE employees SET continuous_service = ? WHERE id = ?').run(req.body.continuous ? 1 : 0, id);
   }
-  if (pin !== undefined && pin !== '') {
-    if (!/^\d{4}$/.test(String(pin))) {
-      return res.status(400).json({ error: 'Le PIN doit comporter exactement 4 chiffres' });
+  if (req.body && req.body.postes !== undefined) {
+    const clean = {};
+    if (req.body.postes && typeof req.body.postes === 'object') {
+      for (const k of POSTE_KEYS) {
+        const n = Number(req.body.postes[k]);
+        if (Number.isInteger(n) && n >= 1 && n <= 3) clean[k] = n;
+      }
     }
-    db.prepare('UPDATE employees SET pin_hash = ? WHERE id = ?').run(hashSecret(pin), id);
+    db.prepare('UPDATE employees SET postes = ? WHERE id = ?').run(JSON.stringify(clean), id);
   }
   if (active !== undefined) {
     if (!active) {
@@ -708,12 +362,12 @@ app.put('/api/admin/employees/:id', requireAdmin, (req, res) => {
 
 app.delete('/api/admin/employees/:id', requireAdmin, (req, res) => {
   const id = Number(req.params.id);
-  // Désactivation (on conserve l'historique des pointages).
+  // Désactivation (on conserve l'historique du planning).
   db.prepare('UPDATE employees SET active = 0 WHERE id = ?').run(id);
   res.json({ ok: true });
 });
 
-// --- Saisie d'horaires côté admin (depuis le planning) --------------------
+// --- Saisie d'horaires (depuis le planning) -------------------------------
 
 app.post('/api/admin/entries', requireAdmin, (req, res) => {
   const { employeeId, date, start, end } = req.body || {};
@@ -737,6 +391,29 @@ app.post('/api/admin/entries', requireAdmin, (req, res) => {
     'INSERT INTO time_entries (employee_id, clock_in, clock_out, ended_by) VALUES (?, ?, ?, ?)'
   ).run(emp.id, inTs, outTs, outTs != null ? 'manual' : null);
   res.json({ ok: true });
+});
+
+// Arrivée groupée : une même heure d'arrivée pour plusieurs salariés (arrivée
+// seule, départ à compléter ensuite). Réservé à l'admin dans cette appli.
+app.post('/api/entries/bulk', requireAdmin, (req, res) => {
+  const { employeeIds, date, start } = req.body || {};
+  if (!Array.isArray(employeeIds) || !employeeIds.length) {
+    return res.status(400).json({ error: 'Aucun salarié sélectionné' });
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '') || !/^\d{2}:\d{2}$/.test(start || '')) {
+    return res.status(400).json({ error: "Date ou heure d'arrivée invalide" });
+  }
+  const inTs = tsFromDateTime(date, start);
+  if (Number.isNaN(inTs)) return res.status(400).json({ error: 'Date ou heure invalide' });
+  const ins = db.prepare('INSERT INTO time_entries (employee_id, clock_in, clock_out, ended_by) VALUES (?, ?, NULL, NULL)');
+  let count = 0;
+  db.transaction(() => {
+    for (const id of employeeIds) {
+      const emp = db.prepare('SELECT id FROM employees WHERE id = ? AND active = 1').get(Number(id));
+      if (emp) { ins.run(emp.id, inTs); count++; }
+    }
+  })();
+  res.json({ ok: true, count });
 });
 
 // Corriger une période existante : heure d'arrivée et/ou de départ.
@@ -767,15 +444,15 @@ app.put('/api/admin/entries/:id', requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-// Suppression d'une période (côté admin, depuis le planning).
+// Suppression d'une période (depuis le planning).
 app.delete('/api/admin/entries/:id', requireAdmin, (req, res) => {
   const info = db.prepare('DELETE FROM time_entries WHERE id = ?').run(Number(req.params.id));
   res.json({ ok: true, deleted: info.changes });
 });
 
-// --- Statuts de journée (CP / AM / École) ---------------------------------
+// --- Statuts de journée (CP / AM / École / …) ------------------------------
 
-const DAY_STATUSES = ['cp', 'am', 'ecole', 'absent', 'repos', 'demi_midi', 'demi_soir', 'echange_midi', 'echange_soir', 'echange_both'];
+const DAY_STATUSES = ['cp', 'am', 'ecole', 'absent', 'repos', 'demi_midi', 'demi_soir', 'echange_midi', 'echange_soir', 'echange_both', 'extra_midi', 'extra_soir', 'extra_both'];
 
 app.get('/api/admin/day-statuses', requireAdmin, (req, res) => {
   const { from, to } = req.query;
@@ -801,7 +478,7 @@ app.put('/api/admin/day-status', requireAdmin, (req, res) => {
   if (!DAY_STATUSES.includes(status)) {
     return res.status(400).json({ error: 'Statut invalide' });
   }
-  if (status === 'ecole' && (emp.category || 'chef_de_rang') !== 'apprenti') {
+  if (status === 'ecole' && (emp.category || DEFAULT_CATEGORY) !== 'apprenti') {
     return res.status(400).json({ error: "Le statut « École » est réservé aux apprentis." });
   }
   db.prepare(`
@@ -856,14 +533,145 @@ app.put('/api/admin/day-status/range', requireAdmin, (req, res) => {
     for (const id of employeeIds) {
       const emp = db.prepare('SELECT id, category FROM employees WHERE id = ? AND active = 1').get(Number(id));
       if (!emp) continue;
-      if (status === 'ecole' && (emp.category || 'chef_de_rang') !== 'apprenti') { skippedEcole++; continue; }
+      if (status === 'ecole' && (emp.category || DEFAULT_CATEGORY) !== 'apprenti') { skippedEcole++; continue; }
       for (const d of days) { up.run(emp.id, d, status); count++; }
     }
   })();
   res.json({ ok: true, count, skippedEcole });
 });
 
-// --- Rapports -------------------------------------------------------------
+// --- Affectation manuelle des postes (par jour et par service) -------------
+
+app.get('/api/admin/poste-assigns', requireAdmin, (req, res) => {
+  const { from, to } = req.query;
+  if (!from || !to) return res.status(400).json({ error: 'Période manquante' });
+  res.json(db.prepare(
+    'SELECT employee_id AS employeeId, day, service, poste FROM poste_assign WHERE day >= ? AND day <= ?'
+  ).all(from, to));
+});
+
+// poste null/vide → on efface l'affectation manuelle (retour à l'automatique).
+app.put('/api/admin/poste-assign', requireAdmin, (req, res) => {
+  const { employeeId, date, service, poste } = req.body || {};
+  const emp = db.prepare('SELECT id FROM employees WHERE id = ?').get(Number(employeeId));
+  if (!emp) return res.status(404).json({ error: 'Employé introuvable' });
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) return res.status(400).json({ error: 'Date invalide' });
+  if (service !== 'midi' && service !== 'soir') return res.status(400).json({ error: 'Service invalide' });
+  if (poste === null || poste === undefined || poste === '') {
+    db.prepare('DELETE FROM poste_assign WHERE employee_id = ? AND day = ? AND service = ?').run(emp.id, date, service);
+    return res.json({ ok: true, cleared: true });
+  }
+  if (!POSTE_ASSIGN_VALUES.includes(poste)) return res.status(400).json({ error: 'Poste invalide' });
+  db.prepare(`
+    INSERT INTO poste_assign (employee_id, day, service, poste) VALUES (?, ?, ?, ?)
+    ON CONFLICT(employee_id, day, service) DO UPDATE SET poste = excluded.poste
+  `).run(emp.id, date, service, poste);
+  res.json({ ok: true });
+});
+
+// Bouton ↻ d'une colonne : efface toutes les affectations manuelles du jour,
+// le planning repasse en affectation automatique selon les préférences.
+app.post('/api/admin/poste-assigns/reset', requireAdmin, (req, res) => {
+  const { date } = req.body || {};
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) return res.status(400).json({ error: 'Date invalide' });
+  const info = db.prepare('DELETE FROM poste_assign WHERE day = ?').run(date);
+  res.json({ ok: true, cleared: info.changes });
+});
+
+// --- Semaine type (modèle hebdomadaire récurrent, historisé) ---------------
+// Setting `week_templates` : liste de périodes { from:'AAAA-MM-JJ', shifts:{
+//   <employeeId>: { <jour 0=dim..6=sam>: { start:'HH:MM', end:'HH:MM', demi:'midi'|'soir'|null } } } }.
+// La période applicable à une date = dernière dont from <= date (comme les repos).
+// Les jours de repos complets ne sont PAS dans le modèle (gérés par les profils).
+function readTemplates() {
+  try {
+    const v = JSON.parse(getSetting('week_templates') || '[]');
+    return Array.isArray(v) ? v : [];
+  } catch { return []; }
+}
+function templateOn(dateStr) {
+  let best = null;
+  for (const t of readTemplates()) {
+    if (t && /^\d{4}-\d{2}-\d{2}$/.test(t.from || '') && t.from <= dateStr && (!best || t.from > best.from)) best = t;
+  }
+  return best;
+}
+
+app.get('/api/admin/week-template', requireAdmin, (req, res) => {
+  res.json(readTemplates());
+});
+
+app.put('/api/admin/week-template', requireAdmin, (req, res) => {
+  const periods = req.body && req.body.periods;
+  if (!Array.isArray(periods)) return res.status(400).json({ error: 'Format invalide' });
+  for (const p of periods) {
+    if (!p || !/^\d{4}-\d{2}-\d{2}$/.test(p.from || '') || typeof p.shifts !== 'object') {
+      return res.status(400).json({ error: 'Période invalide (from + shifts requis)' });
+    }
+  }
+  setSetting('week_templates', JSON.stringify(periods));
+  res.json({ ok: true, count: periods.length });
+});
+
+// Remplit une plage de jours avec la semaine type : crée les horaires fixes et
+// pose les statuts « demi ». Un jour déjà rempli (horaires OU statut) est laissé
+// tel quel. Les jours de repos du profil sont ignorés (sécurité).
+app.post('/api/admin/apply-template', requireAdmin, (req, res) => {
+  const { from, to } = req.body || {};
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from || '') || !/^\d{4}-\d{2}-\d{2}$/.test(to || '')) {
+    return res.status(400).json({ error: 'Période invalide' });
+  }
+  const days = [];
+  const cur = new Date(`${from}T12:00:00`); const end = new Date(`${to}T12:00:00`);
+  while (cur <= end) { days.push(localDay(cur.getTime())); cur.setDate(cur.getDate() + 1); }
+
+  const employees = db.prepare('SELECT * FROM employees').all();
+  const byId = new Map(employees.map((e) => [String(e.id), e]));
+  const hasStatus = db.prepare('SELECT 1 FROM day_status WHERE employee_id = ? AND day = ?');
+  const insEntry = db.prepare('INSERT INTO time_entries (employee_id, clock_in, clock_out, ended_by) VALUES (?, ?, ?, ?)');
+  const upStatus = db.prepare(`
+    INSERT INTO day_status (employee_id, day, status) VALUES (?, ?, ?)
+    ON CONFLICT(employee_id, day) DO UPDATE SET status = excluded.status
+  `);
+  const hasEntries = db.prepare('SELECT 1 FROM time_entries WHERE employee_id = ? AND clock_in >= ? AND clock_in < ? LIMIT 1');
+
+  let created = 0; let demis = 0; let skipped = 0;
+  db.transaction(() => {
+    for (const day of days) {
+      const tpl = templateOn(day);
+      if (!tpl || !tpl.shifts) continue;
+      const wd = String(new Date(`${day}T12:00:00`).getDay());
+      for (const [empId, byWd] of Object.entries(tpl.shifts)) {
+        const sh = byWd && byWd[wd];
+        if (!sh || !/^\d{2}:\d{2}$/.test(sh.start || '')) continue;
+        const emp = byId.get(String(empId));
+        if (!emp) continue;
+        if (!emp.active && !(emp.end_date && emp.end_date >= day)) continue;
+        // Repos au profil ce jour-là → on ne crée rien (cohérence).
+        if (restDaysOn(parseRestPeriods(emp.rest_days), day).includes(Number(wd))) continue;
+        // Jour déjà rempli (statut ou horaires) → conservé tel quel.
+        if (hasStatus.get(emp.id, day)) { skipped++; continue; }
+        const f = businessDayStart(day);
+        if (hasEntries.get(emp.id, f, f + DAY_MS)) { skipped++; continue; }
+        const inTs = tsFromDateTime(day, sh.start);
+        let outTs = null;
+        if (/^\d{2}:\d{2}$/.test(sh.end || '')) {
+          outTs = tsFromDateTime(day, sh.end);
+          if (outTs <= inTs) outTs += DAY_MS; // fin après minuit → lendemain
+        }
+        insEntry.run(emp.id, inTs, outTs, outTs != null ? 'manual' : null);
+        created++;
+        if (sh.demi === 'midi' || sh.demi === 'soir') {
+          upStatus.run(emp.id, day, sh.demi === 'midi' ? 'demi_midi' : 'demi_soir');
+          demis++;
+        }
+      }
+    }
+  })();
+  res.json({ ok: true, created, demis, skipped });
+});
+
+// --- Données du planning ---------------------------------------------------
 
 function buildReport({ from, to, employeeId }) {
   // Bornes selon la journée de travail : du début du jour 'from' (05:00)
@@ -947,106 +755,25 @@ app.get('/api/admin/report', requireAdmin, (req, res) => {
   res.json(buildReport({ from, to, employeeId }));
 });
 
-app.get('/api/admin/report.csv', requireAdmin, (req, res) => {
-  const { from, to, employeeId } = req.query;
-  if (!from || !to) return res.status(400).json({ error: 'Période manquante' });
-
-  const fmtH = (s) => (s ? `${Math.floor(s / 3600)}h${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}` : '');
-  const dayList = (a, b) => {
-    const out = []; const cur = new Date(`${a}T12:00:00`); const end = new Date(`${b}T12:00:00`);
-    while (cur <= end) { out.push(localDay(cur.getTime())); cur.setDate(cur.getDate() + 1); }
-    return out;
-  };
-  const addDays = (iso, n) => { const d = new Date(`${iso}T12:00:00`); d.setDate(d.getDate() + n); return localDay(d.getTime()); };
-
-  // Fenêtre élargie (±4 semaines) pour le report d'échange multi-semaines (même logique que le tableau à l'écran).
-  const extFrom = addDays(from, -28), extTo = addDays(to, 28);
-  const report = buildReport({ from: extFrom, to: extTo, employeeId });
-  const repById = new Map(report.map((e) => [e.employeeId, e]));
-
-  const stat = new Map();
-  for (const s of db.prepare('SELECT employee_id, day, status FROM day_status WHERE day >= ? AND day <= ?').all(extFrom, extTo)) {
-    stat.set(s.employee_id + '|' + s.day, s.status);
-  }
-
-  const AWAY = ['cp', 'am', 'absent', 'ecole'];
-  const SHORT = { cp: 'CP', am: 'AM', ecole: 'École', absent: 'Abs' };
-  const extDays = dayList(extFrom, extTo);
-  const dispDays = dayList(from, to);
-
-  let emps = db.prepare('SELECT id, name, rest_days, active, end_date, sort_order FROM employees').all()
-    .filter((e) => e.active || (e.end_date && e.end_date >= from) || repById.has(e.id));
-  if (employeeId) emps = emps.filter((e) => String(e.id) === String(employeeId));
-  emps.sort((a, b) => (a.sort_order - b.sort_order) || a.name.localeCompare(b.name));
-
-  const jj = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
-  const labels = dispDays.map((d) => {
-    const dt = new Date(`${d}T12:00:00`);
-    return `${jj[dt.getDay()]} ${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}`;
-  });
-
-  const lines = ['Salarié;' + labels.join(';') + ';Total'];
-  const dayTot = {}; dispDays.forEach((d) => { dayTot[d] = 0; }); let grand = 0;
-
-  for (const emp of emps) {
-    const periods = parseRestPeriods(emp.rest_days);
-    const secByDay = new Map(((repById.get(emp.id) || {}).days || []).map((x) => [x.day, x.seconds]));
-    const info = new Map();
-    for (const d of extDays) {
-      const wd = new Date(`${d}T12:00:00`).getDay();
-      const status = stat.get(emp.id + '|' + d);
-      const isRest = restDaysOn(periods, d).includes(wd) || status === 'repos';
-      info.set(d, { sec: secByDay.get(d) || 0, status, isRest, carriedFrom: null, carriedTo: null });
-    }
-    // Report des échanges : heures d'un jour de repos → 1er jour vide (avant/après).
-    const used = new Set();
-    for (const exDay of extDays) {
-      const it = info.get(exDay);
-      if (!(it.isRest && it.sec > 0)) continue;
-      const idx = extDays.indexOf(exDay);
-      let target = null;
-      for (let k = 1; k < extDays.length && !target; k++) {
-        for (const j of [idx - k, idx + k]) {
-          if (j < 0 || j >= extDays.length) continue;
-          const dd = extDays[j];
-          if (used.has(dd)) continue;
-          const t = info.get(dd);
-          if (!t.isRest && !AWAY.includes(t.status) && t.sec === 0 && !t.carriedFrom) { target = dd; break; }
-        }
-      }
-      if (target) { used.add(target); const t = info.get(target); t.sec = it.sec; t.carriedFrom = exDay; it.carriedTo = target; it.sec = 0; }
-    }
-    let tot = 0;
-    const cells = dispDays.map((d) => {
-      const it = info.get(d);
-      if (it.sec > 0) { dayTot[d] += it.sec; tot += it.sec; return fmtH(it.sec) + (it.carriedFrom ? ' (éch)' : ''); }
-      if (AWAY.includes(it.status)) return SHORT[it.status];
-      if (it.isRest) return 'Repos';
-      return '';
-    });
-    grand += tot;
-    lines.push([emp.name, ...cells, fmtH(tot)].join(';'));
-  }
-  lines.push(['Total / jour', ...dispDays.map((d) => fmtH(dayTot[d])), fmtH(grand)].join(';'));
-
-  const csv = '﻿' + lines.join('\r\n'); // BOM pour Excel
-  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  res.setHeader('Content-Disposition', `attachment; filename="heures_${from}_${to}.csv"`);
-  res.send(csv);
-});
-
 // =========================================================================
 //  Sauvegarde automatique
 // =========================================================================
 
-// À CHAQUE démarrage, copie horodatée (date + heure) de la base dans ./backups,
-// en conservant les BACKUP_KEEP dernières. Ne supprime jamais la base courante.
-// Chaque redémarrage crée ainsi un point de restauration.
-// En production, pointer BACKUP_DIR vers le disque persistant (ex. /var/data/backups).
-const BACKUP_DIR = process.env.BACKUP_DIR || path.join(__dirname, 'backups');
-const BACKUP_KEEP = 30;
+// Copie horodatée (date + heure) de la base dans ./backups, en conservant les
+// BACKUP_KEEP dernières. Ne supprime jamais la base courante. Lancée à CHAQUE
+// démarrage PUIS toutes les heures pendant que le serveur tourne : les saisies
+// faites entre deux redémarrages ont ainsi toujours un point de restauration.
+// Dossier de sauvegardes cuisine, SÉPARÉ de celui du pointage (sinon les deux
+// applis élagueraient mutuellement leurs sauvegardes). En production : sous-
+// dossier « cuisine » du disque persistant du pointage (dérivé de BACKUP_DIR).
+const BACKUP_DIR = process.env.CUISINE_BACKUP_DIR
+  || (process.env.BACKUP_DIR
+    ? path.join(process.env.BACKUP_DIR, 'cuisine')
+    : path.join(__dirname, 'backups'));
+const BACKUP_KEEP = 60;
+const BACKUP_EVERY_MS = 60 * 60 * 1000; // 1 h
 
-function backupOnStart() {
+function backupNow() {
   try {
     fs.mkdirSync(BACKUP_DIR, { recursive: true });
     const d = new Date();
@@ -1069,9 +796,18 @@ function backupOnStart() {
   }
 }
 
-app.listen(PORT, () => {
-  backupOnStart();
-  console.log(`\n  Pointage horaire — serveur démarré`);
-  console.log(`  Pointage : http://localhost:${PORT}/`);
-  console.log(`  Admin    : http://localhost:${PORT}/admin.html\n`);
-});
+// Sauvegardes : lancées au chargement du module (que l'appli tourne seule OU
+// qu'elle soit montée dans le pointage) puis toutes les heures.
+backupNow();
+setInterval(backupNow, BACKUP_EVERY_MS);
+
+// Cette appli est conçue pour être MONTÉE dans le serveur du pointage
+// (app.use('/cuisine', require('./cuisine/server'))). On exporte donc l'app.
+// Si elle est lancée seule (`node cuisine/server.js`), elle écoute sur son port.
+module.exports = app;
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`\n  Planning cuisine — serveur démarré`);
+    console.log(`  Planning : http://localhost:${PORT}/ (sauvegarde auto toutes les heures)\n`);
+  });
+}

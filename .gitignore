@@ -6,3 +6,7 @@ backups/
 cloudflared
 cloudflared.tgz
 *.command
+
+# Sidecars WAL du seed cuisine (le seed.db suffit)
+seed.db-wal
+seed.db-shm

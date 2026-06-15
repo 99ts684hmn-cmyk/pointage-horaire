@@ -53,15 +53,6 @@ body {
 .topbar a { color: var(--cream); text-decoration: none; font-size: .9rem; opacity: .85; }
 .topbar a:hover { color: var(--gold); opacity: 1; }
 .topbar a:hover { color: #fff; }
-/* Côté gauche en colonne : logo, puis bouton « Cuisine » dessous. */
-.topbar .brand-col { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
-.topbar a.cuisine-btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  background: var(--gold); color: #1f2120; opacity: 1;
-  padding: 5px 14px; border-radius: 999px; font-size: .82rem; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .04em;
-}
-.topbar a.cuisine-btn:hover { color: #1f2120; filter: brightness(1.08); }
 
 .container { max-width: 1040px; margin: 0 auto; padding: 8px 20px 60px; }
 
@@ -227,13 +218,7 @@ td.num { font-variant-numeric: tabular-nums; }
 .planning .pl-day-head { width: 82px; }
 .planning thead th:last-child { width: 48px; }
 .planning thead th { background: #1f2120; color: var(--cream); font-weight: 600; text-transform: none; letter-spacing: 0; }
-.planning .pl-name {
-  width: 80px; text-align: left; font-weight: 600; background: #faf3e8;
-  /* Colonne des noms figée : reste visible quand on fait défiler les jours (mobile). */
-  position: sticky; left: 0; z-index: 2;
-  box-shadow: 1px 0 0 var(--border); /* séparateur droit toujours visible pendant le défilement */
-}
-.planning thead th.pl-name { z-index: 3; } /* coin haut-gauche au-dessus des autres */
+.planning .pl-name { width: 80px; text-align: left; font-weight: 600; background: #faf3e8; }
 /* Rangées salariés : séparateurs horizontaux noirs sur toute la largeur (jusqu'à Total). */
 .planning tbody tr.pl-emp-row > td { border-top-color: #1f2120; border-bottom-color: #1f2120; }
 .pl-name-inner { display: flex; align-items: center; justify-content: space-between; gap: 5px; }
@@ -374,6 +359,16 @@ td.num { font-variant-numeric: tabular-nums; }
 .st-btn.st-demi { background: #fff0d6; color: #6b4e00; }
 .st-btn.st-echange, .ech-btn.st-echange { background: #fde8c0; color: #8a5a00; }
 .ech-btn.active { background: #f0b429; color: #3a2a00; box-shadow: inset 0 0 0 2px #8a5a00; }
+/* Boutons « Extra midi / soir » de l'éditeur (cochables, comme les Échanges). */
+.exb-btn.st-extra { background: #ffe9b8; color: #8a5a00; }
+.exb-btn.active { box-shadow: inset 0 0 0 2px currentColor; font-weight: 800; }
+.exb-btn.active::after { content: ' ✓'; }
+/* Badge « EX » : la personne est en extra sur ce service (bord gauche de la demi-case). */
+.pl-ex {
+  position: absolute; left: 1px; top: 50%; transform: translateY(-50%); z-index: 2;
+  background: #fff; border: 1px solid #8a5a00; border-radius: 3px;
+  color: #8a5a00; font-size: .55rem; font-weight: 800; line-height: 1; padding: 1px 2px;
+}
 /* Statut actif : anneau dans la couleur du bouton + coche, pour qu'on voie ce qui est sélectionné (re-clic = enlever). */
 .st-btn.active { box-shadow: inset 0 0 0 2.5px currentColor; font-weight: 800; }
 .st-btn.active::after { content: ' ✓'; }
@@ -407,6 +402,57 @@ td.num { font-variant-numeric: tabular-nums; }
 
 .login-wrap { max-width: 360px; margin: 60px auto; }
 
+/* --- Postes de cuisine : couleurs des cases du planning -------------------
+   grillade marron, garnitures orange, volant rouge, froid bleu, plonge vert.
+   Déclarées en fin de cascade : elles priment sur pl-pres / pl-cont. */
+.pl-half.po-grillade, .po-dot.po-grillade, .po-pick.po-grillade { background: #d3a06b; color: #45290a; }
+.pl-half.po-garnitures, .po-dot.po-garnitures, .po-pick.po-garnitures { background: #fdc26d; color: #7c3a00; }
+.pl-half.po-volant, .po-dot.po-volant, .po-pick.po-volant { background: #f59f9f; color: #7f1d1d; }
+.pl-half.po-froid, .po-dot.po-froid, .po-pick.po-froid { background: #aed0f5; color: #1e3a8a; }
+.pl-half.po-plonge, .po-dot.po-plonge, .po-pick.po-plonge { background: #a9e3bc; color: #14532d; }
+/* Mise en place (rose) : présents au-delà des 6 postes du service. */
+.pl-half.po-mise_en_place, .po-dot.po-mise_en_place, .po-pick.po-mise_en_place { background: #f7c2da; color: #9d174d; }
+/* Affectation manuelle : liseré sombre pour la distinguer de l'automatique. */
+.pl-half.po-manual { box-shadow: inset 0 0 0 1.5px rgba(0, 0, 0, .4); }
+/* « C » : créneau de plus de 7h en continu. Posé en absolu sur le bord droit
+   de la demi-case (comme le « E » d'échange à gauche) pour ne pas ajouter de
+   hauteur ni faire passer les heures à la ligne. */
+.pl-c {
+  position: absolute; right: 1px; top: 50%; transform: translateY(-50%); z-index: 2;
+  background: #fff; border: 1px solid #1f2120;
+  border-radius: 3px; color: #1f2120; font-size: .58rem; font-weight: 800;
+  line-height: 1; padding: 1px 3px;
+}
+.pl-poste { display: block; font-size: .6rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; opacity: .9; line-height: 1.15; }
+/* Demi-case « présent » colorée par un poste : le libellé du poste remplace PM/PS. */
+.pl-half.pl-pres[class*="po-"] { font-size: .68rem; text-transform: uppercase; }
+.poste-legend { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-bottom: 10px; font-size: .85rem; }
+.po-chip { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.po-dot { display: inline-block; width: 13px; height: 13px; border-radius: 3px; }
+.poste-legend-note { color: var(--muted); font-size: .75rem; }
+/* Profil : lignes de préférences de poste */
+.pf-poste-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.pf-poste-lbl { flex: 1; font-size: .92rem; }
+.pf-poste-row select { padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; background: #fff; color: var(--text); font-family: inherit; }
+/* Éditeur de case : boutons de choix du poste (manuel) par service */
+.ce-poste-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0; }
+.ce-poste-svc { flex: 0 0 24px; text-align: center; }
+.po-pick {
+  border: none; border-radius: 999px; padding: 7px 11px; font-size: .78rem;
+  font-weight: 700; cursor: pointer; font-family: inherit; transition: filter .1s;
+}
+.po-pick:hover { filter: brightness(1.06); }
+.po-pick.active { box-shadow: inset 0 0 0 2px currentColor; }
+.po-pick.active::after { content: ' ✓'; }
+.po-pick-auto { background: #f1f5f9; color: var(--text); font-weight: 600; }
+/* Ligne des boutons ↻ (réaffectation du jour) */
+.pl-reassign-row td { padding: 3px 4px; }
+.pl-reassign {
+  border: none; background: #f1f5f9; border-radius: 8px; padding: 4px 12px;
+  cursor: pointer; font-size: .95rem; font-family: inherit; color: var(--text);
+}
+.pl-reassign:hover { background: #e2e8f0; }
+
 /* Impression / export PDF : on ne garde que le planning, en paysage. */
 @media print {
   body { background: #fff !important; }
@@ -417,11 +463,25 @@ td.num { font-variant-numeric: tabular-nums; }
   .wk-print-dates { display: inline; font-weight: 400; font-size: .82em; }
   button { display: none !important; }
   .table-wrap { overflow: visible !important; }
-  .planning { min-width: 0; width: 100%; font-size: 9px; }
-  .planning th, .planning td { padding: 3px 4px; }
-  .planning .pl-name { position: static; box-shadow: none; }
-  /* À l'impression : noms + jours + horaires + ligne des présents (sans totaux). */
+  /* Compact : tout le planning doit tenir sur UNE page A4 paysage. */
+  .planning { min-width: 0; width: 100%; font-size: 8px; }
+  .planning th, .planning td { padding: 1px 3px; }
+  .planning .pl-name { position: static; }
+  .planning .pl-cell { line-height: 1.2; }
+  .pl-half { font-size: 8px; line-height: 1.15; }
+  .pl-half + .pl-half { border-top-width: .5px; }
+  .pl-poste { font-size: 5.5px; letter-spacing: .02em; }
+  .pl-c { font-size: 5.5px; padding: 0 2px; border-width: .5px; }
+  .pl-ex { font-size: 5.5px; padding: 0 2px; border-width: .5px; }
+  .pl-exchange { font-size: 5.5px; }
+  .planning td.pl-rest::after { height: 12px; }
+  .pl-half.pl-demi { min-height: 12px; }
+  /* À l'impression : noms + jours + horaires + présents — sans la ligne Extra,
+     sans les totaux d'heures, sans les légendes ni les boutons ↻. */
   .planning .pl-tot-row { display: none !important; }
+  .planning .pl-reassign-row { display: none !important; }
+  .planning .pl-extra-row { display: none !important; }
+  .poste-legend { display: none !important; }
   .planning thead th:last-child, .planning tbody td:last-child { display: none !important; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   @page { size: A4 landscape; margin: 8mm; }

@@ -66,7 +66,10 @@ function render() {
        </div>`
     : '<span class="pill prog">En cours</span>';
 
-  const tasksHtml = session.tasks.map((t, i) => {
+  // Les tâches cochées descendent en bas (les tâches à faire restent en haut,
+  // dans leur ordre). Tri stable : non-faites d'abord, puis faites.
+  const ordered = [...session.tasks.filter((t) => !t.isDone), ...session.tasks.filter((t) => t.isDone)];
+  const tasksHtml = ordered.map((t, i) => {
     const cls = 'task' + (t.isDone ? ' done' : (t.isCarriedOver ? ' carried' : '')) + (ro ? ' ro' : '');
     const tag = (t.isCarriedOver && !t.isDone) ? `<span class="tagc">↩ Reporté (${esc(t.dayLabel || '')})</span>` : '';
     const at = (t.isDone && t.doneAt) ? `<p class="at">Fait à ${frTime(t.doneAt)}</p>` : '';

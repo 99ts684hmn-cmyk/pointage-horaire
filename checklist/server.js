@@ -52,6 +52,20 @@ const qTemplateTasks = db.prepare('SELECT * FROM tasks WHERE template_id = ? AND
 const qSessionByTmplDate = db.prepare('SELECT * FROM sessions WHERE template_id = ? AND date = ?');
 const qSessionById = db.prepare('SELECT * FROM sessions WHERE id = ?');
 const qCompletions = db.prepare('SELECT * FROM completions WHERE session_id = ?');
+// Completions dont la tâche est encore active (ignore les tâches supprimées).
+const qActiveCompletions = db.prepare('SELECT c.* FROM completions c JOIN tasks t ON t.id = c.task_id WHERE c.session_id = ? AND t.is_active = 1');
+const qActiveTaskIds = db.prepare('SELECT id FROM tasks WHERE template_id = ? AND is_active = 1');
+const insCompletionIgnore = db.prepare('INSERT OR IGNORE INTO completions(id, session_id, task_id, is_done, original_date) VALUES(?, ?, ?, 0, NULL)');
+
+// Crée les completions manquantes pour les tâches actives du template : permet à
+// une session déjà créée de refléter des tâches ajoutées ensuite (remplissage,
+// ajout via l'admin…). À ne PAS appeler pour WEEKLY_CARRY_OVER (completions =
+// tâches du jour + reportées, pas toutes les tâches).
+function ensureCompletions(sessionId, templateId) {
+  const ids = qActiveTaskIds.all(templateId);
+  const tx = db.transaction(() => { for (const t of ids) insCompletionIgnore.run(uid(), sessionId, t.id); });
+  tx();
+}
 
 function createSession(template, date, todayDow) {
   const tasks = qTemplateTasks.all(template.id);
@@ -104,7 +118,8 @@ app.get('/api/sessions', (req, res) => {
     const sessDate = template.reset_mode === 'WEEKLY_MONDAY' ? weekDate : date;
     let session = qSessionByTmplDate.get(template.id, sessDate);
     if (!session) session = createSession(template, sessDate, getDayOfWeek(sessDate));
-    const comps = qCompletions.all(session.id);
+    if (template.reset_mode !== 'WEEKLY_CARRY_OVER') ensureCompletions(session.id, template.id);
+    const comps = qActiveCompletions.all(session.id);
     const totalTasks = comps.length;
     const doneTasks = comps.filter((c) => c.is_done).length;
     const carriedCount = comps.filter((c) => c.original_date !== null).length;
@@ -138,6 +153,7 @@ app.get('/api/sessions/:id', (req, res) => {
   const session = qSessionById.get(req.params.id);
   if (!session) return res.status(404).json({ error: 'Session introuvable' });
   const template = db.prepare('SELECT * FROM templates WHERE id = ?').get(session.template_id);
+  if (template.reset_mode !== 'WEEKLY_CARRY_OVER') ensureCompletions(session.id, template.id);
   const tmplTasks = qTemplateTasks.all(session.template_id);
   const byId = new Map(tmplTasks.map((t) => [t.id, t]));
   const comps = qCompletions.all(session.id);
@@ -186,10 +202,15 @@ app.patch('/api/sessions/:id', (req, res) => {
 
   if (body.action === 'toggle_task') {
     const { taskId, isDone } = body;
-    const c = db.prepare('SELECT * FROM completions WHERE session_id = ? AND task_id = ?').get(sessionId, taskId);
-    if (!c) return res.status(404).json({ error: 'Tâche introuvable' });
-    db.prepare('UPDATE completions SET is_done = ?, done_at = ? WHERE id = ?')
-      .run(isDone ? 1 : 0, isDone ? nowISO() : null, c.id);
+    const c = db.prepare('SELECT id FROM completions WHERE session_id = ? AND task_id = ?').get(sessionId, taskId);
+    if (c) {
+      db.prepare('UPDATE completions SET is_done = ?, done_at = ? WHERE id = ?')
+        .run(isDone ? 1 : 0, isDone ? nowISO() : null, c.id);
+    } else {
+      // Completion absente (tâche ajoutée après la création de la session) : on la crée.
+      db.prepare('INSERT INTO completions(id, session_id, task_id, is_done, done_at, original_date) VALUES(?, ?, ?, ?, ?, NULL)')
+        .run(uid(), sessionId, taskId, isDone ? 1 : 0, isDone ? nowISO() : null);
+    }
     return res.json({ ok: true });
   }
   if (body.action === 'complete') {

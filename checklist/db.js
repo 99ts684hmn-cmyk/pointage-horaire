@@ -190,7 +190,7 @@ function ensureTemplateByType(type, build) {
 }
 
 // Version de schéma/migrations appliquée à cette base (PRAGMA user_version).
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 function seedAndMigrate() {
   const count = db.prepare('SELECT COUNT(*) c FROM templates').get().c;
@@ -228,10 +228,10 @@ function seedAndMigrate() {
   });
   // Nouvelles check-lists de service (onglet « Check-lists »), créées vides :
   // les tâches sont à ajouter ensuite via l'Admin.
-  ensureTemplateByType('OUV_MIDI', () => insertTemplate({ name: 'Ouverture midi', type: 'OUV_MIDI', color: 'bg-amber-400', icon: '☀️', resetMode: 'AUTO_DAILY', order: 9, category: 'general' }));
-  ensureTemplateByType('FERM_MIDI', () => insertTemplate({ name: 'Fermeture midi', type: 'FERM_MIDI', color: 'bg-amber-600', icon: '🍽️', resetMode: 'AUTO_DAILY', order: 10, category: 'general' }));
-  ensureTemplateByType('OUV_SOIR', () => insertTemplate({ name: 'Ouverture soir', type: 'OUV_SOIR', color: 'bg-indigo-400', icon: '🌆', resetMode: 'AUTO_DAILY', order: 11, category: 'general' }));
-  ensureTemplateByType('FERM_SOIR', () => insertTemplate({ name: 'Fermeture soir', type: 'FERM_SOIR', color: 'bg-indigo-600', icon: '🌃', resetMode: 'AUTO_DAILY', order: 12, category: 'general' }));
+  ensureTemplateByType('OUV_MIDI', () => insertTemplate({ name: 'Ouverture midi', type: 'OUV_MIDI', color: 'bg-amber-400', icon: '☀️', resetMode: 'AUTO_DAILY', order: 1, category: 'general' }));
+  ensureTemplateByType('FERM_MIDI', () => insertTemplate({ name: 'Fermeture midi', type: 'FERM_MIDI', color: 'bg-amber-600', icon: '🍽️', resetMode: 'AUTO_DAILY', order: 2, category: 'general' }));
+  ensureTemplateByType('OUV_SOIR', () => insertTemplate({ name: 'Ouverture soir', type: 'OUV_SOIR', color: 'bg-indigo-400', icon: '🌆', resetMode: 'AUTO_DAILY', order: 3, category: 'general' }));
+  ensureTemplateByType('FERM_SOIR', () => insertTemplate({ name: 'Fermeture soir', type: 'FERM_SOIR', color: 'bg-indigo-600', icon: '🌃', resetMode: 'AUTO_DAILY', order: 4, category: 'general' }));
   // Check-lists Bar (onglet « Check-list Bar »), créées vides.
   ensureTemplateByType('BAR_FERM_MIDI_HAUT', () => insertTemplate({ name: 'Fermeture midi bar du haut', type: 'BAR_FERM_MIDI_HAUT', color: 'bg-rose-500', icon: '🍸', resetMode: 'AUTO_DAILY', order: 13, category: 'bar' }));
   ensureTemplateByType('BAR_FERM_MIDI_BAS', () => insertTemplate({ name: 'Fermeture midi bar du bas', type: 'BAR_FERM_MIDI_BAS', color: 'bg-rose-500', icon: '🍹', resetMode: 'AUTO_DAILY', order: 14, category: 'bar' }));
@@ -259,6 +259,16 @@ function seedAndMigrate() {
   // l'app ; l'historique éventuel reste en base. Réversible (réactivable).
   if (version < 3 && !freshDb) {
     db.prepare("UPDATE templates SET is_active = 0 WHERE type IN ('OUVERTURE','FERMETURE','NETTOYAGE','INVENTAIRE')").run();
+  }
+  // Migration 4 : ordre de l'onglet « Check-lists » (service) →
+  // Ouverture midi, Fermeture midi, Ouverture soir, Fermeture soir, Tâches hebdo.
+  if (version < 4 && !freshDb) {
+    const setOrd = db.prepare('UPDATE templates SET ord = ? WHERE type = ?');
+    setOrd.run(1, 'OUV_MIDI');
+    setOrd.run(2, 'FERM_MIDI');
+    setOrd.run(3, 'OUV_SOIR');
+    setOrd.run(4, 'FERM_SOIR');
+    setOrd.run(5, 'HEBDOMADAIRE');
   }
   db.pragma('user_version = ' + SCHEMA_VERSION);
 }

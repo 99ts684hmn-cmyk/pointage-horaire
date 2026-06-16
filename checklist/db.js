@@ -167,40 +167,10 @@ const BRIEF_MANAGER_TASKS = [
   'Traduction en anglais 1 par jour',
 ];
 
-const DEFAULT_TEMPLATES = [
-  {
-    name: 'Ouverture', type: 'OUVERTURE', color: 'bg-amber-500', icon: '🌅', resetMode: 'AUTO_DAILY', order: 1,
-    tasks: [
-      'Ouvrir les volets et portes', 'Allumer les lumières', 'Vérifier la température des frigos',
-      'Mettre en marche la caisse', 'Préparer le plan de salle', 'Vérifier les réservations du jour',
-      'Remplir les condiments et sauces', 'Allumer la musique',
-    ],
-  },
-  {
-    name: 'Fermeture', type: 'FERMETURE', color: 'bg-indigo-500', icon: '🌙', resetMode: 'AUTO_DAILY', order: 2,
-    tasks: [
-      'Fermer la caisse et compter le fond', 'Éteindre les équipements de cuisine',
-      'Ranger les restes et filmer les produits', 'Nettoyer les tables et chaises', 'Vider les poubelles',
-      'Éteindre les lumières', 'Fermer les portes et volets', 'Activer l\'alarme',
-    ],
-  },
-  {
-    name: 'Nettoyage / Hygiène', type: 'NETTOYAGE', color: 'bg-teal-500', icon: '🧹', resetMode: 'CARRY_OVER', order: 3,
-    tasks: [
-      'Nettoyer les sols (cuisine)', 'Nettoyer les plans de travail', 'Dégraisser la friteuse', 'Nettoyer le four',
-      'Nettoyer les WC clients', 'Nettoyer les WC personnel', 'Désinfecter les poignées de portes',
-      'Nettoyer la machine à café', 'Vérifier et nettoyer les hottes', 'Nettoyer le réfrigérateur vitrine',
-    ],
-  },
-  {
-    name: 'Inventaire / Stock', type: 'INVENTAIRE', color: 'bg-orange-500', icon: '📦', resetMode: 'MANUAL', order: 4,
-    tasks: [
-      'Compter les boissons (frigo bar)', 'Vérifier les stocks viandes', 'Vérifier les stocks poissons',
-      'Vérifier les légumes et fruits', 'Vérifier les produits secs', 'Contrôler les DLC produits',
-      'Vérifier les consommables (serviettes, etc.)', 'Commander si stock bas',
-    ],
-  },
-];
+// Les 4 anciennes check-lists d'exemple (Ouverture, Fermeture, Nettoyage,
+// Inventaire) ont été retirées : plus créées sur une base neuve, et désactivées
+// sur les bases existantes (migration 3).
+const DEFAULT_TEMPLATES = [];
 
 function insertTemplate(t) {
   const id = uid();
@@ -220,7 +190,7 @@ function ensureTemplateByType(type, build) {
 }
 
 // Version de schéma/migrations appliquée à cette base (PRAGMA user_version).
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 function seedAndMigrate() {
   const count = db.prepare('SELECT COUNT(*) c FROM templates').get().c;
@@ -283,6 +253,12 @@ function seedAndMigrate() {
   // (sur base existante, la colonne category vient d'être ajoutée à 'general').
   if (version < 2 && !freshDb) {
     db.prepare("UPDATE templates SET category = 'manager' WHERE type IN ('MANAGER_MATIN','MANAGER_HEBDO','BRIEF_MANAGER')").run();
+  }
+  // Migration 3 : retirer les 4 check-lists d'exemple (Ouverture, Fermeture,
+  // Nettoyage, Inventaire). Désactivées (is_active=0) → elles disparaissent de
+  // l'app ; l'historique éventuel reste en base. Réversible (réactivable).
+  if (version < 3 && !freshDb) {
+    db.prepare("UPDATE templates SET is_active = 0 WHERE type IN ('OUVERTURE','FERMETURE','NETTOYAGE','INVENTAIRE')").run();
   }
   db.pragma('user_version = ' + SCHEMA_VERSION);
 }

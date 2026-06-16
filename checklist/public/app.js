@@ -65,7 +65,9 @@ function render() {
   }
 
   content.innerHTML = '<div class="grid">' + sessions.map((s) => {
-    const modeTxt = s.resetMode === 'WEEKLY_CARRY_OVER' ? `Tâches du ${esc(s.todayLabel || '')}` : (MODE_LABEL[s.resetMode] || '');
+    const modeTxt = s.resetMode === 'WEEKLY_CARRY_OVER' ? `Tâches du ${esc(s.todayLabel || '')}`
+      : s.resetMode === 'WEEKLY_MONDAY' ? `Hebdo (lundi) — ${esc(s.todayLabel || '')}`
+      : (MODE_LABEL[s.resetMode] || '');
     const barColor = s.status === 'TERMINE' ? 'var(--green)' : (s.progress > 60 ? 'var(--gold)' : 'var(--red)');
     const pill = s.status === 'TERMINE'
       ? '<span class="pill done">✓ Terminé</span>'

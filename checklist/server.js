@@ -28,6 +28,23 @@ function getPreviousDate(dateStr) {
   d.setDate(d.getDate() - 1);
   return new Intl.DateTimeFormat('en-CA').format(d);
 }
+function localISODate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+// Ancre hebdomadaire (mode WEEKLY_MONDAY) : date du lundi de la « semaine de
+// service », qui démarre le lundi à 8h (Europe/Paris). Avant lundi 8h, on est
+// encore dans la semaine précédente. Toutes les coches d'une même semaine
+// partagent cette session ; reset automatique au lundi 8h suivant.
+function mondayAnchor() {
+  const todayStr = todayParis();
+  const hour = parseInt(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Paris', hour: '2-digit', hour12: false }).format(new Date()), 10);
+  const dow = getDayOfWeek(todayStr); // 1=lundi..7=dimanche
+  let daysBack = dow - 1;
+  if (dow === 1 && hour < 8) daysBack = 7; // lundi avant 8h -> lundi précédent
+  const d = new Date(todayStr + 'T12:00:00');
+  d.setDate(d.getDate() - daysBack);
+  return localISODate(d);
+}
 
 // --- Accès données --------------------------------------------------------
 const qActiveTemplates = db.prepare('SELECT * FROM templates WHERE is_active = 1 ORDER BY ord ASC');
@@ -80,9 +97,13 @@ app.get('/api/sessions', (req, res) => {
   const todayDow = getDayOfWeek(date);
   const templates = qActiveTemplates.all();
 
+  const weekDate = mondayAnchor();
   const out = templates.map((template) => {
-    let session = qSessionByTmplDate.get(template.id, date);
-    if (!session) session = createSession(template, date, todayDow);
+    // Les check-lists hebdo-lundi partagent une session par semaine (datée du
+    // lundi) ; les autres ont une session par jour.
+    const sessDate = template.reset_mode === 'WEEKLY_MONDAY' ? weekDate : date;
+    let session = qSessionByTmplDate.get(template.id, sessDate);
+    if (!session) session = createSession(template, sessDate, getDayOfWeek(sessDate));
     const comps = qCompletions.all(session.id);
     const totalTasks = comps.length;
     const doneTasks = comps.filter((c) => c.is_done).length;
@@ -104,7 +125,8 @@ app.get('/api/sessions', (req, res) => {
       doneTasks,
       carriedCount,
       progress: totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0,
-      todayLabel: template.reset_mode === 'WEEKLY_CARRY_OVER' ? DAY_NAMES[todayDow] : null,
+      todayLabel: template.reset_mode === 'WEEKLY_CARRY_OVER' ? DAY_NAMES[todayDow]
+        : (template.reset_mode === 'WEEKLY_MONDAY' ? `Semaine du ${session.date.split('-').reverse().slice(0, 2).join('/')}` : null),
     };
   });
 

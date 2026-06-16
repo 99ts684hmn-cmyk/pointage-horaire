@@ -310,6 +310,114 @@ const FERM_SOIR_TASKS = [
   'Supprimer la check-list quand on a terminé',
 ];
 
+// Fermeture soir — bar de l'étage (haut) — photo « Fermeture bar étage ».
+const BAR_FERM_SOIR_HAUT_TASKS = [
+  'Nettoyer les plans de travail',
+  'Nettoyer les bouteilles',
+  'Ranger les bouteilles',
+  'Remplir les pipettes',
+  'Faire les caves',
+  'Nettoyer les tapis',
+  'Nettoyer la tireuse à bière',
+  'Nettoyer la machine à café',
+  'Nettoyer les vitres des frigos',
+  'Nettoyer sol frigo',
+  'Remplir les capsules KF',
+  'Pastille nettoyage machine à café',
+  'Remplir stock banette KF',
+  'Nettoyer lave-verre extérieur',
+  'Bien nettoyer les filtres de l\'osmoseur',
+  'Nettoyer l\'évier',
+  'Ranger caisse CFP',
+  'Remplir pots à cuillère à café',
+  'Nettoyer et ranger les carafes',
+  'Ranger les olives et daté',
+  'Ramasser les capsules au sol',
+  'Vérifier que les tablettes chargent et l\'iPhone bleu',
+  'Dater les produits',
+  'Nettoyer intérieur extérieur poubelle',
+  'Nettoyer la tête de la buse',
+  'Remplir sucre en poudre et vin blanc',
+  'Remplir les pailles',
+  'Vérifier les clims et éteindre',
+  'Bien plier les essuies verre',
+  'Nettoyer les lavettes et mettre à tremper',
+  'Nettoyer les bouchons des becs verseurs',
+  'Éteindre les clims tt les soirs',
+  'Mettre tablette en veille et débrancher chargeur le soir',
+  'Faire la check-liste iPad — important !',
+  'Faire le transfert des vins haut et bas',
+];
+
+// Fermeture soir — bar du bas — photo « Fermeture bas ».
+const BAR_FERM_SOIR_BAS_TASKS = [
+  'Faire les caves du bas et étage',
+  'Nettoyer porte + poubelle intérieur/extérieur',
+  'Compléter les vins (en été)',
+  'Faire les caves étages',
+  'Ranger les olives et les dater',
+  'Nettoyer la tireuse à bière',
+  'Nettoyer la machine à café',
+  'Pastille nettoyage machine à café',
+  'Remplir les capsules KF',
+  'Ramasser les capsules au sol',
+  'Remplir pots à cuillère à café',
+  'Nettoyer sol frigo',
+  'Nettoyer les vitres des frigos',
+  'Nettoyer lave-verre intérieur/extérieur',
+  'Bien nettoyer les filtres du lave-verre',
+  'Laisser ouvert le lave-verre',
+  'Nettoyer l\'évier',
+  'Nettoyer et ranger les carafes',
+  'Nettoyer les cendriers et ranger (l\'été)',
+  'Dater les produits',
+  'Remplir les pailles',
+  'Descendre des couverts',
+  'Serviette à remettre en stock',
+  'Remonter les verres',
+  'Enlever les tapis',
+  'Ranger terrasse',
+  'Balais terrasse',
+  'Nettoyer les plans de travail',
+  'Bien plier les essuies verre',
+  'Nettoyer les lavettes et mettre à tremper',
+  'Ranger caisse CFP sur le bar',
+  'Remettre des bonbons',
+  'Enlever les caisses devant le congel bas',
+  'Remonter caisse + tablette',
+  'Sortir bouteilles vins rouge frigo',
+  'Attacher les parasols',
+  'Débrancher tablette → brancher iPhone',
+];
+
+// Ménage de service hebdo (depuis « Ménage Max » — reset chaque lundi 8h).
+const MENAGE_HEBDO_TASKS = [
+  'Nettoyer les pieds de chaise + pied des tables avec lavette propre et chaude',
+  'Passer le balais sous les banquettes et les nettoyer avec une lavette propre et chaude',
+  'Aspirer l\'intérieur des chaises avec l\'aspirateur dyson qui se trouve dans les toilettes du perso',
+  'Arroser les plantes avec l\'arrosoir (1/2 arrosoir parts pot de fleurs eau froide)',
+  'Prendre gant en latex et sac poubelle, enlever toutes les saletés se trouvant dans les pots de fleurs',
+  'Nettoyer l\'extérieur des pots de fleurs avec lavette chaude ainsi que les vitres des deux côtés avec sopalin et produit bleu',
+  'Nettoyer le sol de la cave consigne (balais toile) mais avant décaler les caisses et les re-ranger comme il faut après',
+  'Nettoyer le sol du rez-de-chaussée (balais toile), rien qui traîne au sol ; passer le balais et la toile ainsi que l\'égout à la brosse à dent et à l\'arrosoir eau très chaude',
+  'Nettoyer les étagères du bar avec un sopalin et produit bleu de haut en bas',
+  'Nettoyer avec une lavette chaude sous l\'évier du bar',
+  'Nettoyer petite étagère à côté de l\'évier (carafe, verre à mule)',
+  'Nettoyer les frigos bar intérieur (sol/porte) et extérieur (porte)',
+  'Nettoyer toutes les carafes de vin avec gros sel et eau chaude',
+  'Faire la marche en avant des frigos bar haut et bas',
+  'Remonter les cartons si liste de cave donné en amont & les ranger',
+  'Refaire carte des boissons et cartes anglaises si en stocks',
+  'Faire toutes les plantes du restaurant avec une lavette chaude savonneuse',
+  'Faire les toilettes clients, sol à la brosse, mur avec sopalin et produit bleu sinon lavette jetable avec produit bleu',
+  'Faire devanture du restaurant moulure, rail en acier et porte avec eau chaude, savon et lavette',
+  'Nettoyer tous les mercredis les toilettes du perso et vestiaire sol (balais/toile), toilette produit alcool ménagé produit bleu et sopalin',
+  'Nettoyer les filtres des ventilations avec le mini souffleur qui se trouve au bar',
+  'Nettoyer les étagères du bar du bas avec sopalin/lavette et produit bleu de haut en bas',
+  'Nettoyer les moulures et les plinthes du bas',
+  'Faire les poussières (décoration / têtes de vaches / cadres / cheminée / jar de fleurs artificielles)',
+];
+
 // Les 4 anciennes check-lists d'exemple (Ouverture, Fermeture, Nettoyage,
 // Inventaire) ont été retirées : plus créées sur une base neuve, et désactivées
 // sur les bases existantes (migration 3).
@@ -333,7 +441,7 @@ function ensureTemplateByType(type, build) {
 }
 
 // Version de schéma/migrations appliquée à cette base (PRAGMA user_version).
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 
 function seedAndMigrate() {
   const count = db.prepare('SELECT COUNT(*) c FROM templates').get().c;
@@ -378,8 +486,10 @@ function seedAndMigrate() {
   // Check-lists Bar (onglet « Check-list Bar »), créées vides.
   ensureTemplateByType('BAR_FERM_MIDI_HAUT', () => insertTemplate({ name: 'Fermeture midi bar du haut', type: 'BAR_FERM_MIDI_HAUT', color: 'bg-rose-500', icon: '🍸', resetMode: 'AUTO_DAILY', order: 13, category: 'bar' }));
   ensureTemplateByType('BAR_FERM_MIDI_BAS', () => insertTemplate({ name: 'Fermeture midi bar du bas', type: 'BAR_FERM_MIDI_BAS', color: 'bg-rose-500', icon: '🍹', resetMode: 'AUTO_DAILY', order: 14, category: 'bar' }));
-  ensureTemplateByType('BAR_FERM_SOIR_HAUT', () => insertTemplate({ name: 'Fermeture soir bar du haut', type: 'BAR_FERM_SOIR_HAUT', color: 'bg-rose-700', icon: '🍷', resetMode: 'AUTO_DAILY', order: 15, category: 'bar' }));
-  ensureTemplateByType('BAR_FERM_SOIR_BAS', () => insertTemplate({ name: 'Fermeture soir bar du bas', type: 'BAR_FERM_SOIR_BAS', color: 'bg-rose-700', icon: '🍺', resetMode: 'AUTO_DAILY', order: 16, category: 'bar' }));
+  ensureTemplateByType('BAR_FERM_SOIR_HAUT', () => { const id = insertTemplate({ name: 'Fermeture soir bar du haut', type: 'BAR_FERM_SOIR_HAUT', color: 'bg-rose-700', icon: '🍷', resetMode: 'AUTO_DAILY', order: 15, category: 'bar' }); BAR_FERM_SOIR_HAUT_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
+  ensureTemplateByType('BAR_FERM_SOIR_BAS', () => { const id = insertTemplate({ name: 'Fermeture soir bar du bas', type: 'BAR_FERM_SOIR_BAS', color: 'bg-rose-700', icon: '🍺', resetMode: 'AUTO_DAILY', order: 16, category: 'bar' }); BAR_FERM_SOIR_BAS_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
+  // Ménage de service hebdo — onglet « Check-lists », reset chaque lundi 8h.
+  ensureTemplateByType('MENAGE_HEBDO', () => { const id = insertTemplate({ name: 'Ménage de service hebdo', type: 'MENAGE_HEBDO', color: 'bg-teal-500', icon: '🧽', resetMode: 'WEEKLY_MONDAY', order: 6, category: 'general' }); MENAGE_HEBDO_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
 
   // Migration 1 : remplacer les tâches de « Check Manager Matin » par celles de
   // l'onglet « CL manager ouv matin ». Uniquement sur une base DÉJÀ existante
@@ -430,6 +540,19 @@ function seedAndMigrate() {
     fill('OUV_SOIR', OUV_SOIR_TASKS);
     fill('FERM_MIDI', FERM_MIDI_TASKS);
     fill('FERM_SOIR', FERM_SOIR_TASKS);
+  }
+  // Migration 6 : remplir les fermetures SOIR du bar (haut = étage, bas) avec
+  // les tâches des photos. (« Ménage de service hebdo » est créé par
+  // ensureTemplateByType ci-dessus, idempotent — pas besoin ici.)
+  if (version < 6 && !freshDb) {
+    const fill = (type, tasks) => {
+      const t = db.prepare('SELECT id FROM templates WHERE type = ?').get(type);
+      if (!t) return;
+      db.prepare('UPDATE tasks SET is_active = 0 WHERE template_id = ? AND is_active = 1').run(t.id);
+      tasks.forEach((title, i) => insertTask(t.id, title, i + 1));
+    };
+    fill('BAR_FERM_SOIR_HAUT', BAR_FERM_SOIR_HAUT_TASKS);
+    fill('BAR_FERM_SOIR_BAS', BAR_FERM_SOIR_BAS_TASKS);
   }
   db.pragma('user_version = ' + SCHEMA_VERSION);
 }

@@ -235,6 +235,8 @@ function seedAndMigrate() {
   // Check-lists Bar (onglet « Check-list Bar »), créées vides.
   ensureTemplateByType('BAR_FERM_MIDI_HAUT', () => insertTemplate({ name: 'Fermeture midi bar du haut', type: 'BAR_FERM_MIDI_HAUT', color: 'bg-rose-500', icon: '🍸', resetMode: 'AUTO_DAILY', order: 13, category: 'bar' }));
   ensureTemplateByType('BAR_FERM_MIDI_BAS', () => insertTemplate({ name: 'Fermeture midi bar du bas', type: 'BAR_FERM_MIDI_BAS', color: 'bg-rose-500', icon: '🍹', resetMode: 'AUTO_DAILY', order: 14, category: 'bar' }));
+  ensureTemplateByType('BAR_FERM_SOIR_HAUT', () => insertTemplate({ name: 'Fermeture soir bar du haut', type: 'BAR_FERM_SOIR_HAUT', color: 'bg-rose-700', icon: '🍷', resetMode: 'AUTO_DAILY', order: 15, category: 'bar' }));
+  ensureTemplateByType('BAR_FERM_SOIR_BAS', () => insertTemplate({ name: 'Fermeture soir bar du bas', type: 'BAR_FERM_SOIR_BAS', color: 'bg-rose-700', icon: '🍺', resetMode: 'AUTO_DAILY', order: 16, category: 'bar' }));
 
   // Migration 1 : remplacer les tâches de « Check Manager Matin » par celles de
   // l'onglet « CL manager ouv matin ». Uniquement sur une base DÉJÀ existante

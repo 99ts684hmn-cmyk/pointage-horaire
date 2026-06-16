@@ -167,6 +167,149 @@ const BRIEF_MANAGER_TASKS = [
   'Traduction en anglais 1 par jour',
 ];
 
+// Ouverture midi (depuis « OUVERTURE MATIN 25 » — le matin = le midi).
+const OUV_MIDI_TASKS = [
+  'Allumer tous les compteurs du bas',
+  'Prendre le téléphone avec soi',
+  'Allumer les lumières du bas, celles derrière le bar du bas, les frigos',
+  'Allumer os.osseur à 12h en bas',
+  'Sortir la terrasse (plante / chaise / table)',
+  'Repasser un petit coup de balais et vérifier les pots de fleurs mégot etc',
+  'Sortir porte menu',
+  'Sortir store',
+  'Ouvrir parasols',
+  'Allumer mur floral',
+  'Allumer chauffage (l\'hiver) et clim si besoin',
+  'Ensuite à l\'étage allumer compteur',
+  'Allumer cave à vin et frigo',
+  'Allumer lumière bar',
+  'Vérifier la batterie / charger les tablettes et les téléphones',
+  'Balais',
+  'Vérifier miettes chaise',
+  'Balais sous les banquette et sur les pieds de chaise',
+  'Balais à l\'étage derrière les portes de la 30 et dans les angles',
+  'Faire les olives',
+  'Mise en place bar (agrume, menthe, carafe) boîte à fleur',
+  'Remonter CFP Bar',
+  'Mise en place paille bar',
+  'Brique de lait',
+  'Vérifier et remplir boîte à thé',
+  'Nettoyer bord des fenêtres',
+  'Allumer musique',
+  'Faire et sortir panneau PJ',
+  'Allumer lave-verre du haut à 11h30',
+  'Nettoyer porte d\'entrée et au-dessus de la 4',
+];
+
+// Ouverture soir (depuis « Ouverture Soir »).
+const OUV_SOIR_TASKS = [
+  'Allumer la musique (à la stéréo dans le placard côté sortie cuisine) et sur le téléphone',
+  'Les toilettes, sous les toilettes, sous le lavabo',
+  'Passer balais devant restau et entrée',
+  'Prendre téléphone avec soi',
+  'Allumer mur floral',
+  'Allumer lumières bas, derrière bar du bas, frigos',
+  'Derrière le bar, sous la machine à verre',
+  'Balais sous les banquettes',
+  'Nettoyer et allumer le lave-verre. Y mettre 1 bouchon de produit lave-verre',
+  'Faire les olives',
+  'Nettoyer porte d\'entrée (vitre/poignée/tours de porte en bois)',
+  'Allumer compteurs du bas',
+  'Sortir porte menu',
+  'Commencer par les 30, et porte pliantes',
+  'Faire la carcasse si besoin',
+  'Bordure devant le restaurant, et entrée extérieur',
+  'Vérifier les toilettes',
+  'Nettoyer allumer le lave-verre. mettre 1 bouchon de produit lave-verre',
+  'Nettoyer la devanture du bar (tous les côtés et écran caisse)',
+  'Remplir carafe d\'eaux (vérifier la propreté des carafes)',
+  'Vérifier et nettoyer si besoin les bords de fenêtre',
+  'Allumer cave à vins, cave de service (vins rouge)',
+  'Allumer tous les compteurs',
+  'Préparer boite de fleurs (garnish cocktails) la laisser au frais',
+  'Sortir le store',
+  'Balais dans les marches, dans les angles, au pied de la rambarde',
+  'Brique de lait au frais',
+  'Mise en place agrumes',
+  'Mettre bougies sur table',
+  'Vérifier mise en place boissons chaudes',
+  'Mettre les tapis aux sorties de cuisine',
+  'Derrière bar, sous la machine à verre',
+  'Balais devant le resto, devant la porte et sur la petite avancée le long du resto',
+  'Vérifier qu\'il n\'y ait pas de miettes sur les chaises',
+  'Balais en bas',
+  'Vérifier propreté porte menu et gel hydro',
+  'Mise en place paille petite et grandes',
+  'Dresser la terrasse si besoin (T94 et T96 à toujours dresser)',
+  'Faire les olives',
+  'Vérifier et remplir boîte à thé',
+  'Sortir bouteilles d\'alcool et soft pour service',
+  'Pain',
+  'Allumer porte menu',
+  'Allumer chauffage/clim si besoin',
+  'Vérifier et nettoyer si besoin les tables, vérifier qu\'il ne manque rien, que tout est bien aligné, propre',
+  'Balais',
+  'Nettoyer fenêtre entre 2 et 4',
+  'Marches, dans les angles, au pied de la rambarde',
+  'Vérifier la batterie / charger les tablettes et les téléphones',
+];
+
+// Fermeture midi (depuis « Fermeture midi »).
+const FERM_MIDI_TASKS = [
+  'Vérifier la batterie ou charger téléphone et tablette et pads',
+  'Nettoyer le bar (intérieur / extérieur) et tour du bar',
+  'Nettoyer les écrans des caisses',
+  'Machine à café / tireuse à bière',
+  'Plan de travail',
+  'Faire les caves (les deux à vin, soft)',
+  'Ranger la caisse cfp avec les limo et purée en chambre froide cuisine',
+  'Compléter les bouteilles ouvertes',
+  'Mettre au frais la caisse des purées et les agrumes',
+  'Bien vider les glaçons et descendre les bacs',
+  'Éteindre machines lave-verre et changer l\'eau si gros service du midi / eau sale',
+  'Remplir mise en place boissons chaudes (sucre / capsule simple / double / deca). S\'assurer qu\'il y a bien des tasses à allongés, cuillères etc',
+  'Remplir bocal bonbons',
+  'Secouer et remonter les tapis',
+  'Remonter les verres',
+  'Faire miettes sur chaises, banquettes, chaises du petit salon',
+  'Vérifier qu\'il ne manque rien sur les tables',
+  'Si des gens ont mangé en terrasse, bien nettoyer les tables/chaises et ramasser si saletés par terre (serviettes, mégot, etc)',
+  'Faire toilettes',
+  'Remplir bacs à couverts haut et bas, serviettes',
+  'Éteindre les lumières cave frigos et caves de service',
+  'Faire carcasse pour soir si besoin (voir en fonction des resas s\'il y a des choses à prévoir, eau au frais etc)',
+  'Ranger, nettoyer et couvrir coin à pain',
+  'Éteindre les lumières haut et bas, la guirlande lumineuse, la sono, les clips',
+  'Remettre la terrasse correctement (tables chaises plantes au bon endroit)',
+  'Éteindre clim/chauffage',
+  'Enlever pierre du milieu évier toilette',
+  'Supprimer la check-list quand on a terminé',
+];
+
+// Fermeture soir (depuis « Ferm Soir 16 »).
+const FERM_SOIR_TASKS = [
+  'Remplir bacs à couverts haut et bas, serviettes',
+  'Secouer et remonter les tapis',
+  'Faire toilettes',
+  'Remonter les verres',
+  'Vérifier qu\'il ne manque rien sur les tables',
+  'Si des gens ont mangé en terrasse, bien nettoyer les tables/chaises et ramasser si saletés par terre (serviettes, mégot, etc)',
+  'Vérifier la batterie ou charger téléphone et tablette et pads',
+  'Éteindre les lumières cave frigos et caves de service',
+  'Remettre la terrasse correctement (tables chaises plantes au bon endroit)',
+  'Ranger, nettoyer et couvrir coin à pain',
+  'Compléter les bouteilles ouvertes',
+  'Éteindre les lumières haut et bas, la guirlande lumineuse, la sono, les clips',
+  'Faire carcasse pour soir si besoin (voir en fonction des resas s\'il y a des choses à prévoir, eau au frais etc)',
+  'Faire miettes sur chaises, banquettes, chaises du petit salon',
+  'Vérifier qu\'il y ait des serviettes en haut et en bas',
+  'Éteindre clim/chauffage',
+  'Descendre les caisses pour le pain',
+  'Éteindre et ranger bougies',
+  'Enlever pierre du milieu évier toilette',
+  'Supprimer la check-list quand on a terminé',
+];
+
 // Les 4 anciennes check-lists d'exemple (Ouverture, Fermeture, Nettoyage,
 // Inventaire) ont été retirées : plus créées sur une base neuve, et désactivées
 // sur les bases existantes (migration 3).
@@ -190,7 +333,7 @@ function ensureTemplateByType(type, build) {
 }
 
 // Version de schéma/migrations appliquée à cette base (PRAGMA user_version).
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 function seedAndMigrate() {
   const count = db.prepare('SELECT COUNT(*) c FROM templates').get().c;
@@ -228,10 +371,10 @@ function seedAndMigrate() {
   });
   // Nouvelles check-lists de service (onglet « Check-lists »), créées vides :
   // les tâches sont à ajouter ensuite via l'Admin.
-  ensureTemplateByType('OUV_MIDI', () => insertTemplate({ name: 'Ouverture midi', type: 'OUV_MIDI', color: 'bg-amber-400', icon: '☀️', resetMode: 'AUTO_DAILY', order: 1, category: 'general' }));
-  ensureTemplateByType('FERM_MIDI', () => insertTemplate({ name: 'Fermeture midi', type: 'FERM_MIDI', color: 'bg-amber-600', icon: '🍽️', resetMode: 'AUTO_DAILY', order: 2, category: 'general' }));
-  ensureTemplateByType('OUV_SOIR', () => insertTemplate({ name: 'Ouverture soir', type: 'OUV_SOIR', color: 'bg-indigo-400', icon: '🌆', resetMode: 'AUTO_DAILY', order: 3, category: 'general' }));
-  ensureTemplateByType('FERM_SOIR', () => insertTemplate({ name: 'Fermeture soir', type: 'FERM_SOIR', color: 'bg-indigo-600', icon: '🌃', resetMode: 'AUTO_DAILY', order: 4, category: 'general' }));
+  ensureTemplateByType('OUV_MIDI', () => { const id = insertTemplate({ name: 'Ouverture midi', type: 'OUV_MIDI', color: 'bg-amber-400', icon: '☀️', resetMode: 'AUTO_DAILY', order: 1, category: 'general' }); OUV_MIDI_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
+  ensureTemplateByType('FERM_MIDI', () => { const id = insertTemplate({ name: 'Fermeture midi', type: 'FERM_MIDI', color: 'bg-amber-600', icon: '🍽️', resetMode: 'AUTO_DAILY', order: 2, category: 'general' }); FERM_MIDI_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
+  ensureTemplateByType('OUV_SOIR', () => { const id = insertTemplate({ name: 'Ouverture soir', type: 'OUV_SOIR', color: 'bg-indigo-400', icon: '🌆', resetMode: 'AUTO_DAILY', order: 3, category: 'general' }); OUV_SOIR_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
+  ensureTemplateByType('FERM_SOIR', () => { const id = insertTemplate({ name: 'Fermeture soir', type: 'FERM_SOIR', color: 'bg-indigo-600', icon: '🌃', resetMode: 'AUTO_DAILY', order: 4, category: 'general' }); FERM_SOIR_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
   // Check-lists Bar (onglet « Check-list Bar »), créées vides.
   ensureTemplateByType('BAR_FERM_MIDI_HAUT', () => insertTemplate({ name: 'Fermeture midi bar du haut', type: 'BAR_FERM_MIDI_HAUT', color: 'bg-rose-500', icon: '🍸', resetMode: 'AUTO_DAILY', order: 13, category: 'bar' }));
   ensureTemplateByType('BAR_FERM_MIDI_BAS', () => insertTemplate({ name: 'Fermeture midi bar du bas', type: 'BAR_FERM_MIDI_BAS', color: 'bg-rose-500', icon: '🍹', resetMode: 'AUTO_DAILY', order: 14, category: 'bar' }));
@@ -271,6 +414,22 @@ function seedAndMigrate() {
     setOrd.run(3, 'OUV_SOIR');
     setOrd.run(4, 'FERM_SOIR');
     setOrd.run(5, 'HEBDOMADAIRE');
+  }
+  // Migration 5 : remplir les check-lists de service (ouverture/fermeture
+  // midi & soir) avec les tâches issues des rappels iCloud. Sur base existante
+  // ces check-lists étaient vides. On désactive l'éventuel contenu actuel puis
+  // on insère les tâches (remplacement). Une seule fois.
+  if (version < 5 && !freshDb) {
+    const fill = (type, tasks) => {
+      const t = db.prepare('SELECT id FROM templates WHERE type = ?').get(type);
+      if (!t) return;
+      db.prepare('UPDATE tasks SET is_active = 0 WHERE template_id = ? AND is_active = 1').run(t.id);
+      tasks.forEach((title, i) => insertTask(t.id, title, i + 1));
+    };
+    fill('OUV_MIDI', OUV_MIDI_TASKS);
+    fill('OUV_SOIR', OUV_SOIR_TASKS);
+    fill('FERM_MIDI', FERM_MIDI_TASKS);
+    fill('FERM_SOIR', FERM_SOIR_TASKS);
   }
   db.pragma('user_version = ' + SCHEMA_VERSION);
 }

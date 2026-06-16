@@ -32,6 +32,7 @@ db.exec(`
     reset_mode TEXT NOT NULL,
     ord        INTEGER NOT NULL DEFAULT 0,
     is_active  INTEGER NOT NULL DEFAULT 1,
+    category   TEXT NOT NULL DEFAULT 'general',
     created_at TEXT NOT NULL
   );
 
@@ -80,6 +81,13 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_sessions_date  ON sessions(date);
   CREATE INDEX IF NOT EXISTS idx_compl_session  ON completions(session_id);
 `);
+
+// Migration de schéma : ajoute la colonne « category » sur les bases déjà
+// créées avant cette version (regroupe les check-lists par onglet : general /
+// manager / bar). Idempotent (n'ajoute la colonne que si elle manque).
+if (!db.prepare('PRAGMA table_info(templates)').all().some((c) => c.name === 'category')) {
+  db.exec("ALTER TABLE templates ADD COLUMN category TEXT NOT NULL DEFAULT 'general'");
+}
 
 const uid = () => crypto.randomUUID();
 const nowISO = () => new Date().toISOString();
@@ -196,8 +204,8 @@ const DEFAULT_TEMPLATES = [
 
 function insertTemplate(t) {
   const id = uid();
-  db.prepare('INSERT INTO templates(id,name,type,color,icon,reset_mode,ord,is_active,created_at) VALUES(?,?,?,?,?,?,?,1,?)')
-    .run(id, t.name, t.type, t.color, t.icon, t.resetMode, t.order, nowISO());
+  db.prepare('INSERT INTO templates(id,name,type,color,icon,reset_mode,ord,is_active,category,created_at) VALUES(?,?,?,?,?,?,?,1,?,?)')
+    .run(id, t.name, t.type, t.color, t.icon, t.resetMode, t.order, t.category || 'general', nowISO());
   return id;
 }
 function insertTask(templateId, title, order, dayOfWeek) {
@@ -212,7 +220,7 @@ function ensureTemplateByType(type, build) {
 }
 
 // Version de schéma/migrations appliquée à cette base (PRAGMA user_version).
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 function seedAndMigrate() {
   const count = db.prepare('SELECT COUNT(*) c FROM templates').get().c;
@@ -237,17 +245,26 @@ function seedAndMigrate() {
     WEEKLY_TASKS.forEach((t, i) => insertTask(id, t.title, i + 1, t.dayOfWeek));
   });
   ensureTemplateByType('MANAGER_MATIN', () => {
-    const id = insertTemplate({ name: 'Check Manager Matin', type: 'MANAGER_MATIN', color: 'bg-red-600', icon: '👔', resetMode: 'AUTO_DAILY', order: 6 });
+    const id = insertTemplate({ name: 'Check Manager Matin', type: 'MANAGER_MATIN', color: 'bg-red-600', icon: '👔', resetMode: 'AUTO_DAILY', order: 6, category: 'manager' });
     MANAGER_MATIN_TASKS.forEach((title, i) => insertTask(id, title, i + 1));
   });
   ensureTemplateByType('MANAGER_HEBDO', () => {
-    const id = insertTemplate({ name: 'Manager Hebdo', type: 'MANAGER_HEBDO', color: 'bg-purple-500', icon: '🗓️', resetMode: 'AUTO_DAILY', order: 7 });
+    const id = insertTemplate({ name: 'Manager Hebdo', type: 'MANAGER_HEBDO', color: 'bg-purple-500', icon: '🗓️', resetMode: 'AUTO_DAILY', order: 7, category: 'manager' });
     MANAGER_HEBDO_TASKS.forEach((title, i) => insertTask(id, title, i + 1));
   });
   ensureTemplateByType('BRIEF_MANAGER', () => {
-    const id = insertTemplate({ name: 'Brief Manager', type: 'BRIEF_MANAGER', color: 'bg-rose-600', icon: '🗣️', resetMode: 'AUTO_DAILY', order: 8 });
+    const id = insertTemplate({ name: 'Brief Manager', type: 'BRIEF_MANAGER', color: 'bg-rose-600', icon: '🗣️', resetMode: 'AUTO_DAILY', order: 8, category: 'manager' });
     BRIEF_MANAGER_TASKS.forEach((title, i) => insertTask(id, title, i + 1));
   });
+  // Nouvelles check-lists de service (onglet « Check-lists »), créées vides :
+  // les tâches sont à ajouter ensuite via l'Admin.
+  ensureTemplateByType('OUV_MIDI', () => insertTemplate({ name: 'Ouverture midi', type: 'OUV_MIDI', color: 'bg-amber-400', icon: '☀️', resetMode: 'AUTO_DAILY', order: 9, category: 'general' }));
+  ensureTemplateByType('FERM_MIDI', () => insertTemplate({ name: 'Fermeture midi', type: 'FERM_MIDI', color: 'bg-amber-600', icon: '🍽️', resetMode: 'AUTO_DAILY', order: 10, category: 'general' }));
+  ensureTemplateByType('OUV_SOIR', () => insertTemplate({ name: 'Ouverture soir', type: 'OUV_SOIR', color: 'bg-indigo-400', icon: '🌆', resetMode: 'AUTO_DAILY', order: 11, category: 'general' }));
+  ensureTemplateByType('FERM_SOIR', () => insertTemplate({ name: 'Fermeture soir', type: 'FERM_SOIR', color: 'bg-indigo-600', icon: '🌃', resetMode: 'AUTO_DAILY', order: 12, category: 'general' }));
+  // Check-lists Bar (onglet « Check-list Bar »), créées vides.
+  ensureTemplateByType('BAR_FERM_MIDI_HAUT', () => insertTemplate({ name: 'Fermeture midi bar du haut', type: 'BAR_FERM_MIDI_HAUT', color: 'bg-rose-500', icon: '🍸', resetMode: 'AUTO_DAILY', order: 13, category: 'bar' }));
+  ensureTemplateByType('BAR_FERM_MIDI_BAS', () => insertTemplate({ name: 'Fermeture midi bar du bas', type: 'BAR_FERM_MIDI_BAS', color: 'bg-rose-500', icon: '🍹', resetMode: 'AUTO_DAILY', order: 14, category: 'bar' }));
 
   // Migration 1 : remplacer les tâches de « Check Manager Matin » par celles de
   // l'onglet « CL manager ouv matin ». Uniquement sur une base DÉJÀ existante
@@ -255,16 +272,19 @@ function seedAndMigrate() {
   // SUPPRIME pas : on désactive les anciennes (l'historique des sessions reste
   // intact) puis on insère les nouvelles. Exécutée une seule fois (user_version).
   const version = db.pragma('user_version', { simple: true });
-  if (version < 1) {
-    if (!freshDb) {
-      const mm = db.prepare("SELECT id FROM templates WHERE type = 'MANAGER_MATIN'").get();
-      if (mm) {
-        db.prepare('UPDATE tasks SET is_active = 0 WHERE template_id = ? AND is_active = 1').run(mm.id);
-        MANAGER_MATIN_TASKS.forEach((title, i) => insertTask(mm.id, title, i + 1));
-      }
+  if (version < 1 && !freshDb) {
+    const mm = db.prepare("SELECT id FROM templates WHERE type = 'MANAGER_MATIN'").get();
+    if (mm) {
+      db.prepare('UPDATE tasks SET is_active = 0 WHERE template_id = ? AND is_active = 1').run(mm.id);
+      MANAGER_MATIN_TASKS.forEach((title, i) => insertTask(mm.id, title, i + 1));
     }
-    db.pragma('user_version = ' + SCHEMA_VERSION);
   }
+  // Migration 2 : ranger les check-lists manager dans l'onglet « Manager »
+  // (sur base existante, la colonne category vient d'être ajoutée à 'general').
+  if (version < 2 && !freshDb) {
+    db.prepare("UPDATE templates SET category = 'manager' WHERE type IN ('MANAGER_MATIN','MANAGER_HEBDO','BRIEF_MANAGER')").run();
+  }
+  db.pragma('user_version = ' + SCHEMA_VERSION);
 }
 
 seedAndMigrate();

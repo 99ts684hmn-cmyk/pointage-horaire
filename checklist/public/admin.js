@@ -6,8 +6,10 @@ const MODE_LABEL = { AUTO_DAILY: 'Reset quotidien', CARRY_OVER: 'Report des non-
 const content = document.getElementById('content');
 let templates = [];
 let employees = [];
-let tab = 'checklists';
+let tab = 'general'; // 'general' | 'manager' | 'bar' | 'employes'
 let expanded = null;
+const CAT_TABS = ['general', 'manager', 'bar'];
+const CAT_EMPTY = { general: 'Aucune check-list ici.', manager: 'Aucune check-list manager.', bar: 'Aucune check-list bar.' };
 
 async function fetchData() {
   const [t, e] = await Promise.all([
@@ -53,11 +55,14 @@ async function deleteEmployee(id) {
 }
 
 function render() {
-  document.getElementById('tab-checklists').classList.toggle('active', tab === 'checklists');
-  document.getElementById('tab-employes').classList.toggle('active', tab === 'employes');
+  ['general', 'manager', 'bar', 'employes'].forEach((t) => {
+    const el = document.getElementById('tab-' + t);
+    if (el) el.classList.toggle('active', tab === t);
+  });
 
-  if (tab === 'checklists') {
-    content.innerHTML = templates.map((tm) => {
+  if (tab !== 'employes') {
+    const list = templates.filter((tm) => (tm.category || 'general') === tab);
+    content.innerHTML = list.map((tm) => {
       const open = expanded === tm.id;
       const body = open ? `<div class="acc-body">
         <div class="tlist" data-tmpl="${esc(tm.id)}">
@@ -73,7 +78,7 @@ function render() {
           <span class="caret">${open ? '▲' : '▼'}</span>
         </button>${body}
       </div>`;
-    }).join('') || '<div class="empty">Aucune check-list.</div>';
+    }).join('') || `<div class="empty">${CAT_EMPTY[tab] || 'Aucune check-list.'}</div>`;
 
     content.querySelectorAll('[data-toggle]').forEach((b) => b.addEventListener('click', () => {
       expanded = expanded === b.dataset.toggle ? null : b.dataset.toggle; render();
@@ -110,7 +115,8 @@ function render() {
   }
 }
 
-document.getElementById('tab-checklists').addEventListener('click', () => { tab = 'checklists'; render(); });
-document.getElementById('tab-employes').addEventListener('click', () => { tab = 'employes'; render(); });
+['general', 'manager', 'bar', 'employes'].forEach((t) => {
+  document.getElementById('tab-' + t).addEventListener('click', () => { tab = t; expanded = null; render(); });
+});
 
 fetchData();

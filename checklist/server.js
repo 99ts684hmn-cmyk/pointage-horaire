@@ -186,6 +186,7 @@ app.patch('/api/sessions/:id', (req, res) => {
 app.get('/api/templates', (req, res) => {
   const templates = qActiveTemplates.all().map((t) => ({
     id: t.id, name: t.name, icon: t.icon, type: t.type, resetMode: t.reset_mode,
+    category: t.category || 'general',
     tasks: qTemplateTasks.all(t.id).map((task) => ({ id: task.id, title: task.title, order: task.ord })),
   }));
   res.json(templates);

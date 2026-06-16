@@ -135,10 +135,14 @@ body {
 .trow .drag { cursor: grab; color: #b8b1a8; font-size: 1.05rem; line-height: 1; flex: 0 0 auto; touch-action: none; user-select: none; }
 .trow .drag:active { cursor: grabbing; }
 .trow .t { font-size: .88rem; color: var(--dark); flex: 1; min-width: 0; }
-.trow .del { margin-left: auto; }
 .sortable-ghost { opacity: .4; }
 .sortable-chosen { background: var(--cream); }
-.trow .del { color: var(--red); background: none; border: 0; cursor: pointer; font-weight: 700; font-size: .82rem; font-family: inherit; }
+.trow .del { color: var(--red); background: none; border: 0; cursor: pointer; font-weight: 700; font-size: .82rem; font-family: inherit; flex: 0 0 auto; }
+.trow .edit { color: var(--muted); background: none; border: 0; cursor: pointer; font-weight: 700; font-size: .82rem; font-family: inherit; flex: 0 0 auto; margin-left: auto; }
+.trow .t[data-edit-task] { cursor: text; }
+.trow.editing { gap: 8px; }
+.trow .edit-input { flex: 1; min-width: 0; border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: .88rem; color: var(--dark); font-family: inherit; }
+.trow.editing .btn { flex: 0 0 auto; padding: 7px 12px; }
 .addrow { display: flex; gap: 8px; padding: 12px 18px; }
 .addrow input { flex: 1; border: 1px solid var(--border); border-radius: 9px; padding: 9px 12px; font-size: .88rem; color: var(--dark); font-family: inherit; }
 .emp-line { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); }

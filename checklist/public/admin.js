@@ -8,6 +8,7 @@ let templates = [];
 let employees = [];
 let tab = 'general'; // 'general' | 'manager' | 'bar' | 'employes'
 let expanded = null;
+let editingTask = null; // id de la tâche en cours de modification
 const CAT_TABS = ['general', 'manager', 'bar'];
 const CAT_EMPTY = { general: 'Aucune check-list ici.', manager: 'Aucune check-list manager.', bar: 'Aucune check-list bar.' };
 
@@ -42,6 +43,17 @@ async function deleteTask(taskId) {
   await fetch(`api/tasks/${encodeURIComponent(taskId)}`, { method: 'DELETE' });
   await fetchData();
 }
+async function saveTaskEdit(taskId, input) {
+  const title = input.value.trim();
+  if (!title) return;
+  // Met à jour le titre localement aussi (pour un rendu immédiat cohérent).
+  for (const tm of templates) { const t = tm.tasks.find((x) => x.id === taskId); if (t) t.title = title; }
+  editingTask = null;
+  await fetch(`api/tasks/${encodeURIComponent(taskId)}`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title }),
+  });
+  render();
+}
 async function addEmployee(input) {
   const name = input.value.trim();
   if (!name) return;
@@ -66,7 +78,9 @@ function render() {
       const open = expanded === tm.id;
       const body = open ? `<div class="acc-body">
         <div class="tlist" data-tmpl="${esc(tm.id)}">
-          ${tm.tasks.map((task) => `<div class="trow" data-id="${esc(task.id)}"><span class="drag" title="Glisser pour réordonner">⠿</span><span class="t">${esc(task.title)}</span><button class="del" data-del-task="${esc(task.id)}">Supprimer</button></div>`).join('')}
+          ${tm.tasks.map((task) => (editingTask === task.id
+    ? `<div class="trow editing" data-id="${esc(task.id)}"><input type="text" class="edit-input" data-edit-id="${esc(task.id)}" value="${esc(task.title)}"><button class="btn btn-red" data-save-task="${esc(task.id)}">OK</button><button class="del" data-cancel-edit="1">Annuler</button></div>`
+    : `<div class="trow" data-id="${esc(task.id)}"><span class="drag" title="Glisser pour réordonner">⠿</span><span class="t" data-edit-task="${esc(task.id)}">${esc(task.title)}</span><button class="edit" data-edit-task="${esc(task.id)}">Modifier</button><button class="del" data-del-task="${esc(task.id)}">Supprimer</button></div>`)).join('')}
         </div>
         <div class="addrow"><input type="text" placeholder="Nouvelle tâche…" data-add-input="${esc(tm.id)}"><button class="btn btn-red" data-add-task="${esc(tm.id)}">+ Ajouter</button></div>
       </div>` : '';
@@ -84,6 +98,19 @@ function render() {
       expanded = expanded === b.dataset.toggle ? null : b.dataset.toggle; render();
     }));
     content.querySelectorAll('[data-del-task]').forEach((b) => b.addEventListener('click', () => deleteTask(b.dataset.delTask)));
+    content.querySelectorAll('[data-edit-task]').forEach((b) => b.addEventListener('click', () => { editingTask = b.dataset.editTask; render(); }));
+    content.querySelectorAll('[data-save-task]').forEach((b) => b.addEventListener('click', () => {
+      const inp = content.querySelector(`[data-edit-id="${CSS.escape(b.dataset.saveTask)}"]`);
+      saveTaskEdit(b.dataset.saveTask, inp);
+    }));
+    content.querySelectorAll('[data-cancel-edit]').forEach((b) => b.addEventListener('click', () => { editingTask = null; render(); }));
+    content.querySelectorAll('.edit-input').forEach((inp) => {
+      inp.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') saveTaskEdit(inp.dataset.editId, inp);
+        else if (e.key === 'Escape') { editingTask = null; render(); }
+      });
+      inp.focus(); inp.select();
+    });
     content.querySelectorAll('[data-add-task]').forEach((b) => b.addEventListener('click', () => {
       const inp = content.querySelector(`[data-add-input="${CSS.escape(b.dataset.addTask)}"]`);
       addTask(b.dataset.addTask, inp);

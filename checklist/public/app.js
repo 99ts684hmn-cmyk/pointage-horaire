@@ -21,33 +21,46 @@ const MODE_LABEL = {
   MANUAL: 'Gestion manuelle',
 };
 
+let allSessions = [];
+let tab = 'general'; // 'general' | 'manager' | 'bar'
+const CAT_EMPTY = { general: 'Aucune check-list ici.', manager: 'Aucune check-list manager.', bar: 'Aucune check-list bar.' };
+
 async function load() {
-  const today = localToday();
   const content = document.getElementById('content');
-  let sessions = [];
   try {
-    const r = await fetch(`api/sessions?date=${today}`);
-    sessions = await r.json();
-    if (!Array.isArray(sessions)) sessions = [];
+    const r = await fetch(`api/sessions?date=${localToday()}`);
+    allSessions = await r.json();
+    if (!Array.isArray(allSessions)) allSessions = [];
   } catch (e) {
     content.innerHTML = '<div class="empty">Impossible de charger les check-lists.</div>';
     return;
   }
+  render();
+}
 
+function render() {
+  const today = localToday();
+  const content = document.getElementById('content');
+  ['general', 'manager', 'bar'].forEach((t) => {
+    const el = document.getElementById('tab-' + t);
+    if (el) el.classList.toggle('active', tab === t);
+  });
+
+  const sessions = allSessions.filter((s) => (s.category || 'general') === tab);
   const totalDone = sessions.filter((s) => s.status === 'TERMINE').length;
   const totalAll = sessions.length;
   document.getElementById('subtitle').textContent = `${frDate(today)} — ${totalDone}/${totalAll} terminées`;
 
   const g = document.getElementById('global');
   const gpct = totalAll > 0 ? Math.round((totalDone / totalAll) * 100) : 0;
-  g.hidden = false;
+  g.hidden = totalAll === 0;
   document.getElementById('global-pct').textContent = gpct + '%';
   const gbar = document.getElementById('global-bar');
   gbar.style.width = gpct + '%';
   gbar.style.background = (totalDone === totalAll && totalAll > 0) ? 'var(--green)' : 'var(--gold)';
 
   if (!sessions.length) {
-    content.innerHTML = '<div class="empty">Aucune check-list configurée.</div>';
+    content.innerHTML = `<div class="empty">${CAT_EMPTY[tab] || 'Aucune check-list.'}</div>`;
     return;
   }
 
@@ -73,5 +86,9 @@ async function load() {
     </a>`;
   }).join('') + '</div>';
 }
+
+['general', 'manager', 'bar'].forEach((t) => {
+  document.getElementById('tab-' + t).addEventListener('click', () => { tab = t; render(); });
+});
 
 load();

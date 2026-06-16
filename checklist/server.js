@@ -95,6 +95,7 @@ app.get('/api/sessions', (req, res) => {
       templateColor: template.color,
       templateIcon: template.icon,
       resetMode: template.reset_mode,
+      category: template.category || 'general',
       date: session.date,
       status: session.status,
       completedBy: session.completed_by,

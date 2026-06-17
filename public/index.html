@@ -68,6 +68,29 @@
 
     .foot{margin-top:30px;color:var(--muted);font-size:.78rem}
     .foot a{color:var(--gold);text-decoration:none}
+
+    /* Anniversaires */
+    .bday{width:100%;max-width:720px;margin:0 0 18px}
+    .bday-card{
+      background:var(--card);border:1.5px solid var(--card-border);
+      border-radius:18px;padding:16px 18px;
+    }
+    .bday-today{
+      background:linear-gradient(135deg,rgba(191,39,45,.22),rgba(197,157,95,.22));
+      border:1.5px solid rgba(197,157,95,.55);
+    }
+    .bday-title{display:flex;align-items:center;gap:8px;font-size:.78rem;font-weight:700;
+      text-transform:uppercase;letter-spacing:.08em;color:var(--gold);margin-bottom:8px}
+    .bday-msg{font-size:1.05rem;font-weight:700;line-height:1.4}
+    .bday-msg .who{color:var(--gold)}
+    .bday-next{display:flex;flex-direction:column;gap:6px}
+    .bday-next .line{display:flex;justify-content:space-between;gap:12px;font-size:.9rem}
+    .bday-next .line .nm{color:var(--cream)}
+    .bday-next .line .dt{color:var(--muted);white-space:nowrap}
+    .bday-next .soon{color:var(--gold);font-weight:700}
+    .bday-card + .bday-card{margin-top:12px}
+    .jm-msg{font-size:1.02rem;font-weight:700;color:var(--cream)}
+    .jm-card{border-left:4px solid var(--gold)}
   </style>
 </head>
 <body>
@@ -76,6 +99,8 @@
     <h1>Bœuf &amp; Cow</h1>
     <p>Espace de gestion du restaurant</p>
   </div>
+
+  <section class="bday" id="bday" hidden></section>
 
   <main class="grid">
     <a class="tile salle" href="pointage.html">
@@ -104,7 +129,7 @@
       <span class="accent"></span>
       <span class="ic">🧑‍🍳</span>
       <span class="badge soon">Bientôt</span>
-      <span class="ttl">Check-list Cuisine</span>
+      <span class="ttl">Cuisine</span>
       <span class="sub">À venir — nous la remplirons prochainement</span>
     </div>
   </main>
@@ -112,8 +137,74 @@
   <div class="foot"><a href="pointage.html">Administration</a> · Bœuf &amp; Cow</div>
 
   <script>
-    // La tuile « Check-list Cuisine » est un placeholder : aucun clic n'a d'effet pour l'instant.
+    // La tuile « Cuisine » est un placeholder : aucun clic n'a d'effet pour l'instant.
     document.getElementById('checklist-cuisine').addEventListener('click', function (e) { e.preventDefault(); });
+
+    // --- Anniversaires du personnel -------------------------------------
+    (function () {
+      var MOIS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+      var MSG = [
+        'Joyeux anniversaire {NOM} ! 🎂 Toute l’équipe te souhaite une superbe journée 🥳',
+        'Bon anniversaire {NOM} ! 🎉 Profite bien de ta journée 🎈',
+        'Joyeux anniversaire {NOM} ! 🥂 Que cette journée soit aussi savoureuse qu’une bonne côte de bœuf 🐮',
+        'Bon anniversaire {NOM} ! 🎁 L’équipe Bœuf & Cow pense à toi aujourd’hui ❤️'
+      ];
+      var box = document.getElementById('bday');
+
+      Promise.all([
+        fetch('anniversaires.json?v=9').then(function (r) { return r.json(); }).catch(function () { return []; }),
+        fetch('journees-mondiales.json?v=9').then(function (r) { return r.json(); }).catch(function () { return {}; })
+      ]).then(function (res) {
+        var list = Array.isArray(res[0]) ? res[0] : [];
+        var jm = res[1] || {};
+        var now = new Date();
+        var j = now.getDate(), m = now.getMonth() + 1;
+
+        var html = '';
+
+        // Journée mondiale du jour
+        var jour = jm[m + '-' + j];
+        if (jour) {
+          html += '<div class="bday-card jm-card">'
+                + '<div class="bday-title">📅 Aujourd’hui, c’est aussi…</div>'
+                + '<div class="jm-msg">' + jour + '</div></div>';
+        }
+
+        var aujourdhui = list.filter(function (p) { return p.jour === j && p.mois === m; });
+
+        // Calcule le nombre de jours jusqu'au prochain anniversaire (année glissante)
+        function joursAvant(p) {
+          var d = new Date(now.getFullYear(), p.mois - 1, p.jour);
+          if (d < new Date(now.getFullYear(), m - 1, j)) d.setFullYear(now.getFullYear() + 1);
+          return Math.round((d - new Date(now.getFullYear(), m - 1, j)) / 86400000);
+        }
+        var avenir = list.slice().sort(function (a, b) { return joursAvant(a) - joursAvant(b); })
+                         .filter(function (p) { return !(p.jour === j && p.mois === m); })
+                         .slice(0, 3);
+
+        if (aujourdhui.length) {
+          var noms = aujourdhui.map(function (p) { return '<span class="who">' + (p.prenom || p.nom) + '</span>'; });
+          var nomsTxt = noms.length === 1 ? noms[0]
+            : noms.slice(0, -1).join(', ') + ' et ' + noms[noms.length - 1];
+          var tpl = MSG[(j + m) % MSG.length].replace('{NOM}', nomsTxt);
+          html += '<div class="bday-card bday-today">'
+                + '<div class="bday-title">🎉 Anniversaire du jour</div>'
+                + '<div class="bday-msg">' + tpl + '</div></div>';
+        }
+        if (avenir.length) {
+          var lignes = avenir.map(function (p) {
+            var dd = joursAvant(p);
+            var quand = dd === 1 ? '<span class="soon">demain</span>'
+                      : p.jour + ' ' + MOIS[p.mois - 1] + ' (dans ' + dd + ' j)';
+            return '<div class="line"><span class="nm">' + (p.prenom || p.nom) + '</span><span class="dt">' + quand + '</span></div>';
+          }).join('');
+          html += '<div class="bday-card">'
+                + '<div class="bday-title">🎂 Prochains anniversaires</div>'
+                + '<div class="bday-next">' + lignes + '</div></div>';
+        }
+        if (html) { box.innerHTML = html; box.hidden = false; }
+      }).catch(function () { /* silencieux : pas d'anniv affiché si erreur */ });
+    })();
   </script>
 </body>
 </html>

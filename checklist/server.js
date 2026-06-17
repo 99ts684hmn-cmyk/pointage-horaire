@@ -344,6 +344,85 @@ app.get('/api/config', (req, res) => {
   res.json({ establishment: ETABLISSEMENT || '' });
 });
 
+// --- Grille COMMANDES (cuisine) -------------------------------------------
+// Une case cochée « faite » le reste 3 jours puis repasse automatiquement en
+// « à faire » (échéance par case, calculée à la lecture via checked_at).
+const CMD_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
+function cellDone(checkedAt) {
+  return !!(checkedAt && (Date.now() - Date.parse(checkedAt)) < CMD_WINDOW_MS);
+}
+
+// GET /api/commandes — grille complète (fournisseurs + cases par jour 1..7)
+app.get('/api/commandes', (req, res) => {
+  const rows = db.prepare('SELECT * FROM commandes_rows WHERE is_active = 1 ORDER BY ord ASC').all();
+  const cells = db.prepare('SELECT * FROM commandes_cells').all();
+  const byRow = {};
+  for (const c of cells) {
+    (byRow[c.row_id] = byRow[c.row_id] || {})[c.day] = {
+      id: c.id, label: c.label, done: cellDone(c.checked_at), checkedAt: c.checked_at || null,
+    };
+  }
+  res.json({ rows: rows.map((r) => ({ id: r.id, label: r.label, sublabel: r.sublabel || '', cells: byRow[r.id] || {} })) });
+});
+
+// POST /api/commandes/cells/:id/toggle — cocher / décocher une case
+app.post('/api/commandes/cells/:id/toggle', (req, res) => {
+  const cell = db.prepare('SELECT * FROM commandes_cells WHERE id = ?').get(req.params.id);
+  if (!cell) return res.status(404).json({ error: 'Case introuvable' });
+  const done = cellDone(cell.checked_at);
+  db.prepare('UPDATE commandes_cells SET checked_at = ? WHERE id = ?').run(done ? null : nowISO(), cell.id);
+  res.json({ ok: true, done: !done });
+});
+
+// POST /api/commandes/rows — ajouter un fournisseur
+app.post('/api/commandes/rows', (req, res) => {
+  const label = (req.body && req.body.label || '').trim();
+  if (!label) return res.status(400).json({ error: 'Nom requis' });
+  const sublabel = (req.body && req.body.sublabel || '').trim();
+  const last = db.prepare('SELECT MAX(ord) m FROM commandes_rows').get();
+  const id = uid();
+  db.prepare('INSERT INTO commandes_rows(id,label,sublabel,ord,is_active,created_at) VALUES(?,?,?,?,1,?)')
+    .run(id, label, sublabel, (last.m || 0) + 1, nowISO());
+  res.status(201).json({ id, label, sublabel });
+});
+
+// PATCH /api/commandes/rows/:id — renommer un fournisseur
+app.patch('/api/commandes/rows/:id', (req, res) => {
+  const label = (req.body && req.body.label || '').trim();
+  if (!label) return res.status(400).json({ error: 'Nom requis' });
+  const sublabel = (req.body && req.body.sublabel || '').trim();
+  db.prepare('UPDATE commandes_rows SET label = ?, sublabel = ? WHERE id = ?').run(label, sublabel, req.params.id);
+  res.json({ ok: true });
+});
+
+// DELETE /api/commandes/rows/:id — désactiver un fournisseur (soft delete)
+app.delete('/api/commandes/rows/:id', (req, res) => {
+  db.prepare('UPDATE commandes_rows SET is_active = 0 WHERE id = ?').run(req.params.id);
+  res.json({ ok: true });
+});
+
+// PUT /api/commandes/cell — définir le libellé d'une case (upsert). Libellé vide
+// = on efface la case. Conserve l'état coché si la case existait déjà.
+app.put('/api/commandes/cell', (req, res) => {
+  const b = req.body || {};
+  const rowId = (b.rowId || '').trim();
+  const day = parseInt(b.day, 10);
+  const label = (b.label || '').trim();
+  if (!rowId || !(day >= 1 && day <= 7)) return res.status(400).json({ error: 'Paramètres invalides' });
+  const existing = db.prepare('SELECT * FROM commandes_cells WHERE row_id = ? AND day = ?').get(rowId, day);
+  if (!label) {
+    if (existing) db.prepare('DELETE FROM commandes_cells WHERE id = ?').run(existing.id);
+    return res.json({ ok: true, cleared: true });
+  }
+  if (existing) {
+    db.prepare('UPDATE commandes_cells SET label = ? WHERE id = ?').run(label, existing.id);
+    return res.json({ ok: true, id: existing.id });
+  }
+  const id = uid();
+  db.prepare('INSERT INTO commandes_cells(id,row_id,day,label,checked_at) VALUES(?,?,?,?,NULL)').run(id, rowId, day, label);
+  res.status(201).json({ ok: true, id });
+});
+
 // L'appli est montée sous /checklist dans le serveur du pointage. Lancée seule
 // (`node checklist/server.js`), elle écoute sur son port.
 module.exports = app;

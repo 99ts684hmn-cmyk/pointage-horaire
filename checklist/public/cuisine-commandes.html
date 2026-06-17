@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Bœuf & Cow — Commandes</title>
+  <link rel="stylesheet" href="styles.css?v=11">
+  <style>
+    .cmd-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:12px}
+    table.cmd{border-collapse:collapse;width:100%;min-width:760px;background:#fff}
+    table.cmd th,table.cmd td{border:1px solid var(--border);padding:0;text-align:center;font-size:.8rem}
+    table.cmd thead th{background:#1f2120;color:var(--cream);padding:8px 6px;font-weight:700;position:sticky;top:0}
+    table.cmd th.frn{background:#1f2120}
+    table.cmd td.frn,table.cmd th.frn-row{text-align:left;padding:8px 10px;background:#faf7f2;position:sticky;left:0;z-index:1;min-width:190px;max-width:220px}
+    td.frn .nm{font-weight:700;color:var(--dark);font-size:.86rem;line-height:1.15}
+    td.frn .sub{color:var(--muted);font-size:.68rem;line-height:1.2;margin-top:2px}
+    td.cell{width:96px}
+    .cellbtn{display:block;width:100%;min-height:42px;border:0;background:transparent;cursor:pointer;
+      font-family:inherit;font-size:.74rem;font-weight:600;line-height:1.1;padding:6px 4px;color:var(--dark)}
+    .cellbtn.todo{background:#fdecec;color:#9e1f24}
+    .cellbtn.todo.liv{background:#e7f5ec;color:#1c6b3f}
+    .cellbtn.done{background:var(--green);color:#fff}
+    .cellbtn.done::before{content:"✓ ";font-weight:800}
+    .cellbtn.empty{cursor:default}
+    .legend{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin:14px 2px 0;color:var(--muted);font-size:.8rem}
+    .legend i{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:5px}
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <div class="brand">
+        <div class="logo">B</div>
+        <span class="name">BŒUF <span class="amp">&amp;</span> COW</span>
+        <span class="tag">Commandes</span>
+      </div>
+      <nav class="nav-links">
+        <a href="/" class="back">← Accueil</a>
+        <a href="cuisine.html">Check-lists</a>
+        <a href="cuisine-commandes.html" class="active">Commandes</a>
+        <a href="cuisine-commandes-admin.html">Admin</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div>
+      <h1 class="page-title">Commandes</h1>
+      <p class="page-sub">Touchez une case pour la marquer faite — elle repasse en « à faire » 3 jours après.</p>
+    </div>
+    <div id="content"><div class="loading pulse">Chargement…</div></div>
+    <div class="legend">
+      <span><i style="background:#fdecec;border:1px solid #f3b5b5"></i>Commande à faire</span>
+      <span><i style="background:#e7f5ec;border:1px solid #b5dcc3"></i>Livraison à faire</span>
+      <span><i style="background:var(--green)"></i>Fait (≤ 3 jours)</span>
+    </div>
+  </main>
+
+  <script src="cuisine-commandes.js?v=11"></script>
+</body>
+</html>

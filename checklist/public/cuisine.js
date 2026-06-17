@@ -58,11 +58,15 @@ function render() {
   }
 
   content.innerHTML = '<div class="grid">' + sessions.map((s) => {
-    const modeTxt = MODE_LABEL[s.resetMode] || '';
+    const modeTxt = s.resetMode === 'WEEKLY_CARRY_OVER' ? `Tâches du ${esc(s.todayLabel || '')}`
+      : s.resetMode === 'WEEKLY_MONDAY' ? `Hebdo (lundi) — ${esc(s.todayLabel || '')}`
+      : (MODE_LABEL[s.resetMode] || '');
     const barColor = s.status === 'TERMINE' ? 'var(--green)' : (s.progress > 60 ? 'var(--gold)' : 'var(--red)');
     const pill = s.status === 'TERMINE'
       ? '<span class="pill done">✓ Terminé</span>'
       : '<span class="pill prog">En cours</span>';
+    const carried = (s.carriedCount > 0 && s.status !== 'TERMINE')
+      ? `<p class="carried">↩ ${s.carriedCount} tâche${s.carriedCount > 1 ? 's' : ''} reportée${s.carriedCount > 1 ? 's' : ''}</p>` : '';
     const byline = (s.status === 'TERMINE' && s.completedBy)
       ? `<p class="byline">✓ Par ${esc(s.completedBy)} à ${frTime(s.completedAt)}</p>` : '';
     return `<a class="card clcard${s.status === 'TERMINE' ? ' done' : ''}" href="session.html?id=${encodeURIComponent(s.id)}">
@@ -73,7 +77,7 @@ function render() {
       </div>
       <div class="meta"><span class="m">${s.doneTasks}/${s.totalTasks} tâches</span><span class="p">${s.progress}%</span></div>
       <div class="bar on-light"><i style="width:${s.progress}%;background:${barColor}"></i></div>
-      ${byline}
+      ${carried}${byline}
     </a>`;
   }).join('') + '</div>';
 }

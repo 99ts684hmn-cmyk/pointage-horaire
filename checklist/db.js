@@ -80,6 +80,28 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_tasks_tmpl     ON tasks(template_id);
   CREATE INDEX IF NOT EXISTS idx_sessions_date  ON sessions(date);
   CREATE INDEX IF NOT EXISTS idx_compl_session  ON completions(session_id);
+
+  -- Grille COMMANDES (cuisine) : tableau fournisseurs × jours. Chaque case a un
+  -- libellé fixe (CMD matin / LIVRAISON…) ; cocher « fait » horodate checked_at.
+  -- Une case est considérée « faite » tant que checked_at a moins de 3 jours
+  -- (report automatique à J+3 calculé à la lecture, pas de tâche planifiée).
+  CREATE TABLE IF NOT EXISTS commandes_rows (
+    id        TEXT PRIMARY KEY,
+    label     TEXT NOT NULL,
+    sublabel  TEXT,
+    ord       INTEGER NOT NULL DEFAULT 0,
+    is_active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS commandes_cells (
+    id         TEXT PRIMARY KEY,
+    row_id     TEXT NOT NULL,
+    day        INTEGER NOT NULL,
+    label      TEXT NOT NULL,
+    checked_at TEXT,
+    UNIQUE (row_id, day),
+    FOREIGN KEY (row_id) REFERENCES commandes_rows(id) ON DELETE CASCADE
+  );
 `);
 
 // Migration de schéma : ajoute la colonne « category » sur les bases déjà
@@ -498,6 +520,22 @@ const CUISINE_FERM_FROID_TASKS = [
   'Mise en place dans Economa (DLC)',
 ];
 
+// Ménage hebdo cuisine (photo IMG_1748) — mode WEEKLY_MONDAY : une seule session
+// par semaine, toutes les tâches visibles toute la semaine ; les tâches non
+// cochées « restent » jusqu'au reset automatique du lundi 8h (= report hebdo).
+const CUISINE_MENAGE_HEBDO_TASKS = [
+  'Intérieur hotte',
+  'Ranger CF viande',
+  'Chambre froide du bas',
+  'Légumerie et sol',
+  'Chambre froide du haut',
+  'Local poubelle',
+  'Poussière moteur des tours',
+  'Grilles de hottes',
+  'Coffre de la hotte',
+  'Moteur de la chambre froide',
+];
+
 // Les 4 anciennes check-lists d'exemple (Ouverture, Fermeture, Nettoyage,
 // Inventaire) ont été retirées : plus créées sur une base neuve, et désactivées
 // sur les bases existantes (migration 3).
@@ -521,7 +559,7 @@ function ensureTemplateByType(type, build) {
 }
 
 // Version de schéma/migrations appliquée à cette base (PRAGMA user_version).
-const SCHEMA_VERSION = 7;
+const SCHEMA_VERSION = 8;
 
 function seedAndMigrate() {
   const count = db.prepare('SELECT COUNT(*) c FROM templates').get().c;
@@ -574,6 +612,7 @@ function seedAndMigrate() {
   ensureTemplateByType('CUISINE_PLANCHA', () => { const id = insertTemplate({ name: 'Plancha', type: 'CUISINE_PLANCHA', color: 'bg-orange-600', icon: '🔥', resetMode: 'AUTO_DAILY', order: 1, category: 'cuisine' }); CUISINE_PLANCHA_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
   ensureTemplateByType('CUISINE_GARNITURE', () => { const id = insertTemplate({ name: 'Poste garniture', type: 'CUISINE_GARNITURE', color: 'bg-green-600', icon: '🥗', resetMode: 'AUTO_DAILY', order: 2, category: 'cuisine' }); CUISINE_GARNITURE_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
   ensureTemplateByType('CUISINE_FERM_FROID', () => { const id = insertTemplate({ name: 'Fermeture du froid', type: 'CUISINE_FERM_FROID', color: 'bg-sky-600', icon: '❄️', resetMode: 'AUTO_DAILY', order: 3, category: 'cuisine' }); CUISINE_FERM_FROID_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
+  ensureTemplateByType('CUISINE_MENAGE_HEBDO', () => { const id = insertTemplate({ name: 'Ménage hebdo cuisine', type: 'CUISINE_MENAGE_HEBDO', color: 'bg-teal-500', icon: '🧽', resetMode: 'WEEKLY_MONDAY', order: 4, category: 'cuisine' }); CUISINE_MENAGE_HEBDO_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
 
   // Migration 1 : remplacer les tâches de « Check Manager Matin » par celles de
   // l'onglet « CL manager ouv matin ». Uniquement sur une base DÉJÀ existante
@@ -642,5 +681,32 @@ function seedAndMigrate() {
 }
 
 seedAndMigrate();
+
+// Seed des fournisseurs de la grille COMMANDES (photo IMG_1747). Idempotent :
+// uniquement si la table est vide (ne réécrase jamais des modifs faites ensuite
+// via l'éditeur). Les cases (CMD/LIVRAISON par jour) sont à remplir/corriger
+// dans l'éditeur — la photo était trop dense pour une transcription fiable.
+const COMMANDES_FOURNISSEURS = [
+  ['Viande Chaiseronne', 'Répondeur / tél 02 33 48 12 77'],
+  ['Lesage', 'Argentine/USA/wagyu/végé — SMS 06 71 37 25 93'],
+  ['Crèmerie Prodelis (Séverine)', 'SMS photo — 06 51 24 85 07'],
+  ['Proapro (Julien Fauchon)', 'SMS photo — 06 22 03 34 88'],
+  ['Sysco (Julien)', 'SMS photo avec validation'],
+  ['Transgourmet Viandes', 'Appel 11h Nathalie — 02 28 09 17 51'],
+  ['Transgourmet Viande', 'Appel 11h Linda'],
+  ['Metro', 'Livraison — Application'],
+  ['Roda', 'SMS photo — 06 81 05 79 55 (Stéphane)'],
+  ['Sec / Good épices (Yves)', 'SMS photo — 07 62 18 25 25'],
+  ['Entretien Blot (Ricardo)', 'SMS photo — 06 99 61 11 48'],
+  ['Burger (Brioche Dorée)', 'SMS WhatsApp — pb quali 06 32 80 42 80'],
+  ['Poisson Reynaud', 'Répondeur 02 31 83 03 14'],
+  ['Pomme de terre (Manu)', 'SMS — 06 68 05 28 04'],
+  ['France Boisson', 'Tél 02 31 71 23 44 — Hugo 06 31 59 44 70'],
+  ['Poisson Barfleur (dépannage)', 'Répondeur 02 31 83 03 14'],
+];
+if (db.prepare('SELECT COUNT(*) c FROM commandes_rows').get().c === 0) {
+  const insRow = db.prepare('INSERT INTO commandes_rows(id,label,sublabel,ord,is_active,created_at) VALUES(?,?,?,?,1,?)');
+  COMMANDES_FOURNISSEURS.forEach((f, i) => insRow.run(uid(), f[0], f[1], i + 1, nowISO()));
+}
 
 module.exports = { db, uid, nowISO, DB_PATH };

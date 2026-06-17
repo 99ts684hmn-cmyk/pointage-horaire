@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Bœuf & Cow — Commandes · Admin</title>
+  <link rel="stylesheet" href="styles.css?v=11">
+  <style>
+    .cmd-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:12px}
+    table.cmd{border-collapse:collapse;width:100%;min-width:820px;background:#fff}
+    table.cmd th,table.cmd td{border:1px solid var(--border);padding:4px;text-align:center;font-size:.78rem}
+    table.cmd thead th{background:#1f2120;color:var(--cream);padding:8px 6px;font-weight:700}
+    table.cmd td.frn{text-align:left;padding:6px 8px;background:#faf7f2;min-width:180px;max-width:210px}
+    td.frn .nm{font-weight:700;color:var(--dark);font-size:.84rem}
+    td.frn .sub{color:var(--muted);font-size:.66rem;line-height:1.2;margin-top:2px}
+    td.frn .acts{margin-top:5px;display:flex;gap:6px}
+    td.frn .acts button{font-size:.66rem;padding:3px 6px;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer;font-family:inherit}
+    td.cell select{width:100%;border:0;background:transparent;font-family:inherit;font-size:.74rem;padding:6px 2px;color:var(--dark);cursor:pointer}
+    td.cell.has-cmd{background:#fdecec}
+    td.cell.has-liv{background:#e7f5ec}
+    .addbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:16px;background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:14px}
+    .addbar input{border:1.5px solid var(--border);border-radius:9px;padding:10px 12px;font-size:.88rem;color:var(--dark);font-family:inherit}
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <div class="brand">
+        <div class="logo">B</div>
+        <span class="name">BŒUF <span class="amp">&amp;</span> COW</span>
+        <span class="tag">Commandes · Admin</span>
+      </div>
+      <nav class="nav-links">
+        <a href="/" class="back">← Accueil</a>
+        <a href="cuisine-commandes.html">Grille</a>
+        <a href="cuisine-commandes-admin.html" class="active">Admin</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div>
+      <h1 class="page-title">Éditer la grille Commandes</h1>
+      <p class="page-sub">Choisissez le contenu de chaque case (jour × fournisseur). « — » = case vide.</p>
+    </div>
+    <div id="content"><div class="loading pulse">Chargement…</div></div>
+  </main>
+
+  <script src="cuisine-commandes-admin.js?v=11"></script>
+</body>
+</html>

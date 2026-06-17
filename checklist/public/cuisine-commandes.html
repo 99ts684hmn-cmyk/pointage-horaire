@@ -26,7 +26,8 @@
     .cellbtn.todo.liv{background:#e7f5ec;color:#1c6b3f}
     .cellbtn.done{background:var(--green);color:#fff}
     .cellbtn.done::before{content:"✓ ";font-weight:800}
-    .cellbtn.empty{cursor:default}
+    .cellbtn.empty{cursor:default;min-height:24px}
+    .cellbtn + .cellbtn{border-top:2px solid #fff}
     .legend{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin:14px 2px 0;color:var(--muted);font-size:.8rem}
     .legend i{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:5px}
   </style>
@@ -61,6 +62,6 @@
     </div>
   </main>
 
-  <script src="cuisine-commandes.js?v=12"></script>
+  <script src="cuisine-commandes.js?v=13"></script>
 </body>
 </html>

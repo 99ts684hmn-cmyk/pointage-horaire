@@ -377,9 +377,10 @@ app.get('/api/commandes', (req, res) => {
   const cells = db.prepare('SELECT * FROM commandes_cells').all();
   const byRow = {};
   for (const c of cells) {
-    (byRow[c.row_id] = byRow[c.row_id] || {})[c.day] = {
-      id: c.id, label: c.label, done: cellDone(c.checked_at), checkedAt: c.checked_at || null,
-    };
+    const r = (byRow[c.row_id] = byRow[c.row_id] || {});
+    const d = (r[c.day] = r[c.day] || { cmd: null, liv: null });
+    const item = { id: c.id, label: c.label, done: cellDone(c.checked_at), checkedAt: c.checked_at || null };
+    if (c.kind === 'LIV') d.liv = item; else d.cmd = item;
   }
   res.json({ rows: rows.map((r) => ({ id: r.id, label: r.label, sublabel: r.sublabel || '', cells: byRow[r.id] || {} })) });
 });
@@ -426,9 +427,10 @@ app.put('/api/commandes/cell', (req, res) => {
   const b = req.body || {};
   const rowId = (b.rowId || '').trim();
   const day = parseInt(b.day, 10);
+  const kind = b.kind === 'LIV' ? 'LIV' : 'CMD';
   const label = (b.label || '').trim();
   if (!rowId || !(day >= 1 && day <= 7)) return res.status(400).json({ error: 'Paramètres invalides' });
-  const existing = db.prepare('SELECT * FROM commandes_cells WHERE row_id = ? AND day = ?').get(rowId, day);
+  const existing = db.prepare('SELECT * FROM commandes_cells WHERE row_id = ? AND day = ? AND kind = ?').get(rowId, day, kind);
   if (!label) {
     if (existing) db.prepare('DELETE FROM commandes_cells WHERE id = ?').run(existing.id);
     return res.json({ ok: true, cleared: true });
@@ -438,7 +440,7 @@ app.put('/api/commandes/cell', (req, res) => {
     return res.json({ ok: true, id: existing.id });
   }
   const id = uid();
-  db.prepare('INSERT INTO commandes_cells(id,row_id,day,label,checked_at) VALUES(?,?,?,?,NULL)').run(id, rowId, day, label);
+  db.prepare('INSERT INTO commandes_cells(id,row_id,day,kind,label,checked_at) VALUES(?,?,?,?,?,NULL)').run(id, rowId, day, kind, label);
   res.status(201).json({ ok: true, id });
 });
 

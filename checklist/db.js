@@ -22,6 +22,14 @@ const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
+// Migration grille COMMANDES : ancien schéma (1 case par jour) -> nouveau (jusqu'à
+// 2 cases/jour via `kind` CMD/LIV). On recrée la table si la colonne manque (les
+// cases n'étaient pas encore renseignées en prod -> aucune perte de données).
+const _cc = db.prepare("PRAGMA table_info(commandes_cells)").all();
+if (_cc.length && !_cc.some((c) => c.name === 'kind')) {
+  db.exec('DROP TABLE commandes_cells');
+}
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS templates (
     id         TEXT PRIMARY KEY,
@@ -98,9 +106,10 @@ db.exec(`
     id         TEXT PRIMARY KEY,
     row_id     TEXT NOT NULL,
     day        INTEGER NOT NULL,
+    kind       TEXT NOT NULL DEFAULT 'CMD',
     label      TEXT NOT NULL,
     checked_at TEXT,
-    UNIQUE (row_id, day),
+    UNIQUE (row_id, day, kind),
     FOREIGN KEY (row_id) REFERENCES commandes_rows(id) ON DELETE CASCADE
   );
 `);

@@ -16,7 +16,10 @@ async function load() {
   render();
 }
 
-function isLivraison(label) { return /livr/i.test(label || ''); }
+function cellBtn(item, kind) {
+  const cls = item.done ? 'done' : (kind === 'liv' ? 'todo liv' : 'todo');
+  return `<button class="cellbtn ${cls}" data-cell="${esc(item.id)}">${esc(item.label)}</button>`;
+}
 
 function render() {
   if (!data.rows || !data.rows.length) {
@@ -26,10 +29,12 @@ function render() {
   const head = `<thead><tr><th class="frn">Fournisseur</th>${DAYS.map((d) => `<th>${d[1]}</th>`).join('')}</tr></thead>`;
   const body = data.rows.map((r) => {
     const cells = DAYS.map((d) => {
-      const c = r.cells[d[0]];
-      if (!c) return '<td class="cell"><span class="cellbtn empty"></span></td>';
-      const cls = c.done ? 'done' : (isLivraison(c.label) ? 'todo liv' : 'todo');
-      return `<td class="cell"><button class="cellbtn ${cls}" data-cell="${esc(c.id)}">${esc(c.label)}</button></td>`;
+      const c = r.cells[d[0]] || {};
+      let inner = '';
+      if (c.cmd) inner += cellBtn(c.cmd, 'cmd');
+      if (c.liv) inner += cellBtn(c.liv, 'liv');
+      if (!inner) inner = '<span class="cellbtn empty"></span>';
+      return `<td class="cell">${inner}</td>`;
     }).join('');
     const frn = r.sublabel
       ? `<button class="frn-name" data-info="${esc(r.id)}"><span class="nm">${esc(r.label)}</span><span class="chev">▾</span></button><div class="sub" id="info-${esc(r.id)}" hidden>${esc(r.sublabel)}</div>`

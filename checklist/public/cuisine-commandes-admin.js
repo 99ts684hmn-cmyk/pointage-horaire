@@ -2,7 +2,8 @@
 
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 const DAYS = [['1', 'Lun'], ['2', 'Mar'], ['3', 'Mer'], ['4', 'Jeu'], ['5', 'Ven'], ['6', 'Sam'], ['7', 'Dim']];
-const PRESETS = ['CMD matin', 'CMD soir', 'CMD matin + soir', 'LIVRAISON', 'CMD + LIVRAISON'];
+const CMD_PRESETS = ['CMD matin', 'CMD soir', 'CMD matin + soir'];
+const LIV_PRESETS = ['LIVRAISON'];
 const AUTRE = '__autre__';
 
 const content = document.getElementById('content');
@@ -14,16 +15,11 @@ async function load() {
   render();
 }
 
-function cellClass(label) {
-  if (!label) return '';
-  return /livr/i.test(label) && !/cmd/i.test(label) ? 'has-liv' : 'has-cmd';
-}
-
-function optionsFor(label) {
+function optionsFor(label, presets) {
   const opts = [`<option value="">—</option>`];
-  const presets = PRESETS.slice();
-  if (label && !presets.includes(label)) presets.unshift(label); // conserve un libellé custom existant
-  presets.forEach((p) => { opts.push(`<option value="${esc(p)}"${p === label ? ' selected' : ''}>${esc(p)}</option>`); });
+  const list = presets.slice();
+  if (label && !list.includes(label)) list.unshift(label); // conserve un libellé custom existant
+  list.forEach((p) => { opts.push(`<option value="${esc(p)}"${p === label ? ' selected' : ''}>${esc(p)}</option>`); });
   opts.push(`<option value="${AUTRE}">Autre…</option>`);
   return opts.join('');
 }
@@ -32,10 +28,12 @@ function render() {
   const head = `<thead><tr><th>Fournisseur</th>${DAYS.map((d) => `<th>${d[1]}</th>`).join('')}</tr></thead>`;
   const body = data.rows.map((r) => {
     const cells = DAYS.map((d) => {
-      const c = r.cells[d[0]];
-      const label = c ? c.label : '';
-      return `<td class="cell ${cellClass(label)}" data-cellwrap="${esc(r.id)}_${d[0]}">
-        <select data-row="${esc(r.id)}" data-day="${d[0]}">${optionsFor(label)}</select>
+      const c = r.cells[d[0]] || {};
+      const cmdL = c.cmd ? c.cmd.label : '';
+      const livL = c.liv ? c.liv.label : '';
+      return `<td class="cell">
+        <select class="sel-cmd" data-row="${esc(r.id)}" data-day="${d[0]}" data-kind="CMD">${optionsFor(cmdL, CMD_PRESETS)}</select>
+        <select class="sel-liv" data-row="${esc(r.id)}" data-day="${d[0]}" data-kind="LIV">${optionsFor(livL, LIV_PRESETS)}</select>
       </td>`;
     }).join('');
     return `<tr>
@@ -62,10 +60,10 @@ function render() {
   document.getElementById('add-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') addRow(); });
 }
 
-async function setCell(rowId, day, label) {
+async function setCell(rowId, day, kind, label) {
   await fetch('api/commandes/cell', {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ rowId, day, label }),
+    body: JSON.stringify({ rowId, day, kind, label }),
   });
   await load();
 }
@@ -77,7 +75,7 @@ function onCellChange(sel) {
     if (!v) { sel.value = sel.dataset.prev || ''; return; }
     label = v;
   }
-  setCell(sel.dataset.row, sel.dataset.day, label);
+  setCell(sel.dataset.row, sel.dataset.day, sel.dataset.kind, label);
 }
 
 async function addRow() {

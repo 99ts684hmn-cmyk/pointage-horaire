@@ -31,11 +31,19 @@ function render() {
       const cls = c.done ? 'done' : (isLivraison(c.label) ? 'todo liv' : 'todo');
       return `<td class="cell"><button class="cellbtn ${cls}" data-cell="${esc(c.id)}">${esc(c.label)}</button></td>`;
     }).join('');
-    return `<tr><td class="frn"><div class="nm">${esc(r.label)}</div>${r.sublabel ? `<div class="sub">${esc(r.sublabel)}</div>` : ''}</td>${cells}</tr>`;
+    const frn = r.sublabel
+      ? `<button class="frn-name" data-info="${esc(r.id)}"><span class="nm">${esc(r.label)}</span><span class="chev">▾</span></button><div class="sub" id="info-${esc(r.id)}" hidden>${esc(r.sublabel)}</div>`
+      : `<div class="nm">${esc(r.label)}</div>`;
+    return `<tr><td class="frn">${frn}</td>${cells}</tr>`;
   }).join('');
   content.innerHTML = `<div class="cmd-wrap"><table class="cmd">${head}<tbody>${body}</tbody></table></div>`;
 
   content.querySelectorAll('[data-cell]').forEach((b) => b.addEventListener('click', () => toggle(b.dataset.cell)));
+  content.querySelectorAll('[data-info]').forEach((b) => b.addEventListener('click', () => {
+    const info = document.getElementById('info-' + b.dataset.info);
+    if (info) info.hidden = !info.hidden;
+    b.classList.toggle('open');
+  }));
 }
 
 async function toggle(cellId) {

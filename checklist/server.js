@@ -67,12 +67,19 @@ function ensureCompletions(sessionId, templateId) {
   tx();
 }
 
+// Une tâche est programmée ce jour (dow 1-7) si son champ `days` (ex. "1,3,5")
+// le contient ; sinon on retombe sur day_of_week (compat. hebdo salle).
+function taskRunsOn(t, dow) {
+  if (t.days) return t.days.split(',').map((n) => parseInt(n, 10)).includes(dow);
+  return t.day_of_week === dow;
+}
+
 function createSession(template, date, todayDow) {
   const tasks = qTemplateTasks.all(template.id);
   let taskData = [];
 
   if (template.reset_mode === 'WEEKLY_CARRY_OVER') {
-    const todayTasks = tasks.filter((t) => t.day_of_week === todayDow);
+    const todayTasks = tasks.filter((t) => taskRunsOn(t, todayDow));
     const included = new Set(todayTasks.map((t) => t.id));
     const carried = [];
     const prevDate = getPreviousDate(date);
@@ -231,7 +238,7 @@ app.get('/api/templates', (req, res) => {
   const templates = qActiveTemplates.all().map((t) => ({
     id: t.id, name: t.name, icon: t.icon, type: t.type, resetMode: t.reset_mode,
     category: t.category || 'general',
-    tasks: qTemplateTasks.all(t.id).map((task) => ({ id: task.id, title: task.title, order: task.ord })),
+    tasks: qTemplateTasks.all(t.id).map((task) => ({ id: task.id, title: task.title, order: task.ord, days: task.days || null, dayOfWeek: task.day_of_week ?? null })),
   }));
   res.json(templates);
 });
@@ -267,10 +274,14 @@ app.post('/api/templates/:id/tasks', (req, res) => {
   const title = (req.body && req.body.title || '').trim();
   if (!title) return res.status(400).json({ error: 'Titre requis' });
   const last = db.prepare('SELECT MAX(ord) m FROM tasks WHERE template_id = ?').get(req.params.id);
+  // Sur une check-list hebdo (report par jour), une nouvelle tâche est par défaut
+  // programmée tous les jours (l'utilisateur restreint ensuite via l'éditeur).
+  const tmpl = db.prepare('SELECT reset_mode FROM templates WHERE id = ?').get(req.params.id);
+  const days = tmpl && tmpl.reset_mode === 'WEEKLY_CARRY_OVER' ? '1,2,3,4,5,6,7' : null;
   const id = uid();
-  db.prepare('INSERT INTO tasks(id,template_id,title,ord,is_active,day_of_week,created_at) VALUES(?,?,?,?,1,NULL,?)')
-    .run(id, req.params.id, title, (last.m || 0) + 1, nowISO());
-  res.status(201).json({ id, title });
+  db.prepare('INSERT INTO tasks(id,template_id,title,ord,is_active,day_of_week,days,created_at) VALUES(?,?,?,?,1,NULL,?,?)')
+    .run(id, req.params.id, title, (last.m || 0) + 1, days, nowISO());
+  res.status(201).json({ id, title, days });
 });
 
 // PUT /api/templates/:id/tasks/order — réordonner les tâches (glisser-déposer)
@@ -282,11 +293,19 @@ app.put('/api/templates/:id/tasks/order', (req, res) => {
   res.json({ ok: true });
 });
 
-// PATCH /api/tasks/:id — renommer
+// PATCH /api/tasks/:id — renommer et/ou changer les jours programmés (days)
 app.patch('/api/tasks/:id', (req, res) => {
-  const title = (req.body && req.body.title || '').trim();
-  if (!title) return res.status(400).json({ error: 'Titre requis' });
-  db.prepare('UPDATE tasks SET title = ? WHERE id = ?').run(title, req.params.id);
+  const b = req.body || {};
+  if (typeof b.days === 'string') {
+    // Normalise "1,3,5" (jours 1-7 uniques, triés). Chaîne vide = aucun jour.
+    const days = b.days.split(',').map((n) => parseInt(n, 10)).filter((n) => n >= 1 && n <= 7);
+    const uniq = [...new Set(days)].sort((a, c) => a - c).join(',');
+    db.prepare('UPDATE tasks SET days = ? WHERE id = ?').run(uniq || null, req.params.id);
+  }
+  if (typeof b.title === 'string') {
+    const title = b.title.trim();
+    if (title) db.prepare('UPDATE tasks SET title = ? WHERE id = ?').run(title, req.params.id);
+  }
   res.json({ ok: true });
 });
 

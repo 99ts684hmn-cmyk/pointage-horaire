@@ -4,7 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Bœuf & Cow — Cuisine · Admin</title>
-  <link rel="stylesheet" href="styles.css?v=10">
+  <link rel="stylesheet" href="styles.css?v=12">
+  <style>
+    .dayrow{display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:4px 10px 10px 30px}
+    .daylbl{color:var(--muted);font-size:.74rem;margin-right:2px}
+    .daypill{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--border);background:#fff;
+      color:var(--muted);font-size:.76rem;font-weight:700;cursor:pointer;font-family:inherit}
+    .daypill.on{background:var(--primary);border-color:var(--primary);color:#fff}
+  </style>
 </head>
 <body>
   <header class="nav">
@@ -33,6 +40,6 @@
   </main>
 
   <script src="sortable.min.js?v=10"></script>
-  <script src="cuisine-admin.js?v=10"></script>
+  <script src="cuisine-admin.js?v=12"></script>
 </body>
 </html>

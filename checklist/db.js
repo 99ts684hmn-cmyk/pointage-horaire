@@ -43,6 +43,7 @@ db.exec(`
     ord         INTEGER NOT NULL DEFAULT 0,
     is_active   INTEGER NOT NULL DEFAULT 1,
     day_of_week INTEGER,
+    days        TEXT,
     created_at  TEXT NOT NULL,
     FOREIGN KEY (template_id) REFERENCES templates(id) ON DELETE CASCADE
   );
@@ -109,6 +110,11 @@ db.exec(`
 // manager / bar). Idempotent (n'ajoute la colonne que si elle manque).
 if (!db.prepare('PRAGMA table_info(templates)').all().some((c) => c.name === 'category')) {
   db.exec("ALTER TABLE templates ADD COLUMN category TEXT NOT NULL DEFAULT 'general'");
+}
+// Colonne « days » (jours d'une tâche pour le mode WEEKLY_CARRY_OVER, ex. "1,3,5").
+// Si NULL, on retombe sur day_of_week (compat. tâches hebdo salle existantes).
+if (!db.prepare('PRAGMA table_info(tasks)').all().some((c) => c.name === 'days')) {
+  db.exec('ALTER TABLE tasks ADD COLUMN days TEXT');
 }
 
 const uid = () => crypto.randomUUID();
@@ -520,20 +526,21 @@ const CUISINE_FERM_FROID_TASKS = [
   'Mise en place dans Economa (DLC)',
 ];
 
-// Ménage hebdo cuisine (photo IMG_1748) — mode WEEKLY_MONDAY : une seule session
-// par semaine, toutes les tâches visibles toute la semaine ; les tâches non
-// cochées « restent » jusqu'au reset automatique du lundi 8h (= report hebdo).
+// Ménage hebdo cuisine (photo IMG_1748) — mode WEEKLY_CARRY_OVER : chaque jour
+// affiche les tâches programmées CE jour (cases colorées) + le report des tâches
+// non faites les jours précédents. days = jours programmés ("1"=lundi … "7"=dim).
+// Estimation depuis la photo (cases colorées) — à AJUSTER dans l'éditeur cuisine.
 const CUISINE_MENAGE_HEBDO_TASKS = [
-  'Intérieur hotte',
-  'Ranger CF viande',
-  'Chambre froide du bas',
-  'Légumerie et sol',
-  'Chambre froide du haut',
-  'Local poubelle',
-  'Poussière moteur des tours',
-  'Grilles de hottes',
-  'Coffre de la hotte',
-  'Moteur de la chambre froide',
+  { title: 'Intérieur hotte', days: '1' },
+  { title: 'Ranger CF viande', days: '1,2,3,5,6' },
+  { title: 'Chambre froide du bas', days: '1,3,5,6' },
+  { title: 'Légumerie et sol', days: '1,3,5' },
+  { title: 'Chambre froide du haut', days: '3,5,7' },
+  { title: 'Local poubelle', days: '1,4' },
+  { title: 'Poussière moteur des tours', days: '5' },
+  { title: 'Grilles de hottes', days: '1,2,3,4,5,6,7' },
+  { title: 'Coffre de la hotte', days: '6' },
+  { title: 'Moteur de la chambre froide', days: '1' },
 ];
 
 // Les 4 anciennes check-lists d'exemple (Ouverture, Fermeture, Nettoyage,
@@ -547,9 +554,9 @@ function insertTemplate(t) {
     .run(id, t.name, t.type, t.color, t.icon, t.resetMode, t.order, t.category || 'general', nowISO());
   return id;
 }
-function insertTask(templateId, title, order, dayOfWeek) {
-  db.prepare('INSERT INTO tasks(id,template_id,title,ord,is_active,day_of_week,created_at) VALUES(?,?,?,?,1,?,?)')
-    .run(uid(), templateId, title, order, dayOfWeek ?? null, nowISO());
+function insertTask(templateId, title, order, dayOfWeek, days) {
+  db.prepare('INSERT INTO tasks(id,template_id,title,ord,is_active,day_of_week,days,created_at) VALUES(?,?,?,?,1,?,?,?)')
+    .run(uid(), templateId, title, order, dayOfWeek ?? null, days ?? null, nowISO());
 }
 
 function ensureTemplateByType(type, build) {
@@ -559,7 +566,7 @@ function ensureTemplateByType(type, build) {
 }
 
 // Version de schéma/migrations appliquée à cette base (PRAGMA user_version).
-const SCHEMA_VERSION = 8;
+const SCHEMA_VERSION = 9;
 
 function seedAndMigrate() {
   const count = db.prepare('SELECT COUNT(*) c FROM templates').get().c;
@@ -612,7 +619,7 @@ function seedAndMigrate() {
   ensureTemplateByType('CUISINE_PLANCHA', () => { const id = insertTemplate({ name: 'Plancha', type: 'CUISINE_PLANCHA', color: 'bg-orange-600', icon: '🔥', resetMode: 'AUTO_DAILY', order: 1, category: 'cuisine' }); CUISINE_PLANCHA_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
   ensureTemplateByType('CUISINE_GARNITURE', () => { const id = insertTemplate({ name: 'Poste garniture', type: 'CUISINE_GARNITURE', color: 'bg-green-600', icon: '🥗', resetMode: 'AUTO_DAILY', order: 2, category: 'cuisine' }); CUISINE_GARNITURE_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
   ensureTemplateByType('CUISINE_FERM_FROID', () => { const id = insertTemplate({ name: 'Fermeture du froid', type: 'CUISINE_FERM_FROID', color: 'bg-sky-600', icon: '❄️', resetMode: 'AUTO_DAILY', order: 3, category: 'cuisine' }); CUISINE_FERM_FROID_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
-  ensureTemplateByType('CUISINE_MENAGE_HEBDO', () => { const id = insertTemplate({ name: 'Ménage hebdo cuisine', type: 'CUISINE_MENAGE_HEBDO', color: 'bg-teal-500', icon: '🧽', resetMode: 'WEEKLY_MONDAY', order: 4, category: 'cuisine' }); CUISINE_MENAGE_HEBDO_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
+  ensureTemplateByType('CUISINE_MENAGE_HEBDO', () => { const id = insertTemplate({ name: 'Ménage hebdo cuisine', type: 'CUISINE_MENAGE_HEBDO', color: 'bg-teal-500', icon: '🧽', resetMode: 'WEEKLY_CARRY_OVER', order: 4, category: 'cuisine' }); CUISINE_MENAGE_HEBDO_TASKS.forEach((t, i) => insertTask(id, t.title, i + 1, null, t.days)); });
 
   // Migration 1 : remplacer les tâches de « Check Manager Matin » par celles de
   // l'onglet « CL manager ouv matin ». Uniquement sur une base DÉJÀ existante

@@ -418,6 +418,86 @@ const MENAGE_HEBDO_TASKS = [
   'Faire les poussières (décoration / têtes de vaches / cadres / cheminée / jar de fleurs artificielles)',
 ];
 
+// --- Check-lists CUISINE (page dédiée) — d'après les photos fournies. --------
+// Reset quotidien par défaut (ajustable ensuite via l'Admin).
+const CUISINE_PLANCHA_TASKS = [
+  'Plancha propre + tiroir',
+  'Carter de plancha propre',
+  'Mur derrière plancha',
+  'Brûleur et grille',
+  'Rangement sous plancha et sous piano',
+  'Mur derrière brûleur',
+  'Grilles de hottes',
+  'Poubelle',
+  'Pieds de plan de travail',
+  'Sol sous friteuse et plancha',
+  'Étagère assiettes propre',
+  'Frigo tour chaud et extérieur + plan de travail',
+  'Tiroir datés filmé et papiers bouchers',
+  'Intérieur frigo propre et tiroir propre',
+  'Sol sous frigo centrale propre',
+  'Ranger chaque étage et faire FIFO',
+  'Dater, filmer et nommer chaque bac',
+  'Viande sous viande ou écrire sur le tableau',
+  'Mettre sur tableau et WhatsApp les viandes à pousser',
+  'Pain burger rangé',
+  'CF du bas rangé et FIFO vérifié',
+  'Sol CF du bas fait ou noter à faire',
+  'Nettoyer passe et sous le passe',
+  'Hélices moteur',
+  'Donner couvert à la salle',
+  'Mise en place',
+  'Sortir grosse pièce',
+];
+
+const CUISINE_GARNITURE_TASKS = [
+  'Bain-marie : eau propre ou vidée et lavée',
+  'Sauces mises en bac transparent en cellule',
+  'Feuille de remise au froid remplie (cellule)',
+  'Friteuse huile propre ou vidée',
+  'Mur côté garniture',
+  'Extérieur four chaud',
+  'Chauffe-assiettes intérieur/extérieur',
+  'Sol sous chaud (piano, friteuse, plancha)',
+  'Étagère assiettes propre',
+  'Sur frigo tour chaud et extérieur',
+  'Tour datés filmé et papiers bouchers',
+  'Intérieur frigo propre et tiroir propre',
+  'Sol sous frigo centrale propre',
+  'Ranger chaque étage, datés filmé, rien au sol',
+  'Micro-onde propre',
+  'Étagère micro-onde propre',
+  'Sol sous étagère micro-onde',
+  'Hélices moteur',
+  'Donner couvert à la salle',
+  'Mise en place',
+];
+
+const CUISINE_FERM_FROID_TASKS = [
+  'Tiroir',
+  'Datés filmé, pipette nettoyée filmée',
+  'Autour des assiettes',
+  'Changer bac sous les poches à douilles',
+  'Mur derrière tour froid',
+  'Plinthe derrière tour froid',
+  'Four du froid',
+  'Extérieur tour froid (dessus, dessous, autour)',
+  'Miettes de pain autour des plaques gastro',
+  'Sous tour froid bien raclé',
+  'Congélateur à glace couvercle propre',
+  'Congélateur à glace pot fermé et mis en place fermé',
+  'Étagère assiettes propre',
+  'Échelle bâchée et bâche propre',
+  'Sol sous échelle propre',
+  'Côté froid rangé datés filmé',
+  'Mise en place sous micro-onde filmé',
+  'Chauffe pipette vidé lavé',
+  'Petite friteuse éteinte',
+  'Frigo et CF allumé',
+  'Economa : mise en place couverte',
+  'Mise en place dans Economa (DLC)',
+];
+
 // Les 4 anciennes check-lists d'exemple (Ouverture, Fermeture, Nettoyage,
 // Inventaire) ont été retirées : plus créées sur une base neuve, et désactivées
 // sur les bases existantes (migration 3).
@@ -441,7 +521,7 @@ function ensureTemplateByType(type, build) {
 }
 
 // Version de schéma/migrations appliquée à cette base (PRAGMA user_version).
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 7;
 
 function seedAndMigrate() {
   const count = db.prepare('SELECT COUNT(*) c FROM templates').get().c;
@@ -490,6 +570,10 @@ function seedAndMigrate() {
   ensureTemplateByType('BAR_FERM_SOIR_BAS', () => { const id = insertTemplate({ name: 'Fermeture soir bar du bas', type: 'BAR_FERM_SOIR_BAS', color: 'bg-rose-700', icon: '🍺', resetMode: 'AUTO_DAILY', order: 16, category: 'bar' }); BAR_FERM_SOIR_BAS_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
   // Ménage de service hebdo — onglet « Check-lists », reset chaque lundi 8h.
   ensureTemplateByType('MENAGE_HEBDO', () => { const id = insertTemplate({ name: 'Ménage de service hebdo', type: 'MENAGE_HEBDO', color: 'bg-teal-500', icon: '🧽', resetMode: 'WEEKLY_MONDAY', order: 6, category: 'general' }); MENAGE_HEBDO_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
+  // Check-lists CUISINE (page dédiée, catégorie « cuisine »), reset quotidien.
+  ensureTemplateByType('CUISINE_PLANCHA', () => { const id = insertTemplate({ name: 'Plancha', type: 'CUISINE_PLANCHA', color: 'bg-orange-600', icon: '🔥', resetMode: 'AUTO_DAILY', order: 1, category: 'cuisine' }); CUISINE_PLANCHA_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
+  ensureTemplateByType('CUISINE_GARNITURE', () => { const id = insertTemplate({ name: 'Poste garniture', type: 'CUISINE_GARNITURE', color: 'bg-green-600', icon: '🥗', resetMode: 'AUTO_DAILY', order: 2, category: 'cuisine' }); CUISINE_GARNITURE_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
+  ensureTemplateByType('CUISINE_FERM_FROID', () => { const id = insertTemplate({ name: 'Fermeture du froid', type: 'CUISINE_FERM_FROID', color: 'bg-sky-600', icon: '❄️', resetMode: 'AUTO_DAILY', order: 3, category: 'cuisine' }); CUISINE_FERM_FROID_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
 
   // Migration 1 : remplacer les tâches de « Check Manager Matin » par celles de
   // l'onglet « CL manager ouv matin ». Uniquement sur une base DÉJÀ existante

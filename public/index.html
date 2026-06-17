@@ -125,21 +125,17 @@
       <span class="sub">Ouverture, fermeture, manager &amp; bar</span>
     </a>
 
-    <div class="tile checklist-cuisine disabled" id="checklist-cuisine" aria-disabled="true">
+    <a class="tile checklist-cuisine" href="/checklist/cuisine.html">
       <span class="accent"></span>
       <span class="ic">🧑‍🍳</span>
-      <span class="badge soon">Bientôt</span>
       <span class="ttl">Cuisine</span>
-      <span class="sub">À venir — nous la remplirons prochainement</span>
-    </div>
+      <span class="sub">Plancha, poste garniture &amp; fermeture du froid</span>
+    </a>
   </main>
 
   <div class="foot"><a href="pointage.html">Administration</a> · Bœuf &amp; Cow</div>
 
   <script>
-    // La tuile « Cuisine » est un placeholder : aucun clic n'a d'effet pour l'instant.
-    document.getElementById('checklist-cuisine').addEventListener('click', function (e) { e.preventDefault(); });
-
     // --- Anniversaires du personnel -------------------------------------
     (function () {
       var MOIS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];

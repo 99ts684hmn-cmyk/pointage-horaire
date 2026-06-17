@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Bœuf & Cow — Check-lists Cuisine</title>
+  <link rel="stylesheet" href="styles.css?v=10">
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <div class="brand">
+        <div class="logo">B</div>
+        <span class="name">BŒUF <span class="amp">&amp;</span> COW</span>
+        <span class="tag">Cuisine</span>
+      </div>
+      <nav class="nav-links">
+        <a href="/" class="back">← Accueil</a>
+        <a href="cuisine.html" class="active">Cuisine</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div>
+      <h1 class="page-title">Check-lists Cuisine</h1>
+      <p class="page-sub" id="subtitle"></p>
+    </div>
+
+    <div class="global" id="global" hidden>
+      <div class="row"><span class="lbl">Progression globale</span><span class="pct" id="global-pct">0%</span></div>
+      <div class="bar"><i id="global-bar" style="width:0%"></i></div>
+    </div>
+
+    <div id="content"><div class="loading pulse">Chargement…</div></div>
+  </main>
+
+  <script src="cuisine.js?v=10"></script>
+</body>
+</html>

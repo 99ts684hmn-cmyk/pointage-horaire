@@ -54,6 +54,44 @@ async function saveTaskEdit(taskId, input) {
   });
   render();
 }
+const RESET_OPTS = [
+  ['AUTO_DAILY', 'Reset quotidien'],
+  ['CARRY_OVER', 'Report des non-faites'],
+  ['MANUAL', 'Manuel'],
+  ['WEEKLY_MONDAY', 'Hebdo (lundi 8h)'],
+];
+async function createTemplate(category) {
+  const name = document.getElementById('new-cl-name').value.trim();
+  if (!name) return;
+  const icon = document.getElementById('new-cl-icon').value.trim() || '📋';
+  const resetMode = document.getElementById('new-cl-reset').value;
+  const r = await fetch('api/templates', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, icon, resetMode, category }),
+  });
+  const created = await r.json();
+  await fetchData();
+  if (created && created.id) { expanded = created.id; render(); }
+}
+async function deleteTemplate(id, name) {
+  if (!confirm(`Supprimer la check-list « ${name} » ?\nL'historique reste conservé, elle disparaît simplement de l'app.`)) return;
+  await fetch(`api/templates/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  if (expanded === id) expanded = null;
+  await fetchData();
+}
+function createFormHTML(category) {
+  return `<div class="card" style="padding:16px">
+    <div class="nm" style="margin-bottom:10px">➕ Nouvelle check-list</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <input type="text" id="new-cl-icon" placeholder="📋" maxlength="2" style="width:56px;text-align:center;border:1.5px solid var(--border);border-radius:9px;padding:10px;font-size:1rem;font-family:inherit">
+      <input type="text" id="new-cl-name" placeholder="Nom de la check-list…" style="flex:1;min-width:160px;border:1.5px solid var(--border);border-radius:9px;padding:10px 14px;font-size:.9rem;color:var(--dark);font-family:inherit">
+      <select id="new-cl-reset" style="border:1.5px solid var(--border);border-radius:9px;padding:10px;font-size:.85rem;font-family:inherit;color:var(--dark)">
+        ${RESET_OPTS.map((o) => `<option value="${o[0]}">${o[1]}</option>`).join('')}
+      </select>
+      <button class="btn btn-red" id="new-cl-create" data-cat="${esc(category)}">Créer</button>
+    </div>
+  </div>`;
+}
 async function addEmployee(input) {
   const name = input.value.trim();
   if (!name) return;
@@ -83,6 +121,7 @@ function render() {
     : `<div class="trow" data-id="${esc(task.id)}"><span class="drag" title="Glisser pour réordonner">⠿</span><span class="t" data-edit-task="${esc(task.id)}">${esc(task.title)}</span><button class="edit" data-edit-task="${esc(task.id)}">Modifier</button><button class="del" data-del-task="${esc(task.id)}">Supprimer</button></div>`)).join('')}
         </div>
         <div class="addrow"><input type="text" placeholder="Nouvelle tâche…" data-add-input="${esc(tm.id)}"><button class="btn btn-red" data-add-task="${esc(tm.id)}">+ Ajouter</button></div>
+        <div style="margin-top:12px;text-align:right"><button class="del" data-del-tmpl="${esc(tm.id)}" data-del-name="${esc(tm.name)}">🗑 Supprimer cette check-list</button></div>
       </div>` : '';
       return `<div class="card acc">
         <button class="acc-head" data-toggle="${esc(tm.id)}">
@@ -92,7 +131,15 @@ function render() {
           <span class="caret">${open ? '▲' : '▼'}</span>
         </button>${body}
       </div>`;
-    }).join('') || `<div class="empty">${CAT_EMPTY[tab] || 'Aucune check-list.'}</div>`;
+    }).join('') || `<div class="empty" style="margin-bottom:16px">${CAT_EMPTY[tab] || 'Aucune check-list.'}</div>`;
+
+    content.innerHTML += createFormHTML(tab);
+    const createBtn = document.getElementById('new-cl-create');
+    if (createBtn) {
+      createBtn.addEventListener('click', () => createTemplate(createBtn.dataset.cat));
+      document.getElementById('new-cl-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') createTemplate(createBtn.dataset.cat); });
+    }
+    content.querySelectorAll('[data-del-tmpl]').forEach((b) => b.addEventListener('click', () => deleteTemplate(b.dataset.delTmpl, b.dataset.delName)));
 
     content.querySelectorAll('[data-toggle]').forEach((b) => b.addEventListener('click', () => {
       expanded = expanded === b.dataset.toggle ? null : b.dataset.toggle; render();

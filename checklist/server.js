@@ -236,6 +236,32 @@ app.get('/api/templates', (req, res) => {
   res.json(templates);
 });
 
+// POST /api/templates — créer une nouvelle check-list (depuis l'admin)
+const RESET_MODES = ['AUTO_DAILY', 'CARRY_OVER', 'MANUAL', 'WEEKLY_CARRY_OVER', 'WEEKLY_MONDAY'];
+const CATEGORIES = ['general', 'manager', 'bar', 'cuisine'];
+app.post('/api/templates', (req, res) => {
+  const b = req.body || {};
+  const name = (b.name || '').trim();
+  if (!name) return res.status(400).json({ error: 'Nom requis' });
+  const icon = (b.icon || '').trim() || '📋';
+  const resetMode = RESET_MODES.includes(b.resetMode) ? b.resetMode : 'AUTO_DAILY';
+  const category = CATEGORIES.includes(b.category) ? b.category : 'general';
+  // Type unique (les types « seed » sont en MAJUSCULES connues ; on préfixe).
+  const type = 'CUSTOM_' + uid().replace(/-/g, '').slice(0, 12).toUpperCase();
+  const last = db.prepare('SELECT MAX(ord) m FROM templates WHERE category = ?').get(category);
+  const id = uid();
+  db.prepare('INSERT INTO templates(id,name,type,color,icon,reset_mode,ord,is_active,category,created_at) VALUES(?,?,?,?,?,?,?,1,?,?)')
+    .run(id, name, type, null, icon, resetMode, (last.m || 0) + 1, category, nowISO());
+  res.status(201).json({ id, name, icon, resetMode, category, type, tasks: [] });
+});
+
+// DELETE /api/templates/:id — désactiver une check-list (soft delete : l'historique
+// des sessions/coches reste en base, la check-list disparaît simplement de l'app).
+app.delete('/api/templates/:id', (req, res) => {
+  db.prepare('UPDATE templates SET is_active = 0 WHERE id = ?').run(req.params.id);
+  res.json({ ok: true });
+});
+
 // POST /api/templates/:id/tasks — ajouter une tâche
 app.post('/api/templates/:id/tasks', (req, res) => {
   const title = (req.body && req.body.title || '').trim();

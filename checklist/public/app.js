@@ -64,7 +64,21 @@ function render() {
     return;
   }
 
-  content.innerHTML = '<div class="grid">' + sessions.map((s) => {
+  // Regroupe les check-lists par service : Midi / Soir / Autres (selon le type).
+  const blockOf = (s) => {
+    const t = String(s.templateType || '').toUpperCase();
+    if (t.includes('MIDI')) return 'midi';
+    if (t.includes('SOIR')) return 'soir';
+    return 'autre';
+  };
+  const groups = { midi: [], soir: [], autre: [] };
+  sessions.forEach((s) => { groups[blockOf(s)].push(s); });
+  const BLOCK_LABEL = { midi: '🌞 Midi', soir: '🌙 Soir', autre: 'Autres' };
+  const order = ['midi', 'soir', 'autre'];
+  const nonEmpty = order.filter((k) => groups[k].length);
+  const showHeads = nonEmpty.length > 1; // une seule famille → pas d'en-tête.
+
+  const card = (s) => {
     const modeTxt = s.resetMode === 'WEEKLY_CARRY_OVER' ? `Tâches du ${esc(s.todayLabel || '')}`
       : s.resetMode === 'WEEKLY_MONDAY' ? `Hebdo (lundi) — ${esc(s.todayLabel || '')}`
       : (MODE_LABEL[s.resetMode] || '');
@@ -86,7 +100,12 @@ function render() {
       <div class="bar on-light"><i style="width:${s.progress}%;background:${barColor}"></i></div>
       ${carried}${byline}
     </a>`;
-  }).join('') + '</div>';
+  };
+
+  content.innerHTML = nonEmpty.map((k) => {
+    const head = showHeads ? `<h3 class="block-title">${BLOCK_LABEL[k]}</h3>` : '';
+    return `<section class="block">${head}<div class="grid">${groups[k].map(card).join('')}</div></section>`;
+  }).join('');
 }
 
 ['general', 'manager', 'bar'].forEach((t) => {

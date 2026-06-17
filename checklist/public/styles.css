@@ -57,6 +57,13 @@ body {
 .grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
 @media (min-width: 620px) { .grid { grid-template-columns: 1fr 1fr; } }
 
+/* Blocs de service (Midi / Soir / Autres) */
+.block { margin-top: 22px; }
+.block:first-child { margin-top: 0; }
+.block-title { display: flex; align-items: center; gap: 10px; font-size: .82rem; font-weight: 900;
+  text-transform: uppercase; letter-spacing: .12em; color: var(--gold); margin: 0 0 12px; }
+.block-title::after { content: ""; flex: 1; height: 1px; background: rgba(197,157,95,.3); }
+
 .card { background: #fff; border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.22); }
 .clcard { padding: 18px; border: 2px solid var(--border); cursor: pointer; transition: transform .15s ease; color: var(--dark); text-decoration: none; display: block; }
 .clcard:hover { transform: translateY(-2px); }

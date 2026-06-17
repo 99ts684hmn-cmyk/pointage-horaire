@@ -4,9 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Administration — Boeuf &amp; Cow</title>
-  <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=9">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=9">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -16,10 +15,13 @@
   <div class="topbar">
     <div class="brand-col">
       <div class="brand"><span class="brand-name">Bœuf <span class="amp">&amp;</span> Cow</span><span class="brand-tag">Administration</span></div>
-      <a class="cuisine-btn" href="/cuisine/">🍳 Cuisine</a>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <a class="cuisine-btn" href="/">🏠 Accueil</a>
+        <a class="cuisine-btn" href="/cuisine/">🍳 Cuisine</a>
+      </div>
     </div>
     <div>
-      <a href="index.html">← Écran de pointage</a>
+      <a href="pointage.html">← Écran de pointage</a>
       <a href="#" id="logout-link" style="display:none; margin-left:16px">Déconnexion</a>
     </div>
   </div>

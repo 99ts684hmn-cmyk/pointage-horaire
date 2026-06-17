@@ -2,56 +2,118 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Saisie des départs — Boeuf &amp; Cow</title>
-  <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Bœuf &amp; Cow</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=9">
+  <link rel="icon" type="image/png" sizes="192x192" href="logo-192.png?v=9">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=9">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <style>
+    :root{
+      --bg1:#0e110d; --bg2:#2a221f;
+      --gold:#c59d5f; --gold-dark:#a9853f;
+      --primary:#bf272d; --primary-dark:#9e1f24;
+      --cream:#fff8f0; --muted:#b9b0a4;
+      --card:rgba(255,255,255,.04); --card-border:rgba(255,255,255,.10);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family:"Hanken Grotesk",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      background:linear-gradient(165deg,var(--bg1) 0%,var(--bg2) 100%);
+      color:var(--cream); min-height:100vh;
+      display:flex; flex-direction:column; align-items:center;
+      padding:max(28px,env(safe-area-inset-top)) 20px 48px;
+    }
+    .hero{display:flex;flex-direction:column;align-items:center;text-align:center;margin:18px 0 34px}
+    .hero img{width:148px;height:148px;border-radius:28px;box-shadow:0 14px 40px rgba(0,0,0,.45);}
+    .hero h1{font-size:1.05rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin-top:18px}
+    .hero p{color:var(--muted);font-size:.9rem;margin-top:6px}
+
+    .grid{
+      width:100%; max-width:720px;
+      display:grid; grid-template-columns:repeat(2,1fr); gap:16px;
+    }
+    @media (max-width:560px){ .grid{grid-template-columns:1fr} }
+
+    .tile{
+      display:flex; flex-direction:column; gap:10px;
+      background:var(--card); border:1.5px solid var(--card-border);
+      border-radius:20px; padding:24px 22px; min-height:148px;
+      color:var(--cream); text-decoration:none;
+      transition:transform .15s ease, border-color .15s ease, background .15s ease;
+      position:relative; overflow:hidden;
+    }
+    .tile:hover{transform:translateY(-3px);border-color:var(--gold);background:rgba(255,255,255,.07)}
+    .tile .ic{font-size:2rem;line-height:1}
+    .tile .ttl{font-size:1.12rem;font-weight:700;letter-spacing:.01em}
+    .tile .sub{font-size:.85rem;color:var(--muted);line-height:1.35}
+    .tile .accent{position:absolute;left:0;top:0;bottom:0;width:5px}
+    .tile.salle .accent{background:var(--primary)}
+    .tile.cuisine .accent{background:var(--gold)}
+    .tile.checklist-salle .accent{background:var(--primary)}
+    .tile.checklist-cuisine .accent{background:var(--gold)}
+
+    .badge{
+      align-self:flex-start; font-size:.7rem; font-weight:600;
+      text-transform:uppercase; letter-spacing:.06em;
+      padding:3px 9px; border-radius:999px;
+    }
+    .badge.lock{background:rgba(197,157,95,.16);color:var(--gold);border:1px solid rgba(197,157,95,.4)}
+    .badge.soon{background:rgba(255,255,255,.06);color:var(--muted);border:1px solid var(--card-border)}
+
+    .tile.disabled{cursor:not-allowed;opacity:.62}
+    .tile.disabled:hover{transform:none;border-color:var(--card-border);background:var(--card)}
+
+    .foot{margin-top:30px;color:var(--muted);font-size:.78rem}
+    .foot a{color:var(--gold);text-decoration:none}
+  </style>
 </head>
 <body>
-  <div class="topbar">
-    <div class="brand-col">
-      <div class="brand"><span class="brand-name">Bœuf <span class="amp">&amp;</span> Cow</span><span class="brand-tag">Saisie des horaires de départ</span></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <a class="cuisine-btn" href="/cuisine/">🍳 Cuisine</a>
-        <a class="cuisine-btn checklist-btn" id="checklist-link" href="/checklist/">✅ Check-lists</a>
-      </div>
-    </div>
-    <a href="admin.html">Administration →</a>
+  <div class="hero">
+    <img src="logo-512.png?v=9" alt="Bœuf & Cow">
+    <h1>Bœuf &amp; Cow</h1>
+    <p>Espace de gestion du restaurant</p>
   </div>
 
-  <div class="container">
-    <div class="clock">
-      <div class="time" id="clock-time">--:--</div>
-      <div class="date" id="clock-date"></div>
+  <main class="grid">
+    <a class="tile salle" href="pointage.html">
+      <span class="accent"></span>
+      <span class="ic">🕒</span>
+      <span class="ttl">Pointage &amp; Planning Salle</span>
+      <span class="sub">Saisie des départs et planning de la semaine</span>
+    </a>
+
+    <a class="tile cuisine" href="/cuisine/">
+      <span class="accent"></span>
+      <span class="ic">🍳</span>
+      <span class="badge lock">🔒 Protégé</span>
+      <span class="ttl">Planning cuisine</span>
+      <span class="sub">Planning hebdomadaire de la cuisine</span>
+    </a>
+
+    <a class="tile checklist-salle" href="/checklist/">
+      <span class="accent"></span>
+      <span class="ic">✅</span>
+      <span class="ttl">Check-list Salle</span>
+      <span class="sub">Ouverture, fermeture, manager &amp; bar</span>
+    </a>
+
+    <div class="tile checklist-cuisine disabled" id="checklist-cuisine" aria-disabled="true">
+      <span class="accent"></span>
+      <span class="ic">🧑‍🍳</span>
+      <span class="badge soon">Bientôt</span>
+      <span class="ttl">Check-list Cuisine</span>
+      <span class="sub">À venir — nous la remplirons prochainement</span>
     </div>
+  </main>
 
-    <div class="employees-grid" id="employees"></div>
+  <div class="foot"><a href="pointage.html">Administration</a> · Bœuf &amp; Cow</div>
 
-    <!-- Planning de la semaine (lecture seule) -->
-    <div class="panel" id="planning-view-panel" style="margin-top:26px">
-      <div class="pv-head">
-        <h2 style="margin:0">Planning de la semaine</h2>
-        <div class="pv-nav">
-          <button class="btn btn-ghost" id="pv-prev">‹ Préc.</button>
-          <span id="pv-label"></span>
-          <button class="btn btn-ghost" id="pv-next">Suiv. ›</button>
-        </div>
-      </div>
-      <div class="table-wrap"><div id="pv-output"><div class="empty">Chargement…</div></div></div>
-    </div>
-  </div>
-
-  <!-- Modale PIN / actions -->
-  <div class="overlay" id="overlay">
-    <div class="modal" id="modal"><!-- rempli dynamiquement --></div>
-  </div>
-
-  <script src="planning-view.js"></script>
-  <script src="app.js"></script>
+  <script>
+    // La tuile « Check-list Cuisine » est un placeholder : aucun clic n'a d'effet pour l'instant.
+    document.getElementById('checklist-cuisine').addEventListener('click', function (e) { e.preventDefault(); });
+  </script>
 </body>
 </html>

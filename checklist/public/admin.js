@@ -6,11 +6,11 @@ const MODE_LABEL = { AUTO_DAILY: 'Reset quotidien', CARRY_OVER: 'Report des non-
 const content = document.getElementById('content');
 let templates = [];
 let employees = [];
-let tab = 'general'; // 'general' | 'manager' | 'bar' | 'cuisine' | 'employes'
+let tab = 'general'; // 'general' | 'manager' | 'bar' | 'employes'
 let expanded = null;
 let editingTask = null; // id de la tâche en cours de modification
-const CAT_TABS = ['general', 'manager', 'bar', 'cuisine'];
-const CAT_EMPTY = { general: 'Aucune check-list ici.', manager: 'Aucune check-list manager.', bar: 'Aucune check-list bar.', cuisine: 'Aucune check-list cuisine.' };
+const CAT_TABS = ['general', 'manager', 'bar'];
+const CAT_EMPTY = { general: 'Aucune check-list ici.', manager: 'Aucune check-list manager.', bar: 'Aucune check-list bar.' };
 
 async function fetchData() {
   const [t, e] = await Promise.all([
@@ -67,7 +67,7 @@ async function deleteEmployee(id) {
 }
 
 function render() {
-  ['general', 'manager', 'bar', 'cuisine', 'employes'].forEach((t) => {
+  ['general', 'manager', 'bar', 'employes'].forEach((t) => {
     const el = document.getElementById('tab-' + t);
     if (el) el.classList.toggle('active', tab === t);
   });
@@ -142,7 +142,7 @@ function render() {
   }
 }
 
-['general', 'manager', 'bar', 'cuisine', 'employes'].forEach((t) => {
+['general', 'manager', 'bar', 'employes'].forEach((t) => {
   document.getElementById('tab-' + t).addEventListener('click', () => { tab = t; expanded = null; render(); });
 });
 

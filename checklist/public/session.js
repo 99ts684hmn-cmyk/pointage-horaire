@@ -4,7 +4,17 @@ function frDate(iso) { const [y, m, d] = iso.split('-'); return `${d}/${m}/${y}`
 function frTime(iso) { if (!iso) return '-'; return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); }
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
-const sessionId = new URLSearchParams(location.search).get('id');
+const params = new URLSearchParams(location.search);
+const sessionId = params.get('id');
+// Si on vient de la cuisine, « Retour » et la nav doivent renvoyer vers la cuisine.
+if (params.get('from') === 'cuisine') {
+  const back = document.getElementById('back-link');
+  const navList = document.getElementById('nav-list');
+  const navAdmin = document.getElementById('nav-admin');
+  if (back) back.href = 'cuisine.html';
+  if (navList) navList.href = 'cuisine.html';
+  if (navAdmin) navAdmin.href = 'cuisine-admin.html';
+}
 const content = document.getElementById('content');
 const overlay = document.getElementById('overlay');
 const modal = document.getElementById('modal');

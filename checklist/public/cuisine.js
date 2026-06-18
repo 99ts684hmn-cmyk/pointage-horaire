@@ -69,7 +69,7 @@ function render() {
       ? `<p class="carried">↩ ${s.carriedCount} tâche${s.carriedCount > 1 ? 's' : ''} reportée${s.carriedCount > 1 ? 's' : ''}</p>` : '';
     const byline = (s.status === 'TERMINE' && s.completedBy)
       ? `<p class="byline">✓ Par ${esc(s.completedBy)} à ${frTime(s.completedAt)}</p>` : '';
-    return `<a class="card clcard${s.status === 'TERMINE' ? ' done' : ''}" href="session.html?id=${encodeURIComponent(s.id)}">
+    return `<a class="card clcard${s.status === 'TERMINE' ? ' done' : ''}" href="session.html?id=${encodeURIComponent(s.id)}&from=cuisine">
       <div class="head">
         <div class="l"><span class="icon">${esc(s.templateIcon)}</span>
           <div><h2>${esc(s.templateName)}</h2><p class="mode">${modeTxt}</p></div>

@@ -575,7 +575,7 @@ function ensureTemplateByType(type, build) {
 }
 
 // Version de schéma/migrations appliquée à cette base (PRAGMA user_version).
-const SCHEMA_VERSION = 10;
+const SCHEMA_VERSION = 11;
 
 function seedAndMigrate() {
   const count = db.prepare('SELECT COUNT(*) c FROM templates').get().c;
@@ -596,7 +596,7 @@ function seedAndMigrate() {
   // Idempotent : crée les check-lists manquantes (sur base neuve ET sur base
   // existante au prochain démarrage). Ne touche jamais une check-list déjà là.
   ensureTemplateByType('HEBDOMADAIRE', () => {
-    const id = insertTemplate({ name: 'Tâches hebdo salle', type: 'HEBDOMADAIRE', color: 'bg-purple-500', icon: '📅', resetMode: 'WEEKLY_CARRY_OVER', order: 7 });
+    const id = insertTemplate({ name: 'Tâches hebdo salle', type: 'HEBDOMADAIRE', color: 'bg-purple-500', icon: '📅', resetMode: 'WEEKLY_CARRY_OVER', order: 8 });
     WEEKLY_TASKS.forEach((t, i) => insertTask(id, t.title, i + 1, t.dayOfWeek));
   });
   ensureTemplateByType('MANAGER_MATIN', () => {
@@ -613,19 +613,20 @@ function seedAndMigrate() {
   });
   // Nouvelles check-lists de service (onglet « Check-lists »), créées vides :
   // les tâches sont à ajouter ensuite via l'Admin.
-  ensureTemplateByType('OUV_MIDI', () => { const id = insertTemplate({ name: 'Ouverture midi', type: 'OUV_MIDI', color: 'bg-amber-400', icon: '☀️', resetMode: 'AUTO_DAILY', order: 1, category: 'general' }); OUV_MIDI_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
-  ensureTemplateByType('FERM_MIDI', () => { const id = insertTemplate({ name: 'Fermeture midi Bas', type: 'FERM_MIDI', color: 'bg-amber-600', icon: '🍽️', resetMode: 'AUTO_DAILY', order: 2, category: 'general' }); FERM_MIDI_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
-  ensureTemplateByType('FERM_MIDI_HAUT', () => { const id = insertTemplate({ name: 'Fermeture midi Haut', type: 'FERM_MIDI_HAUT', color: 'bg-amber-600', icon: '🍽️', resetMode: 'AUTO_DAILY', order: 3, category: 'general' }); FERM_MIDI_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
-  ensureTemplateByType('OUV_SOIR', () => { const id = insertTemplate({ name: 'Ouverture soir', type: 'OUV_SOIR', color: 'bg-indigo-400', icon: '🌆', resetMode: 'AUTO_DAILY', order: 4, category: 'general' }); OUV_SOIR_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
-  ensureTemplateByType('FERM_SOIR', () => { const id = insertTemplate({ name: 'Fermeture soir Bas', type: 'FERM_SOIR', color: 'bg-indigo-600', icon: '🌃', resetMode: 'AUTO_DAILY', order: 5, category: 'general' }); FERM_SOIR_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
-  ensureTemplateByType('FERM_SOIR_HAUT', () => { const id = insertTemplate({ name: 'Fermeture soir Haut', type: 'FERM_SOIR_HAUT', color: 'bg-indigo-600', icon: '🌃', resetMode: 'AUTO_DAILY', order: 6, category: 'general' }); FERM_SOIR_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
+  ensureTemplateByType('OUV_MIDI', () => { const id = insertTemplate({ name: 'Ouverture midi Bas', type: 'OUV_MIDI', color: 'bg-amber-400', icon: '☀️', resetMode: 'AUTO_DAILY', order: 1, category: 'general' }); OUV_MIDI_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
+  ensureTemplateByType('OUV_MIDI_HAUT', () => { const id = insertTemplate({ name: 'Ouverture midi Haut', type: 'OUV_MIDI_HAUT', color: 'bg-amber-400', icon: '☀️', resetMode: 'AUTO_DAILY', order: 2, category: 'general' }); OUV_MIDI_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
+  ensureTemplateByType('FERM_MIDI', () => { const id = insertTemplate({ name: 'Fermeture midi Bas', type: 'FERM_MIDI', color: 'bg-amber-600', icon: '🍽️', resetMode: 'AUTO_DAILY', order: 3, category: 'general' }); FERM_MIDI_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
+  ensureTemplateByType('FERM_MIDI_HAUT', () => { const id = insertTemplate({ name: 'Fermeture midi Haut', type: 'FERM_MIDI_HAUT', color: 'bg-amber-600', icon: '🍽️', resetMode: 'AUTO_DAILY', order: 4, category: 'general' }); FERM_MIDI_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
+  ensureTemplateByType('OUV_SOIR', () => { const id = insertTemplate({ name: 'Ouverture soir', type: 'OUV_SOIR', color: 'bg-indigo-400', icon: '🌆', resetMode: 'AUTO_DAILY', order: 5, category: 'general' }); OUV_SOIR_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
+  ensureTemplateByType('FERM_SOIR', () => { const id = insertTemplate({ name: 'Fermeture soir Bas', type: 'FERM_SOIR', color: 'bg-indigo-600', icon: '🌃', resetMode: 'AUTO_DAILY', order: 6, category: 'general' }); FERM_SOIR_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
+  ensureTemplateByType('FERM_SOIR_HAUT', () => { const id = insertTemplate({ name: 'Fermeture soir Haut', type: 'FERM_SOIR_HAUT', color: 'bg-indigo-600', icon: '🌃', resetMode: 'AUTO_DAILY', order: 7, category: 'general' }); FERM_SOIR_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
   // Check-lists Bar (onglet « Check-list Bar »), créées vides.
   ensureTemplateByType('BAR_FERM_MIDI_HAUT', () => insertTemplate({ name: 'Fermeture midi bar du haut', type: 'BAR_FERM_MIDI_HAUT', color: 'bg-rose-500', icon: '🍸', resetMode: 'AUTO_DAILY', order: 13, category: 'bar' }));
   ensureTemplateByType('BAR_FERM_MIDI_BAS', () => insertTemplate({ name: 'Fermeture midi bar du bas', type: 'BAR_FERM_MIDI_BAS', color: 'bg-rose-500', icon: '🍹', resetMode: 'AUTO_DAILY', order: 14, category: 'bar' }));
   ensureTemplateByType('BAR_FERM_SOIR_HAUT', () => { const id = insertTemplate({ name: 'Fermeture soir bar du haut', type: 'BAR_FERM_SOIR_HAUT', color: 'bg-rose-700', icon: '🍷', resetMode: 'AUTO_DAILY', order: 15, category: 'bar' }); BAR_FERM_SOIR_HAUT_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
   ensureTemplateByType('BAR_FERM_SOIR_BAS', () => { const id = insertTemplate({ name: 'Fermeture soir bar du bas', type: 'BAR_FERM_SOIR_BAS', color: 'bg-rose-700', icon: '🍺', resetMode: 'AUTO_DAILY', order: 16, category: 'bar' }); BAR_FERM_SOIR_BAS_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
   // Ménage de service hebdo — onglet « Check-lists », reset chaque lundi 8h.
-  ensureTemplateByType('MENAGE_HEBDO', () => { const id = insertTemplate({ name: 'Ménage de service hebdo', type: 'MENAGE_HEBDO', color: 'bg-teal-500', icon: '🧽', resetMode: 'WEEKLY_MONDAY', order: 8, category: 'general' }); MENAGE_HEBDO_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
+  ensureTemplateByType('MENAGE_HEBDO', () => { const id = insertTemplate({ name: 'Ménage de service hebdo', type: 'MENAGE_HEBDO', color: 'bg-teal-500', icon: '🧽', resetMode: 'WEEKLY_MONDAY', order: 9, category: 'general' }); MENAGE_HEBDO_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
   // Check-lists CUISINE (page dédiée, catégorie « cuisine »), reset quotidien.
   ensureTemplateByType('CUISINE_PLANCHA', () => { const id = insertTemplate({ name: 'Plancha', type: 'CUISINE_PLANCHA', color: 'bg-orange-600', icon: '🔥', resetMode: 'AUTO_DAILY', order: 1, category: 'cuisine' }); CUISINE_PLANCHA_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
   ensureTemplateByType('CUISINE_GARNITURE', () => { const id = insertTemplate({ name: 'Poste garniture', type: 'CUISINE_GARNITURE', color: 'bg-green-600', icon: '🥗', resetMode: 'AUTO_DAILY', order: 2, category: 'cuisine' }); CUISINE_GARNITURE_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
@@ -711,6 +712,23 @@ function seedAndMigrate() {
     setOrd.run(8, 'MENAGE_HEBDO');
     // FERM_MIDI_HAUT (ord 3) et FERM_SOIR_HAUT (ord 6) reçoivent leur ordre à la
     // création via ensureTemplateByType.
+  }
+  // Migration 11 : dédoubler Ouverture midi (salle) en Bas + Haut. Sur base
+  // existante, l'ancienne « Ouverture midi » est RENOMMÉE en « Ouverture midi Bas »
+  // (garde son historique) ; « Ouverture midi Haut » est créée par
+  // ensureTemplateByType ci-dessus. On réordonne l'onglet général.
+  if (version < 11 && !freshDb) {
+    db.prepare("UPDATE templates SET name = 'Ouverture midi Bas' WHERE type = 'OUV_MIDI'").run();
+    const setOrd = db.prepare('UPDATE templates SET ord = ? WHERE type = ?');
+    setOrd.run(1, 'OUV_MIDI');
+    setOrd.run(3, 'FERM_MIDI');
+    setOrd.run(4, 'FERM_MIDI_HAUT');
+    setOrd.run(5, 'OUV_SOIR');
+    setOrd.run(6, 'FERM_SOIR');
+    setOrd.run(7, 'FERM_SOIR_HAUT');
+    setOrd.run(8, 'HEBDOMADAIRE');
+    setOrd.run(9, 'MENAGE_HEBDO');
+    // OUV_MIDI_HAUT (ord 2) reçoit son ordre à la création via ensureTemplateByType.
   }
   db.pragma('user_version = ' + SCHEMA_VERSION);
 }

@@ -6,14 +6,18 @@ function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => (
 
 const params = new URLSearchParams(location.search);
 const sessionId = params.get('id');
-// Si on vient de la cuisine, « Retour » et la nav doivent renvoyer vers la cuisine.
-if (params.get('from') === 'cuisine') {
+// « Retour » dépend de la provenance : cuisine, rapports, ou (défaut) salle.
+const from = params.get('from');
+if (from === 'cuisine') {
   const back = document.getElementById('back-link');
   const navList = document.getElementById('nav-list');
   const navAdmin = document.getElementById('nav-admin');
   if (back) back.href = 'cuisine.html';
   if (navList) navList.href = 'cuisine.html';
   if (navAdmin) navAdmin.href = 'cuisine-admin.html';
+} else if (from === 'rapports') {
+  const back = document.getElementById('back-link');
+  if (back) back.href = 'rapports.html';
 }
 const content = document.getElementById('content');
 const overlay = document.getElementById('overlay');

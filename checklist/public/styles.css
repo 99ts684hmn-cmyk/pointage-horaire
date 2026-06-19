@@ -173,6 +173,8 @@ table.rep { width: 100%; border-collapse: collapse; font-size: .85rem; color: va
 table.rep th { text-align: left; padding: 11px 14px; font-weight: 700; color: var(--muted); background: #f5f0eb; border-bottom: 1px solid var(--border); white-space: nowrap; }
 table.rep td { padding: 11px 14px; border-bottom: 1px solid var(--border); }
 table.rep tr:last-child td { border-bottom: 0; }
+table.rep tr.rowlink { cursor: pointer; transition: background .12s ease; }
+table.rep tr.rowlink:hover { background: #faf7f2; }
 .empty { text-align: center; padding: 48px 16px; color: var(--muted); background: #fff; border-radius: 12px; border: 1px solid var(--border); }
 .nowrap { white-space: nowrap; }
 .mini-bar { width: 80px; display: inline-block; vertical-align: middle; }

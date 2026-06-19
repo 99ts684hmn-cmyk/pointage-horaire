@@ -50,7 +50,7 @@ async function load() {
       : '<span class="pill prog">En cours</span>';
     const by = e.status === 'TERMINE' ? `<span style="font-weight:600">${esc(e.completedBy)}</span>` : '<span style="color:var(--muted)">-</span>';
     const barColor = e.progress === 100 ? 'var(--green)' : 'var(--gold)';
-    return `<tr>
+    return `<tr class="rowlink" data-id="${esc(e.id)}">
       <td class="nowrap" style="font-weight:600">${frDate(e.date)}</td>
       <td><span>${esc(e.templateIcon)}</span> <span style="font-weight:600">${esc(e.templateName)}</span></td>
       <td>${status}</td>
@@ -59,6 +59,13 @@ async function load() {
       <td><div style="display:flex;align-items:center;gap:8px"><div class="bar on-light mini-bar"><i style="width:${e.progress}%;background:${barColor}"></i></div><span style="font-size:.72rem;color:var(--muted)">${e.doneTasks}/${e.totalTasks}</span></div></td>
     </tr>`;
   }).join('')}</tbody></table></div></div>`;
+
+  // Clic sur une ligne → détail de la check-list (retour vers les rapports).
+  content.querySelectorAll('tr.rowlink').forEach((tr) => {
+    tr.addEventListener('click', () => {
+      location.href = `session.html?id=${encodeURIComponent(tr.dataset.id)}&from=rapports`;
+    });
+  });
 }
 
 [fromEl, toEl, typeEl].forEach((el) => el.addEventListener('change', load));

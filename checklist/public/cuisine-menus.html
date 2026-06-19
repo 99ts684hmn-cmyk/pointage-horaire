@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Bœuf & Cow — Menus</title>
+  <link rel="stylesheet" href="styles.css?v=15">
+  <style>
+    .board { margin: 24px 0; }
+    .board h2 { font-size: 1.05rem; font-weight: 900; color: var(--cream); margin: 0 0 10px;
+      text-transform: uppercase; letter-spacing: .04em; }
+    .veleda-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 12px; }
+    table.veleda { border-collapse: collapse; width: 100%; min-width: 820px; background: #fff;
+      border: 3px solid #1f2120; border-radius: 12px; overflow: hidden; }
+    table.veleda th, table.veleda td { border: 1px solid #ded8cd; padding: 0; vertical-align: top; }
+    table.veleda thead th { background: #f3f0ea; color: #1f2120; font-weight: 800; font-size: .8rem;
+      padding: 9px 6px; text-align: center; border-bottom: 2px solid #1f2120; }
+    table.veleda thead th.cnr { background: #1f2120; }
+    table.veleda .lbl { background: #fbe9e9; color: #9e1f24; font-weight: 800; font-size: .82rem;
+      text-align: left; padding: 8px 10px; white-space: nowrap; width: 110px; border-right: 2px solid #1f2120; }
+    table.veleda textarea { display: block; width: 100%; border: 0; background: transparent; resize: none;
+      font-family: inherit; font-size: .92rem; color: #1f2120; padding: 8px; min-height: 46px; line-height: 1.3; overflow: hidden; }
+    table.veleda textarea:focus { outline: 2px solid var(--gold); outline-offset: -2px; background: #fffdf6; }
+    .board.groupes table.veleda textarea { min-height: 92px; }
+    .saved-flash { animation: savedflash .8s ease; }
+    @keyframes savedflash { 0% { background: #e7f5ec; } 100% { background: transparent; } }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <div class="brand">
+        <div class="logo">B</div>
+        <span class="name">BŒUF <span class="amp">&amp;</span> COW</span>
+        <span class="tag">Menus</span>
+      </div>
+      <nav class="nav-links">
+        <a href="/" class="back">🏠 Accueil</a>
+        <a href="cuisine.html">✅ Check-lists</a>
+        <a href="cuisine-commandes.html">📦 Commandes</a>
+        <a href="cuisine-menus.html" class="active">📋 Menus</a>
+        <a href="cuisine-admin.html">⚙️ Admin</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div>
+      <h1 class="page-title">Menus</h1>
+      <p class="page-sub">Tableaux à remplir comme au tableau blanc — tout est enregistré automatiquement.</p>
+    </div>
+    <div id="content"><div class="loading pulse">Chargement…</div></div>
+  </main>
+
+  <script src="cuisine-menus.js?v=1"></script>
+</body>
+</html>

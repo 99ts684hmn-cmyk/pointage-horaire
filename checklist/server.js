@@ -456,6 +456,61 @@ app.put('/api/commandes/cell', (req, res) => {
   res.status(201).json({ ok: true, id });
 });
 
+// --- Tableaux MENUS (cuisine, style tableau blanc) ------------------------
+// 3 tableaux : « cette semaine », « semaine prochaine », « groupes (J+7) ».
+// Les cases sont indexées par DATE réelle → la semaine prochaine glisse
+// automatiquement en « cette semaine » la semaine suivante ; l'historique reste.
+function mondayOf(dateStr) {
+  const dow = getDayOfWeek(dateStr); // 1=lundi..7=dimanche
+  const d = new Date(dateStr + 'T12:00:00');
+  d.setDate(d.getDate() - (dow - 1));
+  return localISODate(d);
+}
+function addDays(dateStr, n) {
+  const d = new Date(dateStr + 'T12:00:00');
+  d.setDate(d.getDate() + n);
+  return localISODate(d);
+}
+function weekDates(monday) { return Array.from({ length: 7 }, (_, i) => addDays(monday, i)); }
+
+// GET /api/menus — dates des 3 tableaux + contenu des cases
+app.get('/api/menus', (req, res) => {
+  const today = todayParis();
+  const m1 = mondayOf(today);
+  const m2 = addDays(m1, 7);
+  const semaine = weekDates(m1);
+  const semainePro = weekDates(m2);
+  const groupes = semainePro; // groupes = semaine à J+7
+  const dates = [...new Set([...semaine, ...semainePro, ...groupes])];
+  const rows = dates.length
+    ? db.prepare(`SELECT date, slot, value FROM menu_cells WHERE date IN (${dates.map(() => '?').join(',')})`).all(...dates)
+    : [];
+  const cells = {};
+  for (const r of rows) { (cells[r.date] = cells[r.date] || {})[r.slot] = r.value; }
+  res.json({ semaine, semainePro, groupes, cells });
+});
+
+// PUT /api/menus/cell — écrire / effacer une case (upsert par date + slot)
+app.put('/api/menus/cell', (req, res) => {
+  const b = req.body || {};
+  const date = String(b.date || '').trim();
+  const slot = String(b.slot || '').trim();
+  const value = String(b.value == null ? '' : b.value).trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !slot) return res.status(400).json({ error: 'Paramètres invalides' });
+  const existing = db.prepare('SELECT id FROM menu_cells WHERE date = ? AND slot = ?').get(date, slot);
+  if (!value) {
+    if (existing) db.prepare('DELETE FROM menu_cells WHERE id = ?').run(existing.id);
+    return res.json({ ok: true, cleared: true });
+  }
+  if (existing) {
+    db.prepare('UPDATE menu_cells SET value = ?, updated_at = ? WHERE id = ?').run(value, nowISO(), existing.id);
+    return res.json({ ok: true, id: existing.id });
+  }
+  const id = uid();
+  db.prepare('INSERT INTO menu_cells(id,date,slot,value,updated_at) VALUES(?,?,?,?,?)').run(id, date, slot, value, nowISO());
+  res.status(201).json({ ok: true, id });
+});
+
 // =========================================================================
 //  Sauvegarde automatique
 // =========================================================================

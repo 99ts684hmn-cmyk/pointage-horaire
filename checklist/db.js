@@ -112,6 +112,18 @@ db.exec(`
     UNIQUE (row_id, day, kind),
     FOREIGN KEY (row_id) REFERENCES commandes_rows(id) ON DELETE CASCADE
   );
+  -- Tableaux « Menus » (cuisine) : une cellule par date (AAAA-MM-JJ) et par
+  -- emplacement (slot : e1/e2/pj1/pj2/d1/d2 pour les menus, groupe pour les
+  -- groupes). Clés par DATE réelle → la « semaine pro » devient « cette semaine »
+  -- automatiquement la semaine suivante, et l'historique est conservé.
+  CREATE TABLE IF NOT EXISTS menu_cells (
+    id         TEXT PRIMARY KEY,
+    date       TEXT NOT NULL,
+    slot       TEXT NOT NULL,
+    value      TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE (date, slot)
+  );
 `);
 
 // Migration de schéma : ajoute la colonne « category » sur les bases déjà

@@ -18,6 +18,17 @@ const DAY_NAMES = { 1: 'Lundi', 2: 'Mardi', 3: 'Mercredi', 4: 'Jeudi', 5: 'Vendr
 function todayParis() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
 }
+// Heure courante (0-23) au fuseau Europe/Paris.
+function hourParis() {
+  return parseInt(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Paris', hour: '2-digit', hour12: false }).format(new Date()), 10);
+}
+// « Jour de service » des check-lists journalières : elles basculent à 2h du
+// matin, pas à minuit. Entre 00h et 01h59, on est donc encore la veille.
+const RESET_HOUR = 2;
+function businessToday() {
+  const todayStr = todayParis();
+  return hourParis() < RESET_HOUR ? getPreviousDate(todayStr) : todayStr;
+}
 function getDayOfWeek(dateStr) {
   const d = new Date(dateStr + 'T12:00:00');
   const day = d.getDay(); // 0=Dim..6=Sam
@@ -114,7 +125,7 @@ function createSession(template, date, todayDow) {
 
 // GET /api/sessions?date=YYYY-MM-DD — liste des check-lists du jour (création paresseuse)
 app.get('/api/sessions', (req, res) => {
-  const date = req.query.date || todayParis();
+  const date = req.query.date || businessToday();
   const todayDow = getDayOfWeek(date);
   const templates = qActiveTemplates.all();
 

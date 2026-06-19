@@ -1,7 +1,10 @@
 'use strict';
 
 function localToday() {
+  // « Jour de service » : les check-lists basculent à 2h du matin, pas à minuit.
+  // Avant 2h, on reste sur la date de la veille.
   const d = new Date();
+  if (d.getHours() < 2) d.setDate(d.getDate() - 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 function frDate(iso) {

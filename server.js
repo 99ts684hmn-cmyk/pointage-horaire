@@ -2,6 +2,7 @@
 
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const crypto = require('crypto');
 const express = require('express');
 const {
@@ -567,6 +568,29 @@ app.put('/api/admin/establishment', requireAdmin, (req, res) => {
   const { name } = req.body || {};
   setSetting('establishment', String(name || '').trim());
   res.json({ ok: true });
+});
+
+// --- Téléchargement des sauvegardes (admin) -------------------------------
+// Génère à la volée une copie cohérente de la base demandée et l'envoie en
+// téléchargement, pour conserver une sauvegarde HORS de Render. Protégé par le
+// mot de passe admin (cookie). which = pointage | checklist | cuisine.
+app.get('/api/admin/backup/:which', requireAdmin, (req, res) => {
+  const which = req.params.which;
+  let srcDb = null;
+  if (which === 'pointage') srcDb = db;
+  else if (which === 'checklist' || which === 'cuisine') {
+    try { srcDb = require('./' + which + '/db').db; } catch (e) { srcDb = null; }
+  }
+  if (!srcDb) return res.status(404).json({ error: 'Base inconnue' });
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  const stamp = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`;
+  const tmp = path.join(os.tmpdir(), `dl-${which}-${stamp}-${process.hrtime.bigint()}.db`);
+  srcDb.backup(tmp)
+    .then(() => {
+      res.download(tmp, `${which}-${stamp}.db`, () => { fs.unlink(tmp, () => {}); });
+    })
+    .catch((e) => res.status(500).json({ error: 'Sauvegarde impossible : ' + e.message }));
 });
 
 // --- Pauses obligatoires (config) -----------------------------------------

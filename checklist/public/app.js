@@ -77,7 +77,11 @@ function render() {
   const groups = { midi: [], soir: [], autre: [] };
   sessions.forEach((s) => { groups[blockOf(s)].push(s); });
   const BLOCK_LABEL = { midi: '🌞 Midi', soir: '🌙 Soir', autre: 'Autres' };
-  const order = ['midi', 'soir', 'autre'];
+  // Ordre selon l'heure : service du midi (8h→17h) → Midi en haut, Soir en bas ;
+  // le reste du temps (17h→8h) → Soir en haut, Midi en bas. « Autres » au milieu.
+  const h = new Date().getHours();
+  const dayService = h >= 8 && h < 17;
+  const order = dayService ? ['midi', 'autre', 'soir'] : ['soir', 'autre', 'midi'];
   const nonEmpty = order.filter((k) => groups[k].length);
   const showHeads = nonEmpty.length > 1; // une seule famille → pas d'en-tête.
 

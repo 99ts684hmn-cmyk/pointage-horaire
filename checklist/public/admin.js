@@ -105,7 +105,7 @@ async function deleteEmployee(id) {
 }
 
 function render() {
-  ['general', 'manager', 'bar', 'employes'].forEach((t) => {
+  ['general', 'manager', 'employes'].forEach((t) => {
     const el = document.getElementById('tab-' + t);
     if (el) el.classList.toggle('active', tab === t);
   });
@@ -189,7 +189,7 @@ function render() {
   }
 }
 
-['general', 'manager', 'bar', 'employes'].forEach((t) => {
+['general', 'manager', 'employes'].forEach((t) => {
   document.getElementById('tab-' + t).addEventListener('click', () => { tab = t; expanded = null; render(); });
 });
 

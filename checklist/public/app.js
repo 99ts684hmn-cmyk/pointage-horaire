@@ -44,7 +44,7 @@ async function load() {
 function render() {
   const today = localToday();
   const content = document.getElementById('content');
-  ['general', 'manager', 'bar'].forEach((t) => {
+  ['general', 'manager'].forEach((t) => {
     const el = document.getElementById('tab-' + t);
     if (el) el.classList.toggle('active', tab === t);
   });
@@ -115,7 +115,7 @@ function render() {
   }).join('');
 }
 
-['general', 'manager', 'bar'].forEach((t) => {
+['general', 'manager'].forEach((t) => {
   document.getElementById('tab-' + t).addEventListener('click', () => { tab = t; render(); });
 });
 

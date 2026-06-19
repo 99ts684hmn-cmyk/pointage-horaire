@@ -575,7 +575,7 @@ function ensureTemplateByType(type, build) {
 }
 
 // Version de schéma/migrations appliquée à cette base (PRAGMA user_version).
-const SCHEMA_VERSION = 12;
+const SCHEMA_VERSION = 13;
 
 function seedAndMigrate() {
   const count = db.prepare('SELECT COUNT(*) c FROM templates').get().c;
@@ -596,7 +596,7 @@ function seedAndMigrate() {
   // Idempotent : crée les check-lists manquantes (sur base neuve ET sur base
   // existante au prochain démarrage). Ne touche jamais une check-list déjà là.
   ensureTemplateByType('HEBDOMADAIRE', () => {
-    const id = insertTemplate({ name: 'Tâches hebdo salle', type: 'HEBDOMADAIRE', color: 'bg-purple-500', icon: '📅', resetMode: 'WEEKLY_CARRY_OVER', order: 9 });
+    const id = insertTemplate({ name: 'Tâches hebdo salle', type: 'HEBDOMADAIRE', color: 'bg-purple-500', icon: '📅', resetMode: 'WEEKLY_CARRY_OVER', order: 11 });
     WEEKLY_TASKS.forEach((t, i) => insertTask(id, t.title, i + 1, t.dayOfWeek));
   });
   ensureTemplateByType('MANAGER_MATIN', () => {
@@ -621,13 +621,12 @@ function seedAndMigrate() {
   ensureTemplateByType('OUV_SOIR_HAUT', () => { const id = insertTemplate({ name: 'Ouverture soir Haut', type: 'OUV_SOIR_HAUT', color: 'bg-indigo-400', icon: '🌆', resetMode: 'AUTO_DAILY', order: 6, category: 'general' }); OUV_SOIR_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
   ensureTemplateByType('FERM_SOIR', () => { const id = insertTemplate({ name: 'Fermeture soir Bas', type: 'FERM_SOIR', color: 'bg-indigo-600', icon: '🌃', resetMode: 'AUTO_DAILY', order: 7, category: 'general' }); FERM_SOIR_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
   ensureTemplateByType('FERM_SOIR_HAUT', () => { const id = insertTemplate({ name: 'Fermeture soir Haut', type: 'FERM_SOIR_HAUT', color: 'bg-indigo-600', icon: '🌃', resetMode: 'AUTO_DAILY', order: 8, category: 'general' }); FERM_SOIR_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
-  // Check-lists Bar (onglet « Check-list Bar »), créées vides.
-  ensureTemplateByType('BAR_FERM_MIDI_HAUT', () => insertTemplate({ name: 'Fermeture midi bar du haut', type: 'BAR_FERM_MIDI_HAUT', color: 'bg-rose-500', icon: '🍸', resetMode: 'AUTO_DAILY', order: 13, category: 'bar' }));
-  ensureTemplateByType('BAR_FERM_MIDI_BAS', () => insertTemplate({ name: 'Fermeture midi bar du bas', type: 'BAR_FERM_MIDI_BAS', color: 'bg-rose-500', icon: '🍹', resetMode: 'AUTO_DAILY', order: 14, category: 'bar' }));
-  ensureTemplateByType('BAR_FERM_SOIR_HAUT', () => { const id = insertTemplate({ name: 'Fermeture soir bar du haut', type: 'BAR_FERM_SOIR_HAUT', color: 'bg-rose-700', icon: '🍷', resetMode: 'AUTO_DAILY', order: 15, category: 'bar' }); BAR_FERM_SOIR_HAUT_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
-  ensureTemplateByType('BAR_FERM_SOIR_BAS', () => { const id = insertTemplate({ name: 'Fermeture soir bar du bas', type: 'BAR_FERM_SOIR_BAS', color: 'bg-rose-700', icon: '🍺', resetMode: 'AUTO_DAILY', order: 16, category: 'bar' }); BAR_FERM_SOIR_BAS_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
+  // Fermeture soir bar (bas + haut) — intégrées à l'onglet « Check-lists »
+  // (catégorie general, bloc Soir). Les « Fermeture midi bar » ont été supprimées.
+  ensureTemplateByType('BAR_FERM_SOIR_BAS', () => { const id = insertTemplate({ name: 'Fermeture soir bar du bas', type: 'BAR_FERM_SOIR_BAS', color: 'bg-rose-700', icon: '🍺', resetMode: 'AUTO_DAILY', order: 9, category: 'general' }); BAR_FERM_SOIR_BAS_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
+  ensureTemplateByType('BAR_FERM_SOIR_HAUT', () => { const id = insertTemplate({ name: 'Fermeture soir bar du haut', type: 'BAR_FERM_SOIR_HAUT', color: 'bg-rose-700', icon: '🍷', resetMode: 'AUTO_DAILY', order: 10, category: 'general' }); BAR_FERM_SOIR_HAUT_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
   // Ménage de service hebdo — onglet « Check-lists », reset chaque lundi 8h.
-  ensureTemplateByType('MENAGE_HEBDO', () => { const id = insertTemplate({ name: 'Ménage de service hebdo', type: 'MENAGE_HEBDO', color: 'bg-teal-500', icon: '🧽', resetMode: 'WEEKLY_MONDAY', order: 10, category: 'general' }); MENAGE_HEBDO_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
+  ensureTemplateByType('MENAGE_HEBDO', () => { const id = insertTemplate({ name: 'Ménage de service hebdo', type: 'MENAGE_HEBDO', color: 'bg-teal-500', icon: '🧽', resetMode: 'WEEKLY_MONDAY', order: 12, category: 'general' }); MENAGE_HEBDO_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
   // Check-lists CUISINE (page dédiée, catégorie « cuisine »), reset quotidien.
   ensureTemplateByType('CUISINE_PLANCHA', () => { const id = insertTemplate({ name: 'Plancha', type: 'CUISINE_PLANCHA', color: 'bg-orange-600', icon: '🔥', resetMode: 'AUTO_DAILY', order: 1, category: 'cuisine' }); CUISINE_PLANCHA_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
   ensureTemplateByType('CUISINE_GARNITURE', () => { const id = insertTemplate({ name: 'Poste garniture', type: 'CUISINE_GARNITURE', color: 'bg-green-600', icon: '🥗', resetMode: 'AUTO_DAILY', order: 2, category: 'cuisine' }); CUISINE_GARNITURE_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
@@ -744,6 +743,19 @@ function seedAndMigrate() {
     setOrd.run(9, 'HEBDOMADAIRE');
     setOrd.run(10, 'MENAGE_HEBDO');
     // OUV_SOIR_HAUT (ord 6) reçoit son ordre à la création via ensureTemplateByType.
+  }
+  // Migration 13 : suppression des « Fermeture midi bar » et intégration des
+  // « Fermeture soir bar » dans l'onglet « Check-lists » (bloc Soir). L'onglet Bar
+  // disparaît. Sur base existante : on désactive les midi bar (historique conservé)
+  // et on bascule les soir bar en catégorie general avec un ordre dans le bloc Soir.
+  if (version < 13 && !freshDb) {
+    db.prepare("UPDATE templates SET is_active = 0 WHERE type IN ('BAR_FERM_MIDI_HAUT','BAR_FERM_MIDI_BAS')").run();
+    const setCatOrd = db.prepare("UPDATE templates SET category = 'general', ord = ? WHERE type = ?");
+    setCatOrd.run(9, 'BAR_FERM_SOIR_BAS');
+    setCatOrd.run(10, 'BAR_FERM_SOIR_HAUT');
+    const setOrd = db.prepare('UPDATE templates SET ord = ? WHERE type = ?');
+    setOrd.run(11, 'HEBDOMADAIRE');
+    setOrd.run(12, 'MENAGE_HEBDO');
   }
   db.pragma('user_version = ' + SCHEMA_VERSION);
 }

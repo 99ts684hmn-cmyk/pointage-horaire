@@ -27,7 +27,7 @@ body {
 .brand .tag { color: var(--gold); font-size: .7rem; text-transform: uppercase; letter-spacing: .14em; font-weight: 700; border-left: 1px solid rgba(255,248,240,.2); padding-left: 10px; }
 .nav-links { display: flex; gap: 4px; flex: 0 0 auto; }
 .nav-links a { padding: 6px 12px; border-radius: 9px; font-size: .85rem; font-weight: 700; color: rgba(255,248,240,.65); text-decoration: none; white-space: nowrap; }
-.nav-links a.active { background: var(--red); color: var(--cream); }
+.nav-links a.active { background: var(--gold); color: #1f2120; }
 .nav-links a.back { color: var(--gold); }
 @media (max-width: 600px) {
   .nav-inner { flex-wrap: wrap; height: auto; padding: 8px 12px; gap: 6px; }
@@ -49,6 +49,12 @@ body {
 
 /* Bandeau progression globale (accueil) */
 .global { border-radius: 12px; padding: 16px; margin: 18px 0; background: var(--dark); border: 1px solid rgba(197,157,95,.2); }
+/* La progression globale reste visible au défilement (sous le bandeau, 56px). */
+@media (min-width: 601px) { .global { position: sticky; top: 56px; z-index: 10; } }
+/* Tout est fait : message d'encouragement plutôt qu'une liste grise. */
+.alldone { display: flex; align-items: center; justify-content: center; gap: 10px; text-align: center;
+  background: rgba(47,125,79,.12); border: 1px solid rgba(47,125,79,.45); color: var(--green);
+  border-radius: 12px; padding: 18px; font-weight: 800; font-size: 1.05rem; margin-bottom: 18px; }
 .global .row { display: flex; justify-content: space-between; font-size: .85rem; margin-bottom: 8px; }
 .global .row .lbl { font-weight: 700; color: rgba(255,248,240,.7); }
 .global .row .pct { font-weight: 900; color: var(--gold); }
@@ -139,7 +145,7 @@ body {
 /* Admin */
 .tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: 12px; background: var(--dark); margin: 18px 0; width: fit-content; max-width: 100%; }
 .tabs button { padding: 8px 16px; border-radius: 9px; border: 0; font-size: .85rem; font-weight: 800; cursor: pointer; background: none; color: rgba(255,248,240,.55); font-family: inherit; }
-.tabs button.active { background: var(--red); color: var(--cream); }
+.tabs button.active { background: var(--gold); color: #1f2120; }
 .acc { margin-bottom: 12px; overflow: hidden; }
 .acc-head { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; background: #fff; border: 0; cursor: pointer; font-family: inherit; }
 .acc-head:hover { background: var(--cream); }

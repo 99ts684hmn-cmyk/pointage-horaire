@@ -94,9 +94,10 @@ function render() {
 
   const todo = sessions.filter((s) => s.status !== 'TERMINE');
   const done = sessions.filter((s) => s.status === 'TERMINE');
+  const banner = todo.length === 0 ? '<div class="alldone">✅ Tout est bouclé, bravo !</div>' : '';
   const todoHtml = todo.length ? `<div class="grid">${todo.map(cardTodo).join('')}</div>` : '';
   const doneHtml = done.length ? `<div class="donelist">${done.map(cardDone).join('')}</div>` : '';
-  content.innerHTML = todoHtml + doneHtml;
+  content.innerHTML = banner + todoHtml + doneHtml;
 }
 
 load();

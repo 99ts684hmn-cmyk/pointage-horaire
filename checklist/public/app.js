@@ -120,7 +120,9 @@ function render() {
     </a>`;
   };
 
-  content.innerHTML = nonEmpty.map((k) => {
+  const allDone = sessions.every((s) => s.status === 'TERMINE');
+  const banner = allDone ? '<div class="alldone">✅ Tout est bouclé, bravo !</div>' : '';
+  content.innerHTML = banner + nonEmpty.map((k) => {
     const list = groups[k];
     const todo = list.filter((s) => s.status !== 'TERMINE');
     const done = list.filter((s) => s.status === 'TERMINE');

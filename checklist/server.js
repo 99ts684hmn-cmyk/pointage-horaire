@@ -1,6 +1,7 @@
 'use strict';
 
 const path = require('path');
+const fs = require('fs');
 const express = require('express');
 const { db, uid, nowISO } = require('./db');
 
@@ -454,6 +455,49 @@ app.put('/api/commandes/cell', (req, res) => {
   db.prepare('INSERT INTO commandes_cells(id,row_id,day,kind,label,checked_at) VALUES(?,?,?,?,?,NULL)').run(id, rowId, day, kind, label);
   res.status(201).json({ ok: true, id });
 });
+
+// =========================================================================
+//  Sauvegarde automatique
+// =========================================================================
+
+// Copie horodatée de la base check-lists, au chargement du module PUIS toutes les
+// heures (les saisies entre deux redémarrages ont toujours un point de
+// restauration). Dossier SÉPARÉ de celui du pointage et de la cuisine (sinon les
+// applis élagueraient mutuellement leurs sauvegardes). En production : sous-dossier
+// « checklist » du disque persistant du pointage (dérivé de BACKUP_DIR).
+const BACKUP_DIR = process.env.CHECKLIST_BACKUP_DIR
+  || (process.env.BACKUP_DIR
+    ? path.join(process.env.BACKUP_DIR, 'checklist')
+    : path.join(__dirname, 'backups'));
+const BACKUP_KEEP = 60;
+const BACKUP_EVERY_MS = 60 * 60 * 1000; // 1 h
+
+function backupNow() {
+  try {
+    fs.mkdirSync(BACKUP_DIR, { recursive: true });
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, '0');
+    const stamp = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+    const dest = path.join(BACKUP_DIR, `data-${stamp}.db`);
+    if (fs.existsSync(dest)) return;
+    db.backup(dest)
+      .then(() => {
+        console.log(`  Sauvegarde check-lists créée : ${path.basename(BACKUP_DIR)}/data-${stamp}.db`);
+        const files = fs.readdirSync(BACKUP_DIR)
+          .filter((f) => /^data-.*\.db$/.test(f)).sort();
+        while (files.length > BACKUP_KEEP) {
+          fs.unlinkSync(path.join(BACKUP_DIR, files.shift()));
+        }
+      })
+      .catch((e) => console.warn('  Sauvegarde check-lists impossible :', e.message));
+  } catch (e) {
+    console.warn('  Sauvegarde check-lists impossible :', e.message);
+  }
+}
+
+// Lancées au chargement du module (appli seule OU montée dans le pointage).
+backupNow();
+setInterval(backupNow, BACKUP_EVERY_MS);
 
 // L'appli est montée sous /checklist dans le serveur du pointage. Lancée seule
 // (`node checklist/server.js`), elle écoute sur son port.

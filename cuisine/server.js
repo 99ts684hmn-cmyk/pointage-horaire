@@ -783,7 +783,7 @@ function backupNow() {
     if (fs.existsSync(dest)) return;
     db.backup(dest)
       .then(() => {
-        console.log(`  Sauvegarde créée : backups/data-${stamp}.db`);
+        console.log(`  Sauvegarde cuisine créée : ${path.basename(BACKUP_DIR)}/data-${stamp}.db`);
         const files = fs.readdirSync(BACKUP_DIR)
           .filter((f) => /^data-.*\.db$/.test(f)).sort();
         while (files.length > BACKUP_KEEP) {

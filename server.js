@@ -1055,12 +1055,14 @@ app.get('/api/admin/report.csv', requireAdmin, (req, res) => {
 //  Sauvegarde automatique
 // =========================================================================
 
-// À CHAQUE démarrage, copie horodatée (date + heure) de la base dans ./backups,
-// en conservant les BACKUP_KEEP dernières. Ne supprime jamais la base courante.
-// Chaque redémarrage crée ainsi un point de restauration.
+// Copie horodatée (date + heure) de la base pointage dans ./backups, au démarrage
+// PUIS toutes les heures, en conservant les BACKUP_KEEP dernières. Ne supprime
+// jamais la base courante. (Les check-lists et la cuisine se sauvegardent chacune
+// dans leur propre sous-dossier — voir checklist/server.js et cuisine/server.js.)
 // En production, pointer BACKUP_DIR vers le disque persistant (ex. /var/data/backups).
 const BACKUP_DIR = process.env.BACKUP_DIR || path.join(__dirname, 'backups');
 const BACKUP_KEEP = 30;
+const BACKUP_EVERY_MS = 60 * 60 * 1000; // 1 h
 
 function backupOnStart() {
   try {
@@ -1087,6 +1089,7 @@ function backupOnStart() {
 
 app.listen(PORT, () => {
   backupOnStart();
+  setInterval(backupOnStart, BACKUP_EVERY_MS);
   console.log(`\n  Pointage horaire — serveur démarré`);
   console.log(`  Pointage : http://localhost:${PORT}/`);
   console.log(`  Admin    : http://localhost:${PORT}/admin.html\n`);

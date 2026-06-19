@@ -61,8 +61,19 @@ body {
 .block { margin-top: 22px; }
 .block:first-child { margin-top: 0; }
 .block-title { display: flex; align-items: center; gap: 10px; font-size: .82rem; font-weight: 900;
-  text-transform: uppercase; letter-spacing: .12em; color: var(--gold); margin: 0 0 12px; }
-.block-title::after { content: ""; flex: 1; height: 1px; background: rgba(197,157,95,.3); }
+  text-transform: uppercase; letter-spacing: .12em; color: var(--gold); margin: 0 0 12px;
+  padding-bottom: 8px; border-bottom: 1px solid rgba(197,157,95,.25); }
+.block-title .bcount { margin-left: auto; font-weight: 700; letter-spacing: 0; text-transform: none;
+  color: rgba(255,248,240,.5); font-size: .78rem; }
+
+/* Check-lists terminées : liste compacte et discrète sous les « à faire » */
+.donelist { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.clcard.compact { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 14px; background: #f3f0ea; border: 0; border-radius: 12px; text-decoration: none; opacity: .8; }
+.clcard.compact:hover { opacity: 1; }
+.clcard.compact .cdone { color: #5a5550; font-weight: 600; font-size: .9rem; }
+.clcard.compact .cdone .icon { margin-right: 4px; }
+.clcard.compact .cby { color: var(--muted); font-size: .72rem; white-space: nowrap; flex: 0 0 auto; }
 
 .card { background: #fff; border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.22); }
 .clcard { padding: 18px; border: 2px solid var(--border); cursor: pointer; transition: transform .15s ease; color: var(--dark); text-decoration: none; display: block; }

@@ -85,33 +85,51 @@ function render() {
   const nonEmpty = order.filter((k) => groups[k].length);
   const showHeads = nonEmpty.length > 1; // une seule famille → pas d'en-tête.
 
-  const card = (s) => {
-    const modeTxt = s.resetMode === 'WEEKLY_CARRY_OVER' ? `Tâches du ${esc(s.todayLabel || '')}`
-      : s.resetMode === 'WEEKLY_MONDAY' ? `Hebdo (lundi) — ${esc(s.todayLabel || '')}`
-      : (MODE_LABEL[s.resetMode] || '');
-    const barColor = s.status === 'TERMINE' ? 'var(--green)' : (s.progress > 60 ? 'var(--gold)' : 'var(--red)');
-    const pill = s.status === 'TERMINE'
-      ? '<span class="pill done">✓ Terminé</span>'
-      : '<span class="pill prog">En cours</span>';
-    const carried = (s.carriedCount > 0 && s.status !== 'TERMINE')
+  // Sous-titre utile uniquement pour les check-lists hebdo (sinon rien : on évite
+  // le jargon « Reset auto quotidien » qui ne sert pas au personnel).
+  const subFor = (s) => (s.resetMode === 'WEEKLY_CARRY_OVER' ? `Tâches du ${esc(s.todayLabel || '')}`
+    : s.resetMode === 'WEEKLY_MONDAY' ? esc(s.todayLabel || '') : '');
+
+  // Carte « à faire » (en cours / pas commencée) : on met en avant ce qu'il reste.
+  const cardTodo = (s) => {
+    const sub = subFor(s);
+    const remain = Math.max(0, s.totalTasks - s.doneTasks);
+    const pill = s.progress === 0 ? '<span class="pill prog">À faire</span>' : '<span class="pill prog">En cours</span>';
+    const barColor = s.progress > 60 ? 'var(--gold)' : 'var(--red)';
+    const carried = s.carriedCount > 0
       ? `<p class="carried">↩ ${s.carriedCount} tâche${s.carriedCount > 1 ? 's' : ''} reportée${s.carriedCount > 1 ? 's' : ''}</p>` : '';
-    const byline = (s.status === 'TERMINE' && s.completedBy)
-      ? `<p class="byline">✓ Par ${esc(s.completedBy)} à ${frTime(s.completedAt)}</p>` : '';
-    return `<a class="card clcard${s.status === 'TERMINE' ? ' done' : ''}" href="session.html?id=${encodeURIComponent(s.id)}">
+    const right = remain > 0 ? `reste ${remain}` : `${s.progress}%`;
+    return `<a class="card clcard todo" href="session.html?id=${encodeURIComponent(s.id)}">
       <div class="head">
         <div class="l"><span class="icon">${esc(s.templateIcon)}</span>
-          <div><h2>${esc(s.templateName)}</h2><p class="mode">${modeTxt}</p></div>
+          <div><h2>${esc(s.templateName)}</h2>${sub ? `<p class="mode">${sub}</p>` : ''}</div>
         </div>${pill}
       </div>
-      <div class="meta"><span class="m">${s.doneTasks}/${s.totalTasks} tâches</span><span class="p">${s.progress}%</span></div>
+      <div class="meta"><span class="m">${s.doneTasks} / ${s.totalTasks} tâches</span><span class="p">${right}</span></div>
       <div class="bar on-light"><i style="width:${s.progress}%;background:${barColor}"></i></div>
-      ${carried}${byline}
+      ${carried}
+    </a>`;
+  };
+
+  // Check-list terminée : ligne compacte grisée, reléguée en bas du bloc.
+  const cardDone = (s) => {
+    const by = s.completedBy ? `par ${esc(s.completedBy)} · ${frTime(s.completedAt)}` : '✓';
+    return `<a class="clcard compact" href="session.html?id=${encodeURIComponent(s.id)}">
+      <span class="cdone"><span class="icon">${esc(s.templateIcon)}</span> ${esc(s.templateName)}</span>
+      <span class="cby">${by}</span>
     </a>`;
   };
 
   content.innerHTML = nonEmpty.map((k) => {
-    const head = showHeads ? `<h3 class="block-title">${BLOCK_LABEL[k]}</h3>` : '';
-    return `<section class="block">${head}<div class="grid">${groups[k].map(card).join('')}</div></section>`;
+    const list = groups[k];
+    const todo = list.filter((s) => s.status !== 'TERMINE');
+    const done = list.filter((s) => s.status === 'TERMINE');
+    const head = showHeads
+      ? `<h3 class="block-title"><span>${BLOCK_LABEL[k]}</span><span class="bcount">${done.length}/${list.length} faite${done.length > 1 ? 's' : ''}</span></h3>`
+      : '';
+    const todoHtml = todo.length ? `<div class="grid">${todo.map(cardTodo).join('')}</div>` : '';
+    const doneHtml = done.length ? `<div class="donelist">${done.map(cardDone).join('')}</div>` : '';
+    return `<section class="block">${head}${todoHtml}${doneHtml}</section>`;
   }).join('');
 }
 

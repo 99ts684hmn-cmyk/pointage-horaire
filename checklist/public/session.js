@@ -40,6 +40,10 @@ async function toggleTask(taskId, isDone) {
   const t = session.tasks.find((x) => x.id === taskId);
   if (t) { t.isDone = isDone; t.doneAt = isDone ? new Date().toISOString() : null; }
   render();
+  // Dernière tâche cochée → on propose directement la clôture (choix du nom),
+  // sans avoir à taper « Finaliser ».
+  const allDone = session.tasks.length > 0 && session.tasks.every((x) => x.isDone);
+  if (isDone && allDone && session.status !== 'TERMINE') openFinalize();
   await fetch(`api/sessions/${encodeURIComponent(sessionId)}`, {
     method: 'PATCH', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action: 'toggle_task', taskId, isDone }),

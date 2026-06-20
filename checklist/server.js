@@ -516,7 +516,13 @@ app.get('/api/menus/recap', (req, res) => {
 app.get('/api/menus/apercu', (req, res) => {
   const today = todayParis();
   const m1 = mondayOf(today);
-  const menuRows = db.prepare('SELECT slot, value FROM menu_cells WHERE date = ?').all(m1);
+  const m2 = addDays(m1, 7);
+  // Le week-end (samedi dès 8h, ou dimanche), on affiche déjà le menu de la
+  // semaine prochaine (la semaine en cours est finie).
+  const dow = getDayOfWeek(today); // 1=lundi..7=dimanche
+  const menuNextWeek = (dow === 6 && hourParis() >= 8) || dow === 7;
+  const menuMonday = menuNextWeek ? m2 : m1;
+  const menuRows = db.prepare('SELECT slot, value FROM menu_cells WHERE date = ?').all(menuMonday);
   const menu = {};
   menuRows.forEach((r) => { if (r.slot !== 'groupe') menu[r.slot] = r.value; });
 
@@ -532,7 +538,7 @@ app.get('/api/menus/apercu', (req, res) => {
     }
     if (groupes.length >= 3) break;
   }
-  res.json({ semaineMonday: m1, menu, groupes });
+  res.json({ semaineMonday: menuMonday, menuNextWeek, menu, groupes });
 });
 
 // --- PPP (modèles de commandes à trous) -----------------------------------

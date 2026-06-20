@@ -25,6 +25,9 @@ async function load() {
     ? grp.map((g) => `<div class="ap-line"><span class="ap-d">${dayHead(g.date)}</span><span class="ap-n">${esc(g.nom)}${g.pers ? ` · ${esc(g.pers)} pers` : ''}</span></div>`).join('')
     : '<div class="ap-empty">Aucun groupe à venir</div>';
 
+  const mt = document.getElementById('ap-menu-title');
+  if (mt) mt.textContent = d.menuNextWeek ? '📋 Menu de la semaine prochaine' : '📋 Menu de la semaine';
+
   const hasMenu = ['debut_entree', 'fin_entree', 'debut_pj', 'fin_pj', 'debut_dessert', 'fin_dessert'].some((k) => (cells[k] || '').trim());
   document.getElementById('ap-menu').innerHTML = hasMenu
     ? menuLine('Entrées', cells.debut_entree, cells.fin_entree)

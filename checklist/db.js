@@ -597,7 +597,7 @@ function ensureTemplateByType(type, build) {
 }
 
 // Version de schéma/migrations appliquée à cette base (PRAGMA user_version).
-const SCHEMA_VERSION = 13;
+const SCHEMA_VERSION = 14;
 
 function seedAndMigrate() {
   const count = db.prepare('SELECT COUNT(*) c FROM templates').get().c;
@@ -630,7 +630,11 @@ function seedAndMigrate() {
     MANAGER_HEBDO_TASKS.forEach((title, i) => insertTask(id, title, i + 1));
   });
   ensureTemplateByType('BRIEF_MANAGER', () => {
-    const id = insertTemplate({ name: 'Brief Manager', type: 'BRIEF_MANAGER', color: 'bg-rose-600', icon: '🗣️', resetMode: 'AUTO_DAILY', order: 8, category: 'manager' });
+    const id = insertTemplate({ name: 'Brief Manager Midi', type: 'BRIEF_MANAGER', color: 'bg-rose-600', icon: '🗣️', resetMode: 'AUTO_DAILY', order: 8, category: 'manager' });
+    BRIEF_MANAGER_TASKS.forEach((title, i) => insertTask(id, title, i + 1));
+  });
+  ensureTemplateByType('BRIEF_MANAGER_SOIR', () => {
+    const id = insertTemplate({ name: 'Brief Manager Soir', type: 'BRIEF_MANAGER_SOIR', color: 'bg-rose-600', icon: '🌙', resetMode: 'AUTO_DAILY', order: 9, category: 'manager' });
     BRIEF_MANAGER_TASKS.forEach((title, i) => insertTask(id, title, i + 1));
   });
   // Nouvelles check-lists de service (onglet « Check-lists »), créées vides :
@@ -783,6 +787,11 @@ function seedAndMigrate() {
     const setOrd = db.prepare('UPDATE templates SET ord = ? WHERE type = ?');
     setOrd.run(11, 'HEBDOMADAIRE');
     setOrd.run(12, 'MENAGE_HEBDO');
+  }
+  // Migration 14 : « Brief Manager » devient « Brief Manager Midi » (garde son
+  // historique) ; « Brief Manager Soir » est créé par ensureTemplateByType.
+  if (version < 14 && !freshDb) {
+    db.prepare("UPDATE templates SET name = 'Brief Manager Midi' WHERE type = 'BRIEF_MANAGER'").run();
   }
   db.pragma('user_version = ' + SCHEMA_VERSION);
 }

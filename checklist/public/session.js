@@ -14,7 +14,7 @@ if (from === 'cuisine') {
   const navAdmin = document.getElementById('nav-admin');
   if (back) back.href = 'cuisine.html';
   if (navList) navList.href = 'cuisine.html';
-  if (navAdmin) navAdmin.href = 'cuisine-admin.html';
+  if (navAdmin) navAdmin.href = 'cuisine-admin-accueil.html';
 } else if (from === 'rapports') {
   const back = document.getElementById('back-link');
   if (back) back.href = 'rapports.html';

@@ -508,6 +508,30 @@ app.get('/api/menus/recap', (req, res) => {
   res.json({ menus, groupes });
 });
 
+// GET /api/menus/apercu — bandeau cuisine : menu de la semaine en cours + les 3
+// prochains groupes (date >= aujourd'hui, non annulés).
+app.get('/api/menus/apercu', (req, res) => {
+  const today = todayParis();
+  const m1 = mondayOf(today);
+  const menuRows = db.prepare('SELECT slot, value FROM menu_cells WHERE date = ?').all(m1);
+  const menu = {};
+  menuRows.forEach((r) => { if (r.slot !== 'groupe') menu[r.slot] = r.value; });
+
+  const grpRows = db.prepare("SELECT date, value FROM menu_cells WHERE slot = 'groupe' AND date >= ? ORDER BY date ASC").all(today);
+  const groupes = [];
+  for (const r of grpRows) {
+    let arr = [];
+    try { const o = JSON.parse(r.value); arr = Array.isArray(o) ? o : (o && typeof o === 'object' ? [o] : []); }
+    catch (e) { arr = [{ nom: r.value }]; }
+    for (const g of arr) {
+      if (g && !g.annule && (g.nom || '').trim()) groupes.push({ date: r.date, nom: g.nom, pers: g.pers || '' });
+      if (groupes.length >= 3) break;
+    }
+    if (groupes.length >= 3) break;
+  }
+  res.json({ semaineMonday: m1, menu, groupes });
+});
+
 // --- PPP (modèles de commandes à trous) -----------------------------------
 app.get('/api/ppp', (req, res) => {
   res.json(db.prepare('SELECT key, label, icon, body FROM ppp_templates ORDER BY ord ASC').all());

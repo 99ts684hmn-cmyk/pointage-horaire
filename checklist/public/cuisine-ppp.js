@@ -9,21 +9,28 @@ let templates = [];
 
 async function load() {
   try { templates = await fetch('api/ppp').then((r) => r.json()); }
-  catch (e) { content.innerHTML = '<div class="empty">Impossible de charger les modèles.</div>'; return; }
+  catch (e) { templates = []; }
   if (!Array.isArray(templates)) templates = [];
   render();
 }
 
 function render() {
-  if (!templates.length) { content.innerHTML = '<div class="empty">Aucun modèle PPP.</div>'; return; }
-  content.innerHTML = '<div class="tiles">' + templates.map((t) => `
+  // 1re tuile : le tableau des commandes. Puis une tuile par modèle PPP.
+  const tableau = `<a class="tile" href="cuisine-commandes.html">
+      <span class="accent"></span>
+      <span class="ic">📦</span>
+      <span class="ttl">Tableau des commandes</span>
+      <span class="sub">Grille fournisseurs × jours</span>
+    </a>`;
+  const ppp = templates.map((t) => `
     <button class="tile" data-key="${esc(t.key)}">
       <span class="accent"></span>
       <span class="ic">${esc(t.icon || '📋')}</span>
       <span class="ttl">${esc(t.label)}</span>
       <span class="sub">Générer le message de commande</span>
-    </button>`).join('') + '</div>';
-  content.querySelectorAll('.tile').forEach((b) => b.addEventListener('click', () => openGen(b.dataset.key)));
+    </button>`).join('');
+  content.innerHTML = `<div class="tiles">${tableau}${ppp}</div>`;
+  content.querySelectorAll('.tile[data-key]').forEach((b) => b.addEventListener('click', () => openGen(b.dataset.key)));
 }
 
 // Découpe le modèle en segments de texte séparés par les « ... » (≥ 2 points ou …).

@@ -5,6 +5,20 @@
 }
 * { box-sizing: border-box; }
 
+/* Bandeau aperçu cuisine (prochains groupes + menu de la semaine) */
+.apercu { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 0 0 22px; }
+@media (max-width: 620px) { .apercu { grid-template-columns: 1fr; } }
+.ap-col { background: var(--dark); border: 1px solid rgba(197,157,95,.25); border-radius: 14px; padding: 14px 16px; }
+.ap-title { color: var(--gold); font-weight: 800; font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+.ap-line { display: flex; gap: 10px; justify-content: space-between; padding: 6px 0; font-size: .9rem;
+  border-top: 1px solid rgba(255,248,240,.08); }
+.ap-line:first-child { border-top: 0; }
+.ap-d { color: var(--gold); font-weight: 700; white-space: nowrap; }
+.ap-n { color: var(--cream); text-align: right; }
+.ap-lbl { color: rgba(255,248,240,.6); font-weight: 700; }
+.ap-v { color: var(--cream); text-align: right; }
+.ap-empty { color: rgba(255,248,240,.45); font-size: .85rem; }
+
 /* Tuiles (accueil cuisine et sous-pages) */
 .tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; max-width: 760px; }
 @media (max-width: 560px) { .tiles { grid-template-columns: 1fr; } }

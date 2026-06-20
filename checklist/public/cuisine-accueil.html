@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Bœuf & Cow — Cuisine</title>
-  <link rel="stylesheet" href="styles.css?v=16">
+  <link rel="stylesheet" href="styles.css?v=17">
 </head>
 <body>
   <header class="nav">
@@ -21,6 +21,17 @@
   </header>
 
   <main class="wrap">
+    <section class="apercu" id="apercu" hidden>
+      <div class="ap-col">
+        <div class="ap-title">👥 Prochains groupes</div>
+        <div id="ap-groupes"></div>
+      </div>
+      <div class="ap-col">
+        <div class="ap-title">📋 Menu de la semaine</div>
+        <div id="ap-menu"></div>
+      </div>
+    </section>
+
     <div>
       <h1 class="page-title">Cuisine</h1>
       <p class="page-sub">Choisissez une rubrique.</p>
@@ -32,17 +43,17 @@
         <span class="ttl">Check-list cuisine</span>
         <span class="sub">Plancha, poste garniture, fermeture du froid…</span>
       </a>
-      <a class="tile" href="cuisine-menus.html">
-        <span class="accent"></span>
-        <span class="ic">📋</span>
-        <span class="ttl">Informations cuisine</span>
-        <span class="sub">Menus (plats du jour) &amp; groupes</span>
-      </a>
       <a class="tile" href="cuisine-commandes-accueil.html">
         <span class="accent"></span>
         <span class="ic">📦</span>
         <span class="ttl">Commandes</span>
         <span class="sub">Tableau des commandes &amp; PPP</span>
+      </a>
+      <a class="tile" href="cuisine-menus.html">
+        <span class="accent"></span>
+        <span class="ic">📋</span>
+        <span class="ttl">Informations cuisine</span>
+        <span class="sub">Menus (plats du jour) &amp; groupes</span>
       </a>
       <a class="tile" href="cuisine-admin-accueil.html">
         <span class="accent"></span>
@@ -52,5 +63,7 @@
       </a>
     </div>
   </main>
+
+  <script src="cuisine-accueil.js?v=2"></script>
 </body>
 </html>

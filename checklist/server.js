@@ -508,6 +508,18 @@ app.get('/api/menus/recap', (req, res) => {
   res.json({ menus, groupes });
 });
 
+// --- PPP (modèles de commandes à trous) -----------------------------------
+app.get('/api/ppp', (req, res) => {
+  res.json(db.prepare('SELECT key, label, icon, body FROM ppp_templates ORDER BY ord ASC').all());
+});
+app.put('/api/ppp/:key', (req, res) => {
+  const body = req.body && typeof req.body.body === 'string' ? req.body.body : null;
+  if (body == null) return res.status(400).json({ error: 'Corps requis' });
+  const r = db.prepare('UPDATE ppp_templates SET body = ?, updated_at = ? WHERE key = ?').run(body, nowISO(), req.params.key);
+  if (!r.changes) return res.status(404).json({ error: 'Modèle inconnu' });
+  res.json({ ok: true });
+});
+
 // PUT /api/menus/cell — écrire / effacer une case (upsert par date + slot)
 app.put('/api/menus/cell', (req, res) => {
   const b = req.body || {};

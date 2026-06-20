@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Bœuf & Cow — PPP</title>
+  <link rel="stylesheet" href="styles.css?v=16">
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <div class="brand">
+        <div class="logo">B</div>
+        <span class="name">BŒUF <span class="amp">&amp;</span> COW</span>
+        <span class="tag">PPP</span>
+      </div>
+      <nav class="nav-links">
+        <a href="/" class="back">🏠 Accueil</a>
+        <a href="cuisine-accueil.html">🍳 Cuisine</a>
+        <a href="cuisine-commandes-accueil.html">📦 Commandes</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div>
+      <h1 class="page-title">PPP</h1>
+      <p class="page-sub">Choisissez un fournisseur, remplissez les quantités, puis « Générer &amp; copier ».</p>
+    </div>
+    <div id="content"><div class="loading pulse">Chargement…</div></div>
+  </main>
+
+  <div class="overlay" id="ov">
+    <div class="modal" id="modal" style="max-width:460px; max-height:88vh; overflow-y:auto"></div>
+  </div>
+
+  <script src="cuisine-ppp.js?v=1"></script>
+</body>
+</html>

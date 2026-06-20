@@ -124,6 +124,16 @@ db.exec(`
     updated_at TEXT NOT NULL,
     UNIQUE (date, slot)
   );
+  -- Modèles « PPP » (commandes cuisine) : textes à trous (les « ... » sont les
+  -- champs à remplir). Éditables dans l'admin PPP.
+  CREATE TABLE IF NOT EXISTS ppp_templates (
+    key        TEXT PRIMARY KEY,
+    label      TEXT NOT NULL,
+    icon       TEXT,
+    body       TEXT NOT NULL,
+    ord        INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL
+  );
 `);
 
 // Migration de schéma : ajoute la colonne « category » sur les bases déjà
@@ -799,6 +809,17 @@ const COMMANDES_FOURNISSEURS = [
 if (db.prepare('SELECT COUNT(*) c FROM commandes_rows').get().c === 0) {
   const insRow = db.prepare('INSERT INTO commandes_rows(id,label,sublabel,ord,is_active,created_at) VALUES(?,?,?,?,1,?)');
   COMMANDES_FOURNISSEURS.forEach((f, i) => insRow.run(uid(), f[0], f[1], i + 1, nowISO()));
+}
+
+// Modèles PPP par défaut (les « ... » = champs à remplir avant de générer/copier).
+const PPP_DEFAULTS = [
+  ['poisson', 'Poisson', '🐟', "Bonjour c'est le restaurant Bœuf & Cow, pour demain il nous faudrait :\n... filet de saumon\n... filet de thon\nAutres : ...\nMerci, bon courage"],
+  ['pain', 'Pain', '🥖', "Bonjour c'est le restaurant Bœuf & Cow, pour demain il nous faudrait :\nTraditions : ...\nPains Burgers : ...\nAutres : ...\nMerci, bon courage"],
+  ['patate', 'Patate', '🥔', "Bonjour c'est le restaurant Bœuf & Cow, pour demain il nous faudrait :\n... sacs de frites\n... sacs de patates\nMerci, bon courage"],
+];
+if (db.prepare('SELECT COUNT(*) c FROM ppp_templates').get().c === 0) {
+  const insPpp = db.prepare('INSERT INTO ppp_templates(key,label,icon,body,ord,updated_at) VALUES(?,?,?,?,?,?)');
+  PPP_DEFAULTS.forEach((p, i) => insPpp.run(p[0], p[1], p[2], p[3], i + 1, nowISO()));
 }
 
 module.exports = { db, uid, nowISO, DB_PATH };

@@ -4,13 +4,14 @@ function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => (
 const MODE_LABEL = { AUTO_DAILY: 'Reset quotidien', CARRY_OVER: 'Report des non-faites', MANUAL: 'Manuel', WEEKLY_CARRY_OVER: 'Hebdomadaire', WEEKLY_MONDAY: 'Hebdo (lundi 8h)' };
 
 const content = document.getElementById('content');
+const CATEGORY = window.CL_CATEGORY || 'cuisine'; // catégorie gérée (défaut cuisine)
 let templates = [];
 let expanded = null;
 let editingTask = null;
 
 async function fetchData() {
   const t = await fetch('api/templates').then((r) => r.json());
-  templates = (Array.isArray(t) ? t : []).filter((tm) => (tm.category || 'general') === 'cuisine');
+  templates = (Array.isArray(t) ? t : []).filter((tm) => (tm.category || 'general') === CATEGORY);
   render();
 }
 
@@ -85,7 +86,7 @@ async function createTemplate() {
   const resetMode = document.getElementById('new-cl-reset').value;
   const r = await fetch('api/templates', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, icon, resetMode, category: 'cuisine' }),
+    body: JSON.stringify({ name, icon, resetMode, category: CATEGORY }),
   });
   const created = await r.json();
   await fetchData();

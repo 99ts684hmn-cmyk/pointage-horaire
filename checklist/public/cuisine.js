@@ -25,13 +25,16 @@ const MODE_LABEL = {
 };
 
 let sessions = [];
+// Catégorie affichée (défaut cuisine) et provenance pour le retour de session.
+const CATEGORY = window.CL_CATEGORY || 'cuisine';
+const FROM = window.CL_FROM || 'cuisine';
 
 async function load() {
   const content = document.getElementById('content');
   try {
     const r = await fetch(`api/sessions?date=${localToday()}`);
     const all = await r.json();
-    sessions = (Array.isArray(all) ? all : []).filter((s) => (s.category || 'general') === 'cuisine');
+    sessions = (Array.isArray(all) ? all : []).filter((s) => (s.category || 'general') === CATEGORY);
   } catch (e) {
     content.innerHTML = '<div class="empty">Impossible de charger les check-lists.</div>';
     return;
@@ -72,7 +75,7 @@ function render() {
     const carried = s.carriedCount > 0
       ? `<p class="carried">↩ ${s.carriedCount} tâche${s.carriedCount > 1 ? 's' : ''} reportée${s.carriedCount > 1 ? 's' : ''}</p>` : '';
     const right = remain > 0 ? `reste ${remain}` : `${s.progress}%`;
-    return `<a class="card clcard todo" href="session.html?id=${encodeURIComponent(s.id)}&from=cuisine">
+    return `<a class="card clcard todo" href="session.html?id=${encodeURIComponent(s.id)}&from=${FROM}">
       <div class="head">
         <div class="l"><span class="icon">${esc(s.templateIcon)}</span>
           <div><h2>${esc(s.templateName)}</h2>${sub ? `<p class="mode">${sub}</p>` : ''}</div>
@@ -86,7 +89,7 @@ function render() {
 
   const cardDone = (s) => {
     const by = s.completedBy ? `par ${esc(s.completedBy)} · ${frTime(s.completedAt)}` : '✓';
-    return `<a class="clcard compact" href="session.html?id=${encodeURIComponent(s.id)}&from=cuisine">
+    return `<a class="clcard compact" href="session.html?id=${encodeURIComponent(s.id)}&from=${FROM}">
       <span class="cdone"><span class="icon">${esc(s.templateIcon)}</span> ${esc(s.templateName)}</span>
       <span class="cby">${by}</span>
     </a>`;

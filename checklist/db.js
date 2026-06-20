@@ -654,6 +654,11 @@ function seedAndMigrate() {
   ensureTemplateByType('CUISINE_GARNITURE', () => { const id = insertTemplate({ name: 'Poste garniture', type: 'CUISINE_GARNITURE', color: 'bg-green-600', icon: '🥗', resetMode: 'AUTO_DAILY', order: 2, category: 'cuisine' }); CUISINE_GARNITURE_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
   ensureTemplateByType('CUISINE_FERM_FROID', () => { const id = insertTemplate({ name: 'Fermeture du froid', type: 'CUISINE_FERM_FROID', color: 'bg-sky-600', icon: '❄️', resetMode: 'AUTO_DAILY', order: 3, category: 'cuisine' }); CUISINE_FERM_FROID_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
   ensureTemplateByType('CUISINE_MENAGE_HEBDO', () => { const id = insertTemplate({ name: 'Ménage hebdo cuisine', type: 'CUISINE_MENAGE_HEBDO', color: 'bg-teal-500', icon: '🧽', resetMode: 'WEEKLY_CARRY_OVER', order: 4, category: 'cuisine' }); CUISINE_MENAGE_HEBDO_TASKS.forEach((t, i) => insertTask(id, t.title, i + 1, null, t.days)); });
+  // Check-lists « Responsable cuisine » (catégorie resp_cuisine), créées vides :
+  // les tâches sont à ajouter via l'admin responsable cuisine.
+  ensureTemplateByType('RESP_MENAGE', () => insertTemplate({ name: 'Ménage', type: 'RESP_MENAGE', color: 'bg-teal-500', icon: '🧽', resetMode: 'AUTO_DAILY', order: 1, category: 'resp_cuisine' }));
+  ensureTemplateByType('RESP_COMMANDE', () => insertTemplate({ name: 'Commande', type: 'RESP_COMMANDE', color: 'bg-amber-600', icon: '📦', resetMode: 'AUTO_DAILY', order: 2, category: 'resp_cuisine' }));
+  ensureTemplateByType('RESP_HYGIENE', () => insertTemplate({ name: 'Hygiène', type: 'RESP_HYGIENE', color: 'bg-sky-600', icon: '🧼', resetMode: 'AUTO_DAILY', order: 3, category: 'resp_cuisine' }));
 
   // Migration 1 : remplacer les tâches de « Check Manager Matin » par celles de
   // l'onglet « CL manager ouv matin ». Uniquement sur une base DÉJÀ existante

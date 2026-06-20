@@ -257,7 +257,7 @@ app.get('/api/templates', (req, res) => {
 
 // POST /api/templates — créer une nouvelle check-list (depuis l'admin)
 const RESET_MODES = ['AUTO_DAILY', 'CARRY_OVER', 'MANUAL', 'WEEKLY_CARRY_OVER', 'WEEKLY_MONDAY'];
-const CATEGORIES = ['general', 'manager', 'bar', 'cuisine'];
+const CATEGORIES = ['general', 'manager', 'bar', 'cuisine', 'resp_cuisine'];
 app.post('/api/templates', (req, res) => {
   const b = req.body || {};
   const name = (b.name || '').trim();

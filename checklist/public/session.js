@@ -15,6 +15,13 @@ if (from === 'cuisine') {
   if (back) back.href = 'cuisine.html';
   if (navList) navList.href = 'cuisine.html';
   if (navAdmin) navAdmin.href = 'cuisine-admin-accueil.html';
+} else if (from === 'resp') {
+  const back = document.getElementById('back-link');
+  const navList = document.getElementById('nav-list');
+  const navAdmin = document.getElementById('nav-admin');
+  if (back) back.href = 'resp-cuisine.html';
+  if (navList) navList.href = 'resp-cuisine.html';
+  if (navAdmin) navAdmin.href = 'resp-cuisine-admin.html';
 } else if (from === 'rapports') {
   const back = document.getElementById('back-link');
   if (back) back.href = 'rapports.html';

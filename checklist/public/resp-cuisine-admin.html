@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Bœuf & Cow — Cuisine · Admin</title>
+  <title>Bœuf & Cow — Responsable Cuisine · Admin</title>
   <link rel="stylesheet" href="styles.css?v=15">
   <style>
     .dayrow{display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:4px 10px 10px 30px}
@@ -19,28 +19,26 @@
       <div class="brand">
         <div class="logo">B</div>
         <span class="name">BŒUF <span class="amp">&amp;</span> COW</span>
-        <span class="tag">Cuisine · Admin</span>
+        <span class="tag">Responsable · Admin</span>
       </div>
       <nav class="nav-links">
-        <a href="cuisine-accueil.html" class="back">🍳 Cuisine</a>
-        <a href="cuisine.html">✅ Check-lists</a>
-        <a href="cuisine-commandes-accueil.html">📦 Commandes</a>
-        <a href="cuisine-groupes.html">👥 Groupes</a>
-        <a href="cuisine-menudujour.html">📋 Menu du jour</a>
-        <a href="cuisine-admin-accueil.html" class="active">⚙️ Admin</a>
+        <a href="/responsable-cuisine.html" class="back">🍳 Responsable</a>
+        <a href="resp-cuisine.html">✅ Check-lists</a>
+        <a href="resp-cuisine-admin.html" class="active">⚙️ Admin</a>
       </nav>
     </div>
   </header>
 
   <main class="wrap">
     <div>
-      <h1 class="page-title">Administration Cuisine</h1>
-      <p class="page-sub">Gérez les tâches des check-lists cuisine</p>
+      <h1 class="page-title">Administration responsable cuisine</h1>
+      <p class="page-sub">Gérez les tâches des check-lists (Ménage, Commande, Hygiène)</p>
     </div>
 
     <div id="content"><div class="loading pulse">Chargement…</div></div>
   </main>
 
+  <script>window.CL_CATEGORY = 'resp_cuisine';</script>
   <script src="sortable.min.js?v=10"></script>
   <script src="cuisine-admin.js?v=13"></script>
 </body>

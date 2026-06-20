@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Bœuf &amp; Cow — Responsable Cuisine</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=9">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=9">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg1:#0e110d; --bg2:#2a221f;
+      --gold:#c59d5f; --primary:#bf272d; --cream:#fff8f0; --muted:#b9b0a4;
+      --card:rgba(255,255,255,.04); --card-border:rgba(255,255,255,.10);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    [hidden]{display:none !important}
+    body{
+      font-family:"Hanken Grotesk",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      background:linear-gradient(165deg,var(--bg1) 0%,var(--bg2) 100%);
+      color:var(--cream); min-height:100vh;
+      display:flex; flex-direction:column; align-items:center;
+      padding:max(28px,env(safe-area-inset-top)) 20px 48px;
+    }
+    .top{width:100%;max-width:720px;display:flex;align-items:center;gap:14px;margin:4px 0 22px}
+    .top a.back{color:var(--gold);text-decoration:none;font-weight:700;font-size:.95rem}
+    .top h1{font-size:1.1rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--cream)}
+    .grid{width:100%; max-width:720px; display:grid; grid-template-columns:repeat(2,1fr); gap:16px;}
+    @media (max-width:560px){ .grid{grid-template-columns:1fr} }
+    .tile{
+      display:flex; flex-direction:column; gap:10px;
+      background:var(--card); border:1.5px solid var(--card-border);
+      border-radius:20px; padding:24px 22px; min-height:140px;
+      color:var(--cream); text-decoration:none;
+      transition:transform .15s ease, border-color .15s ease, background .15s ease;
+      position:relative; overflow:hidden;
+    }
+    .tile:hover{transform:translateY(-3px);border-color:var(--gold);background:rgba(255,255,255,.07)}
+    .tile .ic{font-size:2rem;line-height:1}
+    .tile .ttl{font-size:1.12rem;font-weight:700}
+    .tile .sub{font-size:.85rem;color:var(--muted);line-height:1.35}
+    .tile .accent{position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--gold)}
+    .badge{align-self:flex-start;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;padding:3px 9px;border-radius:999px;background:rgba(197,157,95,.16);color:var(--gold);border:1px solid rgba(197,157,95,.4)}
+    .gate{width:100%;max-width:360px;background:var(--card);border:1.5px solid var(--card-border);border-radius:18px;padding:26px 22px;margin-top:40px}
+    .gate h2{font-size:1.05rem;font-weight:700;margin-bottom:14px;color:var(--cream)}
+    .gate input{width:100%;border:1.5px solid var(--card-border);border-radius:11px;padding:12px 14px;font-size:.95rem;background:rgba(0,0,0,.2);color:var(--cream);font-family:inherit}
+    .gate button{width:100%;margin-top:12px;border:0;border-radius:11px;padding:12px;font-weight:700;font-size:.95rem;background:var(--gold);color:#1f2120;cursor:pointer;font-family:inherit}
+    .gate .err{color:#f0999b;font-size:.85rem;margin-top:10px;min-height:1em}
+  </style>
+</head>
+<body>
+  <div class="top">
+    <a class="back" href="/">← Accueil</a>
+    <h1>Responsable Cuisine</h1>
+  </div>
+
+  <div class="gate" id="gate" hidden>
+    <h2>🔒 Accès protégé</h2>
+    <input type="password" id="pw" placeholder="Mot de passe" autocomplete="current-password">
+    <button id="login-btn">Entrer</button>
+    <div class="err" id="err"></div>
+  </div>
+
+  <main class="grid" id="tiles" hidden>
+    <a class="tile" href="/cuisine/">
+      <span class="accent"></span>
+      <span class="ic">🍳</span>
+      <span class="badge">🔒 Protégé</span>
+      <span class="ttl">Planning cuisine</span>
+      <span class="sub">Planning hebdomadaire de la cuisine</span>
+    </a>
+
+    <a class="tile" href="/checklist/rapports.html?scope=cuisine">
+      <span class="accent"></span>
+      <span class="ic">📊</span>
+      <span class="ttl">Rapport check-list cuisine</span>
+      <span class="sub">Historique des check-lists de la cuisine</span>
+    </a>
+
+    <a class="tile" href="/checklist/resp-cuisine.html">
+      <span class="accent"></span>
+      <span class="ic">✅</span>
+      <span class="ttl">Check-list responsable cuisine</span>
+      <span class="sub">Ménage, Commande &amp; Hygiène</span>
+    </a>
+  </main>
+
+  <script>
+    var gate = document.getElementById('gate');
+    var tiles = document.getElementById('tiles');
+    var err = document.getElementById('err');
+    function showTiles(ok) { tiles.hidden = !ok; gate.hidden = ok; if (!ok) document.getElementById('pw').focus(); }
+    async function login() {
+      err.textContent = '';
+      var pw = document.getElementById('pw').value;
+      try {
+        var r = await fetch('/api/admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw }) });
+        if (r.ok) { showTiles(true); } else { err.textContent = 'Mot de passe incorrect.'; }
+      } catch (e) { err.textContent = 'Erreur de connexion.'; }
+    }
+    document.getElementById('login-btn').addEventListener('click', login);
+    document.getElementById('pw').addEventListener('keydown', function (e) { if (e.key === 'Enter') login(); });
+    fetch('/api/admin/me').then(function (r) { return r.json(); })
+      .then(function (d) { showTiles(!!(d && d.loggedIn)); })
+      .catch(function () { showTiles(false); });
+  </script>
+</body>
+</html>

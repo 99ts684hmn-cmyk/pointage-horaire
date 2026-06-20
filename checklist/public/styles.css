@@ -32,10 +32,12 @@
 .tile .sub { font-size: .85rem; color: var(--muted); line-height: 1.35; }
 .tile .accent { position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--gold); }
 
-/* PPP : texte à trous + résultat */
+/* PPP : texte à trous + résultat. #modal pour gagner sur .modal input[type=text]. */
 .ppp-fill { white-space: pre-wrap; line-height: 2.1; font-size: .95rem; color: var(--dark); }
-.ppp-fill input { display: inline-block; min-width: 90px; width: auto; border: 0; border-bottom: 2px solid var(--gold);
-  background: #fffdf6; font-family: inherit; font-size: .95rem; color: var(--dark); padding: 2px 6px; }
+#modal .ppp-fill input { display: inline-block; width: 64px; min-width: 0; border: 0; border-bottom: 2px solid var(--gold);
+  border-radius: 0; background: #fffdf6; font-family: inherit; font-size: .95rem; color: var(--dark);
+  padding: 2px 6px; text-align: center; }
+#modal .ppp-fill input.wide { width: 100%; text-align: left; }
 .ppp-result { margin-top: 14px; }
 .ppp-result textarea { width: 100%; min-height: 130px; border: 1.5px solid var(--border); border-radius: 10px;
   padding: 10px 12px; font-family: inherit; font-size: .9rem; color: var(--dark); white-space: pre-wrap; }

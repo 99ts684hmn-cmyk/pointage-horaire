@@ -43,7 +43,11 @@ function openGen(key) {
   let fillHtml = '';
   segs.forEach((seg, i) => {
     fillHtml += esc(seg);
-    if (i < segs.length - 1) fillHtml += `<input type="text" data-i="${i}" aria-label="à remplir">`;
+    if (i < segs.length - 1) {
+      // Case large seulement après « Autre(s) » (texte libre) ; sinon petite (2-3 chiffres).
+      const wide = /autres?\s*:?\s*$/i.test(seg);
+      fillHtml += `<input type="text" data-i="${i}"${wide ? ' class="wide"' : ' inputmode="numeric"'} aria-label="à remplir">`;
+    }
   });
   modal.innerHTML = `
     <h2>${esc(t.icon || '')} ${esc(t.label)}</h2>

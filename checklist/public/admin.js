@@ -79,6 +79,14 @@ async function deleteTemplate(id, name) {
   if (expanded === id) expanded = null;
   await fetchData();
 }
+async function renameTemplate(id, current) {
+  const name = (prompt('Nouveau nom de la check-list :', current) || '').trim();
+  if (!name || name === current) return;
+  await fetch(`api/templates/${encodeURIComponent(id)}`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }),
+  });
+  await fetchData();
+}
 function createFormHTML(category) {
   return `<div class="card" style="padding:16px">
     <div class="nm" style="margin-bottom:10px">➕ Nouvelle check-list</div>
@@ -121,7 +129,10 @@ function render() {
     : `<div class="trow" data-id="${esc(task.id)}"><span class="drag" title="Glisser pour réordonner">⠿</span><span class="t" data-edit-task="${esc(task.id)}">${esc(task.title)}</span><button class="edit" data-edit-task="${esc(task.id)}">Modifier</button><button class="del" data-del-task="${esc(task.id)}">Supprimer</button></div>`)).join('')}
         </div>
         <div class="addrow"><input type="text" placeholder="Nouvelle tâche…" data-add-input="${esc(tm.id)}"><button class="btn btn-red" data-add-task="${esc(tm.id)}">+ Ajouter</button></div>
-        <div style="margin-top:12px;text-align:right"><button class="del" data-del-tmpl="${esc(tm.id)}" data-del-name="${esc(tm.name)}">🗑 Supprimer cette check-list</button></div>
+        <div style="margin-top:12px;display:flex;justify-content:space-between;gap:8px">
+          <button style="background:none;border:0;color:var(--muted);font-weight:700;font-size:.82rem;cursor:pointer;font-family:inherit" data-rename-tmpl="${esc(tm.id)}" data-name="${esc(tm.name)}">✏️ Renommer</button>
+          <button class="del" data-del-tmpl="${esc(tm.id)}" data-del-name="${esc(tm.name)}">🗑 Supprimer cette check-list</button>
+        </div>
       </div>` : '';
       return `<div class="card acc">
         <button class="acc-head" data-toggle="${esc(tm.id)}">
@@ -140,6 +151,7 @@ function render() {
       document.getElementById('new-cl-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') createTemplate(createBtn.dataset.cat); });
     }
     content.querySelectorAll('[data-del-tmpl]').forEach((b) => b.addEventListener('click', () => deleteTemplate(b.dataset.delTmpl, b.dataset.delName)));
+    content.querySelectorAll('[data-rename-tmpl]').forEach((b) => b.addEventListener('click', () => renameTemplate(b.dataset.renameTmpl, b.dataset.name)));
 
     content.querySelectorAll('[data-toggle]').forEach((b) => b.addEventListener('click', () => {
       expanded = expanded === b.dataset.toggle ? null : b.dataset.toggle; render();

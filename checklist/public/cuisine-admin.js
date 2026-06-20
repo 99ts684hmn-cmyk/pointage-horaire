@@ -98,6 +98,14 @@ async function deleteTemplate(id, name) {
   if (expanded === id) expanded = null;
   await fetchData();
 }
+async function renameTemplate(id, current) {
+  const name = (prompt('Nouveau nom de la check-list :', current) || '').trim();
+  if (!name || name === current) return;
+  await fetch(`api/templates/${encodeURIComponent(id)}`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }),
+  });
+  await fetchData();
+}
 
 function createFormHTML() {
   return `<div class="card" style="padding:16px">
@@ -124,7 +132,10 @@ function render() {
     + (tm.resetMode === 'WEEKLY_CARRY_OVER' && editingTask !== task.id ? dayPillsHTML(task) : '')).join('')}
       </div>
       <div class="addrow"><input type="text" placeholder="Nouvelle tâche…" data-add-input="${esc(tm.id)}"><button class="btn btn-red" data-add-task="${esc(tm.id)}">+ Ajouter</button></div>
-      <div style="margin-top:12px;text-align:right"><button class="del" data-del-tmpl="${esc(tm.id)}" data-del-name="${esc(tm.name)}">🗑 Supprimer cette check-list</button></div>
+      <div style="margin-top:12px;display:flex;justify-content:space-between;gap:8px">
+        <button style="background:none;border:0;color:var(--muted);font-weight:700;font-size:.82rem;cursor:pointer;font-family:inherit" data-rename-tmpl="${esc(tm.id)}" data-name="${esc(tm.name)}">✏️ Renommer</button>
+        <button class="del" data-del-tmpl="${esc(tm.id)}" data-del-name="${esc(tm.name)}">🗑 Supprimer cette check-list</button>
+      </div>
     </div>` : '';
     return `<div class="card acc">
       <button class="acc-head" data-toggle="${esc(tm.id)}">
@@ -141,6 +152,7 @@ function render() {
   document.getElementById('new-cl-create').addEventListener('click', createTemplate);
   document.getElementById('new-cl-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') createTemplate(); });
   content.querySelectorAll('[data-del-tmpl]').forEach((b) => b.addEventListener('click', () => deleteTemplate(b.dataset.delTmpl, b.dataset.delName)));
+  content.querySelectorAll('[data-rename-tmpl]').forEach((b) => b.addEventListener('click', () => renameTemplate(b.dataset.renameTmpl, b.dataset.name)));
   content.querySelectorAll('[data-dtask]').forEach((b) => b.addEventListener('click', () => toggleDay(b.dataset.dtask, parseInt(b.dataset.day, 10))));
 
   content.querySelectorAll('[data-toggle]').forEach((b) => b.addEventListener('click', () => {

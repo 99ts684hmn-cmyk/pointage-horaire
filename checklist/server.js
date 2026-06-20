@@ -281,6 +281,20 @@ app.delete('/api/templates/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+// PATCH /api/templates/:id — renommer (et/ou changer l'icône) une check-list.
+app.patch('/api/templates/:id', (req, res) => {
+  const b = req.body || {};
+  const sets = [];
+  const args = [];
+  if (typeof b.name === 'string' && b.name.trim()) { sets.push('name = ?'); args.push(b.name.trim()); }
+  if (typeof b.icon === 'string' && b.icon.trim()) { sets.push('icon = ?'); args.push(b.icon.trim()); }
+  if (!sets.length) return res.status(400).json({ error: 'Rien à modifier' });
+  args.push(req.params.id);
+  const r = db.prepare(`UPDATE templates SET ${sets.join(', ')} WHERE id = ?`).run(...args);
+  if (!r.changes) return res.status(404).json({ error: 'Check-list introuvable' });
+  res.json({ ok: true });
+});
+
 // POST /api/templates/:id/tasks — ajouter une tâche
 app.post('/api/templates/:id/tasks', (req, res) => {
   const title = (req.body && req.body.title || '').trim();

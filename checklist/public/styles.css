@@ -60,6 +60,8 @@ body {
   background: #0e110d; border-bottom: 1px solid rgba(197,157,95,.25);
 }
 .nav-inner { max-width: 960px; margin: 0 auto; height: 56px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.nav-left { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.nav-left a.back { color: var(--gold); font-weight: 700; font-size: .85rem; text-decoration: none; white-space: nowrap; padding: 6px 10px; border-radius: 9px; }
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .brand .logo { width: 32px; height: 32px; border-radius: 6px; background: var(--red); color: var(--cream); font-weight: 900; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
 .brand .name { font-weight: 900; text-transform: uppercase; letter-spacing: .12em; color: var(--cream); font-size: .95rem; }

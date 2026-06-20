@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Bœuf & Cow — Informations</title>
+  <title>Bœuf & Cow — Menu du jour</title>
   <link rel="stylesheet" href="styles.css?v=15">
   <style>
     .viewbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 8px; }
@@ -19,7 +19,6 @@
     .veleda-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 12px; }
     table.veleda { border-collapse: collapse; width: 100%; background: #fff;
       border: 3px solid #1f2120; border-radius: 12px; overflow: hidden; }
-    .board.groupes table.veleda { min-width: 760px; }
     table.veleda th, table.veleda td { border: 1px solid #ded8cd; padding: 0; vertical-align: top; }
     table.veleda thead th { background: #f3f0ea; color: #1f2120; font-weight: 800; font-size: .8rem;
       padding: 9px 6px; text-align: center; border-bottom: 2px solid #1f2120; }
@@ -29,28 +28,8 @@
     table.veleda textarea { display: block; width: 100%; border: 0; background: transparent; resize: none;
       font-family: inherit; font-size: .92rem; color: #1f2120; padding: 8px; min-height: 46px; line-height: 1.3; overflow: hidden; }
     table.veleda textarea:focus { outline: 2px solid var(--gold); outline-offset: -2px; background: #fffdf6; }
-    .board.groupes table.veleda textarea { min-height: 92px; }
     .saved-flash { animation: savedflash .8s ease; }
     @keyframes savedflash { 0% { background: #e7f5ec; } 100% { background: transparent; } }
-    /* Groupes : liste de groupes par jour + formulaire */
-    .g-list { display: flex; flex-direction: column; gap: 6px; padding: 8px; min-height: 92px; }
-    .g-item { display: block; width: 100%; text-align: left; border: 1px solid #e3ddd2; background: #fff;
-      border-radius: 8px; padding: 7px 9px; cursor: pointer; font-family: inherit; color: #1f2120; }
-    .g-item:hover { border-color: var(--gold); }
-    .g-add { display: block; width: 100%; border: 1px dashed #cbc4b6; background: transparent; border-radius: 8px;
-      padding: 7px; cursor: pointer; font-family: inherit; color: #8a847c; font-weight: 700; font-size: .8rem; }
-    .g-add:hover { color: #1f2120; border-color: var(--gold); }
-    .g-sum { font-size: .88rem; margin-bottom: 3px; }
-    .g-line { font-size: .76rem; color: #5a5550; line-height: 1.35; }
-    .g-item.annule { border-color: #eebcbc; background: #fdf3f3; }
-    .g-item.annule .g-sum, .g-item.annule .g-line { text-decoration: line-through; color: #9e1f24; }
-    .g-annule-badge { display: inline-block; color: #bf272d; font-weight: 800; font-size: .72rem; letter-spacing: .05em; margin-bottom: 4px; }
-    .g-nav { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 0 10px; }
-    .g-nav .g-range { font-weight: 800; color: var(--cream); font-size: .9rem; }
-    .gform label { display: block; font-size: .75rem; color: var(--muted); font-weight: 700; margin: 10px 0 3px; }
-    .gform input, .gform textarea { width: 100%; border: 1.5px solid var(--border); border-radius: 9px;
-      padding: 9px 11px; font-size: .9rem; font-family: inherit; color: var(--dark); }
-    .gform textarea { resize: vertical; min-height: 54px; }
   </style>
 </head>
 <body>
@@ -59,13 +38,14 @@
       <div class="brand">
         <div class="logo">B</div>
         <span class="name">BŒUF <span class="amp">&amp;</span> COW</span>
-        <span class="tag">Informations</span>
+        <span class="tag">Menu du jour</span>
       </div>
       <nav class="nav-links">
         <a href="cuisine-accueil.html" class="back">🍳 Cuisine</a>
         <a href="cuisine.html">✅ Check-lists</a>
         <a href="cuisine-commandes-accueil.html">📦 Commandes</a>
-        <a href="cuisine-menus.html" class="active">📋 Informations</a>
+        <a href="cuisine-groupes.html">👥 Groupes</a>
+        <a href="cuisine-menudujour.html" class="active">📋 Menu du jour</a>
         <a href="cuisine-admin-accueil.html">⚙️ Admin</a>
       </nav>
     </div>
@@ -73,8 +53,8 @@
 
   <main class="wrap">
     <div>
-      <h1 class="page-title">Informations</h1>
-      <p class="page-sub">Tableaux à remplir comme au tableau blanc — tout est enregistré automatiquement.</p>
+      <h1 class="page-title">Menu du jour</h1>
+      <p class="page-sub">Le menu de la semaine en cours et de la semaine prochaine — enregistré automatiquement.</p>
     </div>
     <div id="content"><div class="loading pulse">Chargement…</div></div>
   </main>
@@ -83,6 +63,7 @@
     <div class="modal" id="modal" style="max-height:88vh; overflow-y:auto"></div>
   </div>
 
-  <script src="cuisine-menus.js?v=10"></script>
+  <script>window.MENU_PAGE = 'menus';</script>
+  <script src="cuisine-menus.js?v=12"></script>
 </body>
 </html>

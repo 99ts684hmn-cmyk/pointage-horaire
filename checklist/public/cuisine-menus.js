@@ -28,6 +28,8 @@ const GROUP_FIELDS = [
   ['boissons', 'Boissons', 'text'],
   ['prix', 'Prix par personne', 'text'],
   ['gratuite', 'Gratuité', 'text'],
+  ['guide', 'Guide', 'text'],
+  ['infos', 'Infos', 'textarea'],
 ];
 
 const content = document.getElementById('content');
@@ -38,6 +40,8 @@ let gDate = null;
 let gIndex = null; // index du groupe édité (null = nouveau)
 let view = 'boards'; // 'boards' | 'menus' | 'groupes'
 let recap = null; // données des récapitulatifs (chargées à la demande)
+// Page : 'menus' (menus seuls), 'groupes' (groupes seuls) ou 'all' (les deux).
+const PAGE = window.MENU_PAGE || 'all';
 
 async function load() {
   try { data = await fetch('api/menus').then((r) => r.json()); }
@@ -81,6 +85,8 @@ function groupSummary(g) {
   if (g.allergies) html += `<div class="g-line">⚠️ ${esc(g.allergies)}</div>`;
   if (g.boissons) html += `<div class="g-line">🥤 ${esc(g.boissons)}</div>`;
   if (g.gratuite) html += `<div class="g-line">🎁 Gratuité : ${esc(g.gratuite)}</div>`;
+  if (g.guide) html += `<div class="g-line">🧭 Guide : ${esc(g.guide)}</div>`;
+  if (g.infos) html += `<div class="g-line">ℹ️ ${esc(g.infos)}</div>`;
   if (g.annule) html = `<div class="g-annule-badge">ANNULÉ</div>${html}`;
   return html;
 }
@@ -109,9 +115,9 @@ function menuTableRO(cells) {
 }
 
 function boardsHTML() {
-  return `
-    <section class="board"><h2>📋 Menu — cette semaine <span class="wk">${weekRange(data.semaineMonday)}</span></h2>${menuTable(data.semaineMonday)}</section>
-    <section class="board groupes">
+  const menuSemaine = `<section class="board"><h2>📋 Menu — cette semaine <span class="wk">${weekRange(data.semaineMonday)}</span></h2>${menuTable(data.semaineMonday)}</section>`;
+  const menuPro = `<section class="board"><h2>📋 Menu — semaine prochaine <span class="wk">${weekRange(data.semaineProMonday)}</span></h2>${menuTable(data.semaineProMonday)}</section>`;
+  const groupes = `<section class="board groupes">
       <h2>👥 Groupes</h2>
       <div class="g-nav">
         <button class="btn btn-grey" id="g-prev">‹ Semaine précédente</button>
@@ -119,8 +125,10 @@ function boardsHTML() {
         <button class="btn btn-grey" id="g-next">Semaine suivante ›</button>
       </div>
       ${groupTable(data.groupes)}
-    </section>
-    <section class="board"><h2>📋 Menu — semaine prochaine <span class="wk">${weekRange(data.semaineProMonday)}</span></h2>${menuTable(data.semaineProMonday)}</section>`;
+    </section>`;
+  if (PAGE === 'menus') return menuSemaine + menuPro;
+  if (PAGE === 'groupes') return groupes;
+  return menuSemaine + groupes + menuPro;
 }
 
 function recapMenusHTML() {
@@ -140,11 +148,10 @@ function recapGroupesHTML() {
 }
 
 function render() {
-  const bar = `<div class="viewbar">
-    <button class="vb${view === 'boards' ? ' active' : ''}" data-view="boards">Tableaux</button>
-    <button class="vb${view === 'menus' ? ' active' : ''}" data-view="menus">📋 Récap menus</button>
-    <button class="vb${view === 'groupes' ? ' active' : ''}" data-view="groupes">👥 Récap groupes</button>
-  </div>`;
+  const recapMenus = `<button class="vb${view === 'menus' ? ' active' : ''}" data-view="menus">📋 Récap menus</button>`;
+  const recapGroupes = `<button class="vb${view === 'groupes' ? ' active' : ''}" data-view="groupes">👥 Récap groupes</button>`;
+  const recapBtns = PAGE === 'menus' ? recapMenus : PAGE === 'groupes' ? recapGroupes : recapMenus + recapGroupes;
+  const bar = `<div class="viewbar"><button class="vb${view === 'boards' ? ' active' : ''}" data-view="boards">Tableaux</button>${recapBtns}</div>`;
   const body = view === 'menus' ? recapMenusHTML() : view === 'groupes' ? recapGroupesHTML() : boardsHTML();
   content.innerHTML = bar + body;
 
@@ -158,8 +165,8 @@ function render() {
   });
   content.querySelectorAll('.g-item').forEach((b) => b.addEventListener('click', () => openGroup(b.dataset.date, parseInt(b.dataset.index, 10))));
   content.querySelectorAll('.g-add').forEach((b) => b.addEventListener('click', () => openGroup(b.dataset.date, null)));
-  document.getElementById('g-prev').addEventListener('click', () => reloadGroupes(addDaysIso(data.groupStart, -7)));
-  document.getElementById('g-next').addEventListener('click', () => reloadGroupes(addDaysIso(data.groupStart, 7)));
+  const prev = document.getElementById('g-prev'); if (prev) prev.addEventListener('click', () => reloadGroupes(addDaysIso(data.groupStart, -7)));
+  const next = document.getElementById('g-next'); if (next) next.addEventListener('click', () => reloadGroupes(addDaysIso(data.groupStart, 7)));
 }
 
 function setView(v) {

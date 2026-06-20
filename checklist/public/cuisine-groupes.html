@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Bœuf & Cow — Groupes</title>
+  <link rel="stylesheet" href="styles.css?v=15">
+  <style>
+    .viewbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 8px; }
+    .vb { padding: 8px 14px; border-radius: 9px; border: 0; font-weight: 800; font-size: .85rem; cursor: pointer;
+      font-family: inherit; background: var(--dark); color: rgba(255,248,240,.6); }
+    .vb.active { background: var(--gold); color: #1f2120; }
+    table.veleda td.ro { padding: 8px 10px; font-size: .9rem; color: #1f2120; vertical-align: top; }
+    .ro-empty { color: #c9c2b5; }
+    .board { margin: 24px 0; }
+    .board h2 { font-size: 1.05rem; font-weight: 900; color: var(--cream); margin: 0 0 10px;
+      text-transform: uppercase; letter-spacing: .04em; }
+    .board h2 .wk { color: var(--gold); font-weight: 600; font-size: .85rem; text-transform: none; letter-spacing: 0; margin-left: 8px; }
+    .veleda-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 12px; }
+    table.veleda { border-collapse: collapse; width: 100%; background: #fff;
+      border: 3px solid #1f2120; border-radius: 12px; overflow: hidden; }
+    .board.groupes table.veleda { min-width: 760px; }
+    table.veleda th, table.veleda td { border: 1px solid #ded8cd; padding: 0; vertical-align: top; }
+    table.veleda thead th { background: #f3f0ea; color: #1f2120; font-weight: 800; font-size: .8rem;
+      padding: 9px 6px; text-align: center; border-bottom: 2px solid #1f2120; }
+    .saved-flash { animation: savedflash .8s ease; }
+    @keyframes savedflash { 0% { background: #e7f5ec; } 100% { background: transparent; } }
+    .g-list { display: flex; flex-direction: column; gap: 6px; padding: 8px; min-height: 92px; }
+    .g-item { display: block; width: 100%; text-align: left; border: 1px solid #e3ddd2; background: #fff;
+      border-radius: 8px; padding: 7px 9px; cursor: pointer; font-family: inherit; color: #1f2120; }
+    .g-item:hover { border-color: var(--gold); }
+    .g-add { display: block; width: 100%; border: 1px dashed #cbc4b6; background: transparent; border-radius: 8px;
+      padding: 7px; cursor: pointer; font-family: inherit; color: #8a847c; font-weight: 700; font-size: .8rem; }
+    .g-add:hover { color: #1f2120; border-color: var(--gold); }
+    .g-sum { font-size: .88rem; margin-bottom: 3px; }
+    .g-line { font-size: .76rem; color: #5a5550; line-height: 1.35; }
+    .g-item.annule { border-color: #eebcbc; background: #fdf3f3; }
+    .g-item.annule .g-sum, .g-item.annule .g-line { text-decoration: line-through; color: #9e1f24; }
+    .g-annule-badge { display: inline-block; color: #bf272d; font-weight: 800; font-size: .72rem; letter-spacing: .05em; margin-bottom: 4px; }
+    .g-nav { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 0 10px; }
+    .g-nav .g-range { font-weight: 800; color: var(--cream); font-size: .9rem; }
+    .gform label { display: block; font-size: .75rem; color: var(--muted); font-weight: 700; margin: 10px 0 3px; }
+    .gform input, .gform textarea { width: 100%; border: 1.5px solid var(--border); border-radius: 9px;
+      padding: 9px 11px; font-size: .9rem; font-family: inherit; color: var(--dark); }
+    .gform textarea { resize: vertical; min-height: 54px; }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <div class="brand">
+        <div class="logo">B</div>
+        <span class="name">BŒUF <span class="amp">&amp;</span> COW</span>
+        <span class="tag">Groupes</span>
+      </div>
+      <nav class="nav-links">
+        <a href="cuisine-accueil.html" class="back">🍳 Cuisine</a>
+        <a href="cuisine.html">✅ Check-lists</a>
+        <a href="cuisine-commandes-accueil.html">📦 Commandes</a>
+        <a href="cuisine-groupes.html" class="active">👥 Groupes</a>
+        <a href="cuisine-menudujour.html">📋 Menu du jour</a>
+        <a href="cuisine-admin-accueil.html">⚙️ Admin</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div>
+      <h1 class="page-title">Groupes</h1>
+      <p class="page-sub">Les groupes à venir, jour par jour. Cliquez une case pour ajouter ou modifier.</p>
+    </div>
+    <div id="content"><div class="loading pulse">Chargement…</div></div>
+  </main>
+
+  <div class="overlay" id="ov">
+    <div class="modal" id="modal" style="max-width:460px; max-height:88vh; overflow-y:auto"></div>
+  </div>
+
+  <script>window.MENU_PAGE = 'groupes';</script>
+  <script src="cuisine-menus.js?v=12"></script>
+</body>
+</html>

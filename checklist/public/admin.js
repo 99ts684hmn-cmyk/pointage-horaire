@@ -15,7 +15,7 @@ const CAT_EMPTY = { general: 'Aucune check-list ici.', manager: 'Aucune check-li
 async function fetchData() {
   const [t, e] = await Promise.all([
     fetch('api/templates').then((r) => r.json()),
-    fetch('api/employees').then((r) => r.json()),
+    fetch('/api/employees').then((r) => r.json()), // salariés actifs du pointage
   ]);
   templates = Array.isArray(t) ? t : [];
   employees = Array.isArray(e) ? e : [];
@@ -175,17 +175,10 @@ function render() {
     });
   } else {
     const list = employees.length
-      ? employees.map((e) => `<div class="emp-line"><div class="l"><div class="av">${esc((e.name[0] || '?').toUpperCase())}</div><span class="nm">${esc(e.name)}</span></div><button class="del" data-del-emp="${esc(e.id)}">Supprimer</button></div>`).join('')
-      : '<p class="empty" style="border:0;box-shadow:none">Aucun employé</p>';
-    content.innerHTML = `<div class="card" style="overflow:hidden;margin-bottom:16px">${list}</div>
-      <div class="card" style="padding:14px;display:flex;gap:8px">
-        <input type="text" id="new-emp" placeholder="Nom de l'employé…" style="flex:1;border:1.5px solid var(--border);border-radius:9px;padding:10px 14px;font-size:.88rem;color:var(--dark);font-family:inherit">
-        <button class="btn btn-red" id="add-emp">+ Ajouter</button>
-      </div>`;
-    content.querySelectorAll('[data-del-emp]').forEach((b) => b.addEventListener('click', () => deleteEmployee(b.dataset.delEmp)));
-    const inp = document.getElementById('new-emp');
-    document.getElementById('add-emp').addEventListener('click', () => addEmployee(inp));
-    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') addEmployee(inp); });
+      ? employees.map((e) => `<div class="emp-line"><div class="l"><div class="av">${esc((e.name[0] || '?').toUpperCase())}</div><span class="nm">${esc(e.name)}</span></div></div>`).join('')
+      : '<p class="empty" style="border:0;box-shadow:none">Aucun salarié actif</p>';
+    content.innerHTML = `<div class="card" style="overflow:hidden;margin-bottom:12px">${list}</div>
+      <p class="page-sub" style="color:var(--muted)">Salariés <strong>actifs</strong> issus de l'admin du pointage. Pour ajouter ou retirer quelqu'un, passez par l'admin du pointage.</p>`;
   }
 }
 

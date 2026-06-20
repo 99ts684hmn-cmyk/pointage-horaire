@@ -174,6 +174,7 @@ overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.cla
 if (!sessionId) {
   content.innerHTML = '<div class="empty">Aucune check-list indiquée.</div>';
 } else {
-  fetch('api/employees').then((r) => r.json()).then((e) => { employees = Array.isArray(e) ? e : []; }).catch(() => {});
+  // Personnel = salariés actifs du pointage (même origine, app principale).
+  fetch('/api/employees').then((r) => r.json()).then((e) => { employees = Array.isArray(e) ? e : []; }).catch(() => {});
   fetchSession();
 }

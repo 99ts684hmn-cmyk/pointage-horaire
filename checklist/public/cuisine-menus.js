@@ -91,11 +91,23 @@ function groupSummary(g) {
   return html;
 }
 
+// Résumé compact pour les cases du tableau : nom · pers · prix + allergies.
+function groupSummaryCompact(g) {
+  const top = [];
+  if (g.nom) top.push(`<strong>${esc(g.nom)}</strong>`);
+  if (g.pers) top.push(`${esc(g.pers)} pers`);
+  if (g.prix) top.push(`${esc(g.prix)}/pers`);
+  let html = `<div class="g-sum">${top.join(' · ') || '(groupe)'}</div>`;
+  if (g.allergies) html += `<div class="g-line">⚠️ ${esc(g.allergies)}</div>`;
+  if (g.annule) html = `<div class="g-annule-badge">ANNULÉ</div>${html}`;
+  return html;
+}
+
 function groupTable(dates) {
   const head = `<thead><tr>${dates.map((d) => `<th>${dayHead(d)}</th>`).join('')}</tr></thead>`;
   const tds = dates.map((d) => {
     const arr = parseGroups(data.cells[d] && data.cells[d].groupe);
-    const items = arr.map((g, i) => `<button class="g-item${g.annule ? ' annule' : ''}" data-date="${d}" data-index="${i}">${groupSummary(g)}</button>`).join('');
+    const items = arr.map((g, i) => `<button class="g-item${g.annule ? ' annule' : ''}" data-date="${d}" data-index="${i}">${groupSummaryCompact(g)}</button>`).join('');
     return `<td><div class="g-list">${items}<button class="g-add" data-date="${d}">+ Ajouter un groupe</button></div></td>`;
   }).join('');
   return `<div class="veleda-wrap"><table class="veleda">${head}<tbody><tr>${tds}</tr></tbody></table></div>`;

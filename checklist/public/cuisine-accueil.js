@@ -9,6 +9,18 @@ function dayHead(iso) {
   return `${DOW[d.getDay()]} ${dd}/${m}`;
 }
 
+function daysUntil(iso) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const d = new Date(iso + 'T00:00:00');
+  return Math.round((d - today) / 86400000);
+}
+function whenInfo(iso) {
+  const n = daysUntil(iso);
+  if (n <= 0) return { txt: "aujourd'hui", soon: true };
+  if (n === 1) return { txt: 'demain', soon: true };
+  return { txt: `dans ${n} j`, soon: false };
+}
+
 function menuLine(label, a, b) {
   const parts = [a, b].filter((v) => v && v.trim());
   return `<div class="ap-line"><span class="ap-lbl">${label}</span><span class="ap-v">${parts.length ? parts.map(esc).join(' · ') : '—'}</span></div>`;
@@ -22,7 +34,10 @@ async function load() {
   const grp = Array.isArray(d.groupes) ? d.groupes : [];
 
   document.getElementById('ap-groupes').innerHTML = grp.length
-    ? grp.map((g) => `<div class="ap-line"><span class="ap-d">${dayHead(g.date)}</span><span class="ap-n">${esc(g.nom)}${g.pers ? ` · ${esc(g.pers)} pers` : ''}</span></div>`).join('')
+    ? grp.map((g) => {
+      const w = whenInfo(g.date);
+      return `<div class="ap-line"><span class="ap-d">${dayHead(g.date)} <span class="ap-when${w.soon ? ' soon' : ''}">${w.txt}</span></span><span class="ap-n">${esc(g.nom)}${g.pers ? ` · ${esc(g.pers)} pers` : ''}</span></div>`;
+    }).join('')
     : '<div class="ap-empty">Aucun groupe à venir</div>';
 
   const mt = document.getElementById('ap-menu-title');

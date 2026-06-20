@@ -14,6 +14,8 @@
   border-top: 1px solid rgba(255,248,240,.08); }
 .ap-line:first-child { border-top: 0; }
 .ap-d { color: var(--gold); font-weight: 700; white-space: nowrap; }
+.ap-when { font-weight: 600; font-size: .8rem; color: rgba(255,248,240,.45); }
+.ap-when.soon { color: var(--gold); }
 .ap-n { color: var(--cream); text-align: right; }
 .ap-lbl { color: rgba(255,248,240,.6); font-weight: 700; }
 .ap-v { color: var(--cream); text-align: right; }

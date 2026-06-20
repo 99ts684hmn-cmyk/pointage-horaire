@@ -13,6 +13,14 @@ const toEl = document.getElementById('to');
 const typeEl = document.getElementById('type');
 const content = document.getElementById('content');
 
+// Périmètre optionnel : ?scope=salle (tout sauf cuisine) ou ?scope=cuisine.
+const SCOPE = new URLSearchParams(location.search).get('scope') || '';
+(function applyScope() {
+  if (!SCOPE) return;
+  const sub = document.querySelector('.page-sub');
+  if (sub) sub.textContent = SCOPE === 'salle' ? 'Historique des check-lists — Salle' : 'Historique des check-lists — Cuisine';
+})();
+
 (function initDates() {
   const now = new Date();
   const from = new Date(); from.setDate(from.getDate() - 30);
@@ -26,6 +34,7 @@ async function load() {
   if (fromEl.value) p.set('from', fromEl.value);
   if (toEl.value) p.set('to', toEl.value);
   if (typeEl.value) p.set('type', typeEl.value);
+  if (SCOPE) p.set('scope', SCOPE);
 
   let reports = [];
   try { reports = await fetch(`api/reports?${p}`).then((r) => r.json()); } catch (e) { reports = []; }

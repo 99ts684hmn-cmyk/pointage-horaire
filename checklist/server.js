@@ -345,14 +345,17 @@ app.delete('/api/employees/:id', (req, res) => {
 
 // GET /api/reports?from=&to=&type= — historique
 app.get('/api/reports', (req, res) => {
-  const { from, to, type } = req.query;
+  const { from, to, type, scope } = req.query;
   const where = [];
   const args = [];
   if (from) { where.push('s.date >= ?'); args.push(from); }
   if (to) { where.push('s.date <= ?'); args.push(to); }
   if (type) { where.push('t.type = ?'); args.push(type); }
+  // scope=salle → tout sauf la cuisine ; scope=cuisine → cuisine uniquement.
+  if (scope === 'salle') where.push("COALESCE(t.category,'general') != 'cuisine'");
+  else if (scope === 'cuisine') where.push("t.category = 'cuisine'");
   const sql = `
-    SELECT s.*, t.name tname, t.type ttype, t.color tcolor, t.icon ticon
+    SELECT s.*, t.name tname, t.type ttype, t.color tcolor, t.icon ticon, t.category tcategory
     FROM sessions s JOIN templates t ON t.id = s.template_id
     ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
     ORDER BY s.date DESC, s.created_at DESC`;
@@ -363,7 +366,7 @@ app.get('/api/reports', (req, res) => {
     const done = comps.filter((c) => c.is_done).length;
     return {
       id: s.id, date: s.date, templateName: s.tname, templateType: s.ttype,
-      templateColor: s.tcolor, templateIcon: s.ticon, status: s.status,
+      templateColor: s.tcolor, templateIcon: s.ticon, category: s.tcategory || 'general', status: s.status,
       completedBy: s.completed_by || '-', completedAt: s.completed_at,
       totalTasks: total, doneTasks: done, progress: total > 0 ? Math.round((done / total) * 100) : 0,
     };

@@ -25,7 +25,9 @@ const MODE_LABEL = {
 };
 
 let allSessions = [];
-let tab = 'general'; // 'general' | 'manager' | 'bar'
+// Onglet initial : ?tab=manager (ou general) permet d'arriver directement dessus.
+const _urlTab = new URLSearchParams(location.search).get('tab');
+let tab = ['general', 'manager'].includes(_urlTab) ? _urlTab : 'general';
 const CAT_EMPTY = { general: 'Aucune check-list ici.', manager: 'Aucune check-list manager.', bar: 'Aucune check-list bar.' };
 
 async function load() {

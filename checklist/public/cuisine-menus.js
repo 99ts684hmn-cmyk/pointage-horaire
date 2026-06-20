@@ -129,6 +129,7 @@ function menuTableRO(cells) {
 function boardsHTML() {
   const menuSemaine = `<section class="board"><h2>📋 Menu — cette semaine <span class="wk">${weekRange(data.semaineMonday)}</span></h2>${menuTable(data.semaineMonday)}</section>`;
   const menuPro = `<section class="board"><h2>📋 Menu — semaine prochaine <span class="wk">${weekRange(data.semaineProMonday)}</span></h2>${menuTable(data.semaineProMonday)}</section>`;
+  const menuSuiv = `<section class="board"><h2>📋 Menu — semaine suivante <span class="wk">${weekRange(data.semaineSuivMonday)}</span></h2>${menuTable(data.semaineSuivMonday)}</section>`;
   const groupes = `<section class="board groupes">
       <h2>👥 Groupes</h2>
       <div class="g-nav">
@@ -138,7 +139,7 @@ function boardsHTML() {
       </div>
       ${groupTable(data.groupes)}
     </section>`;
-  if (PAGE === 'menus') return menuSemaine + menuPro;
+  if (PAGE === 'menus') return menuSemaine + menuPro + menuSuiv;
   if (PAGE === 'groupes') return groupes;
   return menuSemaine + groupes + menuPro;
 }

@@ -483,18 +483,19 @@ app.get('/api/menus', (req, res) => {
   const today = todayParis();
   const m1 = mondayOf(today);
   const m2 = addDays(m1, 7);
+  const m3 = addDays(m1, 14); // semaine suivante (J+14)
   // Groupes : fenêtre de 7 jours à partir de `groupStart` (défaut = aujourd'hui),
   // navigable côté client (semaine précédente / suivante).
   let gStart = String(req.query.groupStart || '').trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(gStart)) gStart = today;
   const groupes = Array.from({ length: 7 }, (_, i) => addDays(gStart, i));
-  const dates = [...new Set([m1, m2, ...groupes])];
+  const dates = [...new Set([m1, m2, m3, ...groupes])];
   const rows = dates.length
     ? db.prepare(`SELECT date, slot, value FROM menu_cells WHERE date IN (${dates.map(() => '?').join(',')})`).all(...dates)
     : [];
   const cells = {};
   for (const r of rows) { (cells[r.date] = cells[r.date] || {})[r.slot] = r.value; }
-  res.json({ semaineMonday: m1, semaineProMonday: m2, today, groupStart: gStart, groupes, cells });
+  res.json({ semaineMonday: m1, semaineProMonday: m2, semaineSuivMonday: m3, today, groupStart: gStart, groupes, cells });
 });
 
 // GET /api/menus/recap — tout l'historique, par date décroissante.

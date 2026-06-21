@@ -574,6 +574,31 @@ const CUISINE_MENAGE_HEBDO_TASKS = [
   { title: 'Moteur de la chambre froide', days: '1' },
 ];
 
+const CUISINE_CHECK_FERMETURE_TASKS = [
+  'Commande Ppp',
+  'Vérifier les Check liste ont été faites',
+  'Congélateur économa allumée',
+  'Production économa filmé',
+  'Bain marie éteint',
+  'Friteuse éteinte',
+  'Gaz Piano éteint',
+  'Plancha éteint',
+  'Bain marie plancha éteint',
+  'Plonge éteinte et vidée',
+  'Friteuse froid débranchée',
+  'Chauffe pipette débranchée',
+  'Four froid nettoyage ou éteint',
+  'Four chaud nettoyage ou éteint',
+  'Tour chaud / froid allumée',
+  'Cf allumée',
+  'Congèle glace allumée',
+  'Cellule allumée',
+  'Éteindre la hotte',
+  'Éteindre lumière CF',
+  'Cf bas allumée',
+  'Congèle bas allumée',
+];
+
 // Les 4 anciennes check-lists d'exemple (Ouverture, Fermeture, Nettoyage,
 // Inventaire) ont été retirées : plus créées sur une base neuve, et désactivées
 // sur les bases existantes (migration 3).
@@ -658,6 +683,7 @@ function seedAndMigrate() {
   ensureTemplateByType('CUISINE_GARNITURE', () => { const id = insertTemplate({ name: 'Poste garniture', type: 'CUISINE_GARNITURE', color: 'bg-green-600', icon: '🥗', resetMode: 'AUTO_DAILY', order: 2, category: 'cuisine' }); CUISINE_GARNITURE_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
   ensureTemplateByType('CUISINE_FERM_FROID', () => { const id = insertTemplate({ name: 'Fermeture du froid', type: 'CUISINE_FERM_FROID', color: 'bg-sky-600', icon: '❄️', resetMode: 'AUTO_DAILY', order: 3, category: 'cuisine' }); CUISINE_FERM_FROID_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
   ensureTemplateByType('CUISINE_MENAGE_HEBDO', () => { const id = insertTemplate({ name: 'Ménage hebdo cuisine', type: 'CUISINE_MENAGE_HEBDO', color: 'bg-teal-500', icon: '🧽', resetMode: 'WEEKLY_CARRY_OVER', order: 4, category: 'cuisine' }); CUISINE_MENAGE_HEBDO_TASKS.forEach((t, i) => insertTask(id, t.title, i + 1, null, t.days)); });
+  ensureTemplateByType('CUISINE_CHECK_FERMETURE', () => { const id = insertTemplate({ name: 'Check fermeture', type: 'CUISINE_CHECK_FERMETURE', color: 'bg-sky-600', icon: '🌙', resetMode: 'AUTO_DAILY', order: 5, category: 'cuisine' }); CUISINE_CHECK_FERMETURE_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
   // Check-lists « Responsable cuisine » (catégorie resp_cuisine), créées vides :
   // les tâches sont à ajouter via l'admin responsable cuisine.
   ensureTemplateByType('RESP_MENAGE', () => insertTemplate({ name: 'Ménage', type: 'RESP_MENAGE', color: 'bg-teal-500', icon: '🧽', resetMode: 'AUTO_DAILY', order: 1, category: 'resp_cuisine' }));

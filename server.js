@@ -987,6 +987,71 @@ app.get('/api/admin/report', requireAdmin, (req, res) => {
   res.json(buildReport({ from, to, employeeId }));
 });
 
+// Moyenne des heures hebdomadaires depuis le 01/06/2026, par salarié.
+// Règles : dans une semaine, chaque jour CP ou École vaut 7h (ajouté aux heures
+// travaillées) tant qu'il y a < 6 jours CP/École ; une semaine ≥ 6 jours CP/École
+// (semaine complète) est exclue ; une semaine sans aucune activité est ignorée.
+// On ne moyenne que les semaines TERMINÉES (la semaine en cours n'entre pas).
+const AVG_START = '2026-06-01';
+function addDaysStr(dateStr, n) {
+  const d = new Date(`${dateStr}T12:00:00`);
+  d.setDate(d.getDate() + n);
+  return localDay(d.getTime());
+}
+function mondayStr(dateStr) {
+  const d = new Date(`${dateStr}T12:00:00`);
+  const dow = (d.getDay() + 6) % 7; // 0=lundi..6=dimanche
+  return addDaysStr(dateStr, -dow);
+}
+app.get('/api/admin/avg-hours', requireAdmin, (req, res) => {
+  const today = businessDay(Date.now());
+  const curMon = mondayStr(today);
+  const firstMon = mondayStr(AVG_START);
+  const lastMon = addDaysStr(curMon, -7); // dernière semaine TERMINÉE
+  if (lastMon < firstMon) return res.json({ start: AVG_START, averages: {} });
+  const lastSun = addDaysStr(lastMon, 6);
+
+  const report = buildReport({ from: firstMon, to: lastSun });
+  const statuses = db.prepare(
+    'SELECT employee_id, day, status FROM day_status WHERE day >= ? AND day <= ?'
+  ).all(firstMon, lastSun);
+
+  const weeks = [];
+  for (let m = firstMon; m <= lastMon; m = addDaysStr(m, 7)) weeks.push(m);
+
+  const worked = {}; // empId -> { weekMon -> secondes travaillées }
+  for (const emp of report) {
+    for (const d of emp.days) {
+      const wk = mondayStr(d.day);
+      worked[emp.employeeId] = worked[emp.employeeId] || {};
+      worked[emp.employeeId][wk] = (worked[emp.employeeId][wk] || 0) + d.seconds;
+    }
+  }
+  const cpEcole = {}; // empId -> { weekMon -> nb jours CP/École }
+  for (const s of statuses) {
+    if (s.status !== 'cp' && s.status !== 'ecole') continue;
+    const wk = mondayStr(s.day);
+    cpEcole[s.employee_id] = cpEcole[s.employee_id] || {};
+    cpEcole[s.employee_id][wk] = (cpEcole[s.employee_id][wk] || 0) + 1;
+  }
+
+  const ids = new Set([...Object.keys(worked), ...Object.keys(cpEcole)].map(Number));
+  const averages = {};
+  for (const id of ids) {
+    let sum = 0; let n = 0;
+    for (const wk of weeks) {
+      const w = (worked[id] && worked[id][wk]) || 0;
+      const cp = (cpEcole[id] && cpEcole[id][wk]) || 0;
+      if (cp >= 6) continue; // semaine complète CP/École → exclue
+      if (w === 0 && cp === 0) continue; // semaine vide → ignorée
+      sum += w + cp * 7 * 3600;
+      n += 1;
+    }
+    averages[id] = n ? Math.round(sum / n) : null;
+  }
+  res.json({ start: AVG_START, weeks: weeks.length, averages });
+});
+
 app.get('/api/admin/report.csv', requireAdmin, (req, res) => {
   const { from, to, employeeId } = req.query;
   if (!from || !to) return res.status(400).json({ error: 'Période manquante' });

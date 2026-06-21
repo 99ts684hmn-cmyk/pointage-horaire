@@ -538,6 +538,7 @@ function classifyDay(segments) {
 
 // Données du planning (toujours complètes, indépendantes du filtre du rapport).
 let planningReport = [];
+let avgHours = {}; // empId → moyenne hebdo (secondes) depuis le 01/06
 let statusMap = new Map(); // clé "empId|day" → 'cp'|'am'|'ecole'
 let extraMap = {}; // clé "YYYY-MM-DD|midi" / "…|soir" → texte libre (ligne « Extra »)
 const STATUS_SHORT = { cp: 'CP', am: 'AM', ecole: 'École', absent: 'Abs', repos: 'Repos' };
@@ -551,12 +552,14 @@ async function loadPlanning() {
   const to = $('rep-to').value;
   if (!from || !to) { renderPlanning(); return; }
   const params = new URLSearchParams({ from, to });
-  const [rep, st, ex] = await Promise.all([
+  const [rep, st, ex, avg] = await Promise.all([
     api('/api/admin/report?' + params.toString()),
     api('/api/admin/day-statuses?' + params.toString()),
     api('/api/admin/extra?' + params.toString()),
+    api('/api/admin/avg-hours'),
   ]);
   planningReport = (rep.ok && rep.data) ? rep.data : [];
+  avgHours = (avg.ok && avg.data && avg.data.averages) ? avg.data.averages : {};
   statusMap = new Map();
   if (st.ok && Array.isArray(st.data)) {
     for (const s of st.data) statusMap.set(s.employeeId + '|' + s.day, s.status);
@@ -588,7 +591,7 @@ function renderPlanning() {
 
   let html = '<table class="planning"><thead><tr><th class="pl-name">Salarié</th>';
   for (const d of days) html += `<th class="pl-day-head" data-day="${d}" title="Cliquer pour copier les arrivées du jour">${planningDayLabel(d)}</th>`;
-  html += '<th style="text-align:right">Total</th></tr></thead><tbody>';
+  html += '<th style="text-align:right">Total</th><th style="text-align:right" title="Moyenne des heures hebdomadaires depuis le 01/06 (semaines terminées ; CP/École = 7h/jour ; semaine complète CP/École exclue)">Moy. /sem</th></tr></thead><tbody>';
 
   const dayTotals = {};
   const midiCount = {};
@@ -694,7 +697,9 @@ function renderPlanning() {
       const nameCell = `<td class="pl-name"><div class="pl-name-inner"><span class="pl-name-txt">${escapeHtml(emp.name)}</span>`
         + (demiCount ? `<span class="pl-demi-count" title="${demiCount} demi cette semaine">${demiCount}</span>` : '')
         + '</div></td>';
-      html += `<tr class="pl-emp-row">${nameCell}${dayCells}<td class="pl-total">${fmtH(tot)}</td></tr>`;
+      const avg = avgHours[emp.id];
+      const avgCell = `<td class="pl-total" style="color:var(--gold)">${avg ? fmtH(avg) : '—'}</td>`;
+      html += `<tr class="pl-emp-row">${nameCell}${dayCells}<td class="pl-total">${fmtH(tot)}</td>${avgCell}</tr>`;
   }
 
   // Ligne « Extra » : saisie libre par service ; chaque texte saisi compte +1 présent.
@@ -709,19 +714,19 @@ function renderPlanning() {
       + '</div>';
     html += `<td class="pl-extra-cell">${sub('midi', m)}${sub('soir', s)}</td>`;
   }
-  html += '<td></td></tr>';
+  html += '<td></td><td></td></tr>';
 
   // Nombre de présents par service (par jour).
   html += '<tr class="pl-svc-row"><td class="pl-name">Pres. midi</td>';
   for (const d of days) html += `<td>${midiCount[d] || '—'}</td>`;
-  html += '<td></td></tr>';
+  html += '<td></td><td></td></tr>';
   html += '<tr class="pl-svc-row"><td class="pl-name">Pres. soir</td>';
   for (const d of days) html += `<td>${soirCount[d] || '—'}</td>`;
-  html += '<td></td></tr>';
+  html += '<td></td><td></td></tr>';
 
   html += '<tr class="pl-tot-row"><td class="pl-name">Total / jour</td>';
   for (const d of days) html += `<td>${dayTotals[d] ? fmtH(dayTotals[d]) : '—'}</td>`;
-  html += `<td class="pl-total">${fmtH(grand)}</td></tr>`;
+  html += `<td class="pl-total">${fmtH(grand)}</td><td></td></tr>`;
   html += '</tbody></table>';
   out.innerHTML = html;
 

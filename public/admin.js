@@ -541,6 +541,7 @@ let planningReport = [];
 let avgHours = {}; // empId → moyenne hebdo (secondes) depuis le 01/06
 let statusMap = new Map(); // clé "empId|day" → 'cp'|'am'|'ecole'
 let extraMap = {}; // clé "YYYY-MM-DD|midi" / "…|soir" → texte libre (ligne « Extra »)
+let planningNoHours = false; // PDF « sans horaire » : on affiche PM/PS au lieu des heures, sans les totaux
 const STATUS_SHORT = { cp: 'CP', am: 'AM', ecole: 'École', absent: 'Abs', repos: 'Repos' };
 const STATUS_FULL = { cp: 'Congés payés', am: 'Arrêt maladie', ecole: 'École', absent: 'Absent', repos: 'Repos', demi_midi: 'Demi midi (présent soir)', demi_soir: 'Demi soir (présent midi)', echange_midi: 'Échange midi', echange_soir: 'Échange soir', echange_both: 'Échange midi + soir' };
 const AWAY_STATUSES = ['cp', 'am', 'absent', 'ecole'];
@@ -591,7 +592,9 @@ function renderPlanning() {
 
   let html = '<table class="planning"><thead><tr><th class="pl-name">Salarié</th>';
   for (const d of days) html += `<th class="pl-day-head" data-day="${d}" title="Cliquer pour copier les arrivées du jour">${planningDayLabel(d)}</th>`;
-  html += '<th style="text-align:right">Total</th><th style="text-align:right" title="Moyenne des heures hebdomadaires depuis le 01/06 (semaines terminées ; CP/École = 7h/jour ; semaine complète CP/École exclue)">Moy. /sem</th></tr></thead><tbody>';
+  html += planningNoHours
+    ? '<th></th><th></th></tr></thead><tbody>'
+    : '<th style="text-align:right">Total</th><th style="text-align:right" title="Moyenne des heures hebdomadaires depuis le 01/06 (semaines terminées ; CP/École = 7h/jour ; semaine complète CP/École exclue)">Moy. /sem</th></tr></thead><tbody>';
 
   const dayTotals = {};
   const midiCount = {};
@@ -651,13 +654,15 @@ function renderPlanning() {
           const isCont = hasHours && (emp.continuous || cont.length > 0);
           let stack;
           if (isCont) {
-            stack = `<div class="pl-half pl-cont">${day.segments.map(fmt).join('<br>')}</div>`;
+            const body = planningNoHours ? 'Journée' : day.segments.map(fmt).join('<br>');
+            stack = `<div class="pl-half pl-cont">${body}</div>`;
             midiCount[d]++; soirCount[d]++;
           } else {
             let midiHalf;
             if (midi.length) {
               const isFirst = Math.min(...midi.map((s) => s.clockIn)) === firstMidiT[d];
-              midiHalf = `<div class="pl-half${isFirst ? ' pl-first' : ''}">${midi.map(fmt).join('<br>')}</div>`;
+              const body = planningNoHours ? 'PM' : midi.map(fmt).join('<br>');
+              midiHalf = `<div class="pl-half${isFirst ? ' pl-first' : ''}">${body}</div>`;
               midiCount[d]++;
             } else if (demiMidi) {
               midiHalf = `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;
@@ -669,7 +674,8 @@ function renderPlanning() {
             let soirHalf;
             if (soir.length) {
               const isOpen = Math.min(...soir.map((s) => s.clockIn)) === firstSoirT[d];
-              soirHalf = `<div class="pl-half${isOpen ? ' pl-open' : ''}">${soir.map(fmt).join('<br>')}</div>`;
+              const body = planningNoHours ? 'PS' : soir.map(fmt).join('<br>');
+              soirHalf = `<div class="pl-half${isOpen ? ' pl-open' : ''}">${body}</div>`;
               soirCount[d]++;
             } else if (demiSoir) {
               soirHalf = `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;
@@ -698,8 +704,9 @@ function renderPlanning() {
         + (demiCount ? `<span class="pl-demi-count" title="${demiCount} demi cette semaine">${demiCount}</span>` : '')
         + '</div></td>';
       const avg = avgHours[emp.id];
-      const avgCell = `<td class="pl-total" style="color:var(--gold)">${avg ? fmtH(avg) : '—'}</td>`;
-      html += `<tr class="pl-emp-row">${nameCell}${dayCells}<td class="pl-total">${fmtH(tot)}</td>${avgCell}</tr>`;
+      const avgCell = planningNoHours ? '<td class="pl-total"></td>' : `<td class="pl-total" style="color:var(--gold)">${avg ? fmtH(avg) : '—'}</td>`;
+      const totCell = planningNoHours ? '<td class="pl-total"></td>' : `<td class="pl-total">${fmtH(tot)}</td>`;
+      html += `<tr class="pl-emp-row">${nameCell}${dayCells}${totCell}${avgCell}</tr>`;
   }
 
   // Ligne « Extra » : saisie libre par service ; chaque texte saisi compte +1 présent.
@@ -1262,6 +1269,25 @@ $('pdf-btn').addEventListener('click', () => {
   const prev = document.title;
   document.title = (from && to) ? `Planning ${fr(from)} au ${fr(to)}` : 'Planning';
   window.addEventListener('afterprint', () => { document.title = prev; }, { once: true });
+  window.print();
+});
+
+// PDF « sans horaire » : même planning (CP, absence, école, repos, demis, présences)
+// mais on remplace les heures par PM/PS et on masque les totaux. On re-rend en mode
+// sans-horaire le temps de l'impression, puis on restaure l'affichage normal.
+$('pdf-nohours-btn').addEventListener('click', () => {
+  const from = $('rep-from').value;
+  const to = $('rep-to').value;
+  const fr = (iso) => (iso || '').split('-').reverse().join('-');
+  const prev = document.title;
+  document.title = (from && to) ? `Planning ${fr(from)} au ${fr(to)}` : 'Planning';
+  planningNoHours = true;
+  renderPlanning();
+  window.addEventListener('afterprint', () => {
+    document.title = prev;
+    planningNoHours = false;
+    renderPlanning();
+  }, { once: true });
   window.print();
 });
 

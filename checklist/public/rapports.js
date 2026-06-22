@@ -1,6 +1,9 @@
 'use strict';
 
 function localISO(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+// « Jour de service » comme les check-lists (bascule à 2h du matin).
+function todayISO() { const d = new Date(); if (d.getHours() < 2) d.setDate(d.getDate() - 1); return localISO(d); }
+function yesterdayISO() { const d = new Date(); if (d.getHours() < 2) d.setDate(d.getDate() - 1); d.setDate(d.getDate() - 1); return localISO(d); }
 function frDate(iso) { const [y, m, d] = iso.split('-'); return `${d}/${m}/${y}`; }
 function frDateTime(iso) {
   if (!iso) return '-';
@@ -22,10 +25,11 @@ const SCOPE = new URLSearchParams(location.search).get('scope') || '';
 })();
 
 (function initDates() {
-  const now = new Date();
+  const yest = yesterdayISO();
   const from = new Date(); from.setDate(from.getDate() - 30);
   fromEl.value = localISO(from);
-  toEl.value = localISO(now);
+  toEl.value = yest;                 // par défaut : jusqu'à hier (le jour est dans les check-lists)
+  fromEl.max = yest; toEl.max = yest; // on ne peut pas sélectionner aujourd'hui
 })();
 
 async function load() {
@@ -39,6 +43,9 @@ async function load() {
   let reports = [];
   try { reports = await fetch(`api/reports?${p}`).then((r) => r.json()); } catch (e) { reports = []; }
   if (!Array.isArray(reports)) reports = [];
+  // On n'affiche jamais le jour en cours (il est dans les check-lists).
+  const today = todayISO();
+  reports = reports.filter((r) => r.date < today);
 
   const done = reports.filter((r) => r.status === 'TERMINE');
   const prog = reports.filter((r) => r.status === 'EN_COURS');

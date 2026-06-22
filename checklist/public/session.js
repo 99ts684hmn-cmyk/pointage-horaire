@@ -24,7 +24,8 @@ if (from === 'cuisine') {
   if (navAdmin) navAdmin.href = 'resp-cuisine-admin.html';
 } else if (from === 'rapports') {
   const back = document.getElementById('back-link');
-  if (back) back.href = 'rapports.html';
+  const scope = params.get('scope');
+  if (back) back.href = 'rapports.html' + (scope ? `?scope=${encodeURIComponent(scope)}` : '');
 }
 const content = document.getElementById('content');
 const overlay = document.getElementById('overlay');

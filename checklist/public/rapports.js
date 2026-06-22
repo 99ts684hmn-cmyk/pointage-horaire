@@ -72,7 +72,7 @@ async function load() {
   // Clic sur une ligne → détail de la check-list (retour vers les rapports).
   content.querySelectorAll('tr.rowlink').forEach((tr) => {
     tr.addEventListener('click', () => {
-      location.href = `session.html?id=${encodeURIComponent(tr.dataset.id)}&from=rapports`;
+      location.href = `session.html?id=${encodeURIComponent(tr.dataset.id)}&from=rapports${SCOPE ? '&scope=' + encodeURIComponent(SCOPE) : ''}`;
     });
   });
 }

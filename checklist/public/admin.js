@@ -38,6 +38,12 @@ async function saveOrder(templateId, order) {
     method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order }),
   });
 }
+async function saveTemplateOrder(order) {
+  await fetch('api/templates/order', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order }),
+  });
+  await fetchData();
+}
 async function deleteTask(taskId) {
   if (!confirm('Supprimer cette tâche ?')) return;
   await fetch(`api/tasks/${encodeURIComponent(taskId)}`, { method: 'DELETE' });
@@ -120,7 +126,7 @@ function render() {
 
   if (tab !== 'employes') {
     const list = templates.filter((tm) => (tm.category || 'general') === tab);
-    content.innerHTML = list.map((tm) => {
+    const accsHtml = list.map((tm) => {
       const open = expanded === tm.id;
       const body = open ? `<div class="acc-body">
         <div class="tlist" data-tmpl="${esc(tm.id)}">
@@ -134,17 +140,20 @@ function render() {
           <button class="del" data-del-tmpl="${esc(tm.id)}" data-del-name="${esc(tm.name)}">🗑 Supprimer cette check-list</button>
         </div>
       </div>` : '';
-      return `<div class="card acc">
+      return `<div class="card acc" data-id="${esc(tm.id)}">
         <button class="acc-head" data-toggle="${esc(tm.id)}">
+          <span class="drag cl-drag" title="Glisser pour réordonner">⠿</span>
           <div class="l"><span class="ic">${esc(tm.icon)}</span>
             <div><div class="nm">${esc(tm.name)}</div><div class="mode">${tm.tasks.length} tâches • ${MODE_LABEL[tm.resetMode] || ''}</div></div>
           </div>
           <span class="caret">${open ? '▲' : '▼'}</span>
         </button>${body}
       </div>`;
-    }).join('') || `<div class="empty" style="margin-bottom:16px">${CAT_EMPTY[tab] || 'Aucune check-list.'}</div>`;
-
-    content.innerHTML += createFormHTML(tab);
+    }).join('');
+    content.innerHTML = (list.length
+      ? `<div id="cl-list">${accsHtml}</div>`
+      : `<div class="empty" style="margin-bottom:16px">${CAT_EMPTY[tab] || 'Aucune check-list.'}</div>`)
+      + createFormHTML(tab);
     const createBtn = document.getElementById('new-cl-create');
     if (createBtn) {
       createBtn.addEventListener('click', () => createTemplate(createBtn.dataset.cat));
@@ -185,6 +194,14 @@ function render() {
         onEnd: () => saveOrder(list.dataset.tmpl, [...list.querySelectorAll('.trow')].map((r) => r.dataset.id)),
       });
     });
+    // Réordonner les check-lists elles-mêmes (glisser la poignée de l'entête).
+    const clList = document.getElementById('cl-list');
+    if (clList && window.Sortable) {
+      window.Sortable.create(clList, {
+        handle: '.cl-drag', draggable: '.acc', animation: 150,
+        onEnd: () => saveTemplateOrder([...clList.querySelectorAll('.acc')].map((a) => a.dataset.id)),
+      });
+    }
   } else {
     const list = employees.length
       ? employees.map((e) => `<div class="emp-line"><div class="l"><div class="av">${esc((e.name[0] || '?').toUpperCase())}</div><span class="nm">${esc(e.name)}</span></div></div>`).join('')

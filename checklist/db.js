@@ -622,7 +622,7 @@ function ensureTemplateByType(type, build) {
 }
 
 // Version de schéma/migrations appliquée à cette base (PRAGMA user_version).
-const SCHEMA_VERSION = 14;
+const SCHEMA_VERSION = 15;
 
 function seedAndMigrate() {
   const count = db.prepare('SELECT COUNT(*) c FROM templates').get().c;
@@ -682,8 +682,8 @@ function seedAndMigrate() {
   ensureTemplateByType('CUISINE_PLANCHA', () => { const id = insertTemplate({ name: 'Plancha', type: 'CUISINE_PLANCHA', color: 'bg-orange-600', icon: '🔥', resetMode: 'AUTO_DAILY', order: 1, category: 'cuisine' }); CUISINE_PLANCHA_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
   ensureTemplateByType('CUISINE_GARNITURE', () => { const id = insertTemplate({ name: 'Poste garniture', type: 'CUISINE_GARNITURE', color: 'bg-green-600', icon: '🥗', resetMode: 'AUTO_DAILY', order: 2, category: 'cuisine' }); CUISINE_GARNITURE_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
   ensureTemplateByType('CUISINE_FERM_FROID', () => { const id = insertTemplate({ name: 'Fermeture du froid', type: 'CUISINE_FERM_FROID', color: 'bg-sky-600', icon: '❄️', resetMode: 'AUTO_DAILY', order: 3, category: 'cuisine' }); CUISINE_FERM_FROID_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
-  ensureTemplateByType('CUISINE_MENAGE_HEBDO', () => { const id = insertTemplate({ name: 'Ménage hebdo cuisine', type: 'CUISINE_MENAGE_HEBDO', color: 'bg-teal-500', icon: '🧽', resetMode: 'WEEKLY_CARRY_OVER', order: 4, category: 'cuisine' }); CUISINE_MENAGE_HEBDO_TASKS.forEach((t, i) => insertTask(id, t.title, i + 1, null, t.days)); });
-  ensureTemplateByType('CUISINE_CHECK_FERMETURE', () => { const id = insertTemplate({ name: 'Check fermeture', type: 'CUISINE_CHECK_FERMETURE', color: 'bg-sky-600', icon: '🌙', resetMode: 'AUTO_DAILY', order: 5, category: 'cuisine' }); CUISINE_CHECK_FERMETURE_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
+  ensureTemplateByType('CUISINE_CHECK_FERMETURE', () => { const id = insertTemplate({ name: 'Check fermeture', type: 'CUISINE_CHECK_FERMETURE', color: 'bg-sky-600', icon: '🌙', resetMode: 'AUTO_DAILY', order: 4, category: 'cuisine' }); CUISINE_CHECK_FERMETURE_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
+  ensureTemplateByType('CUISINE_MENAGE_HEBDO', () => { const id = insertTemplate({ name: 'Ménage hebdo cuisine', type: 'CUISINE_MENAGE_HEBDO', color: 'bg-teal-500', icon: '🧽', resetMode: 'WEEKLY_CARRY_OVER', order: 5, category: 'cuisine' }); CUISINE_MENAGE_HEBDO_TASKS.forEach((t, i) => insertTask(id, t.title, i + 1, null, t.days)); });
   // Check-lists « Responsable cuisine » (catégorie resp_cuisine), créées vides :
   // les tâches sont à ajouter via l'admin responsable cuisine.
   ensureTemplateByType('RESP_MENAGE', () => insertTemplate({ name: 'Ménage', type: 'RESP_MENAGE', color: 'bg-teal-500', icon: '🧽', resetMode: 'AUTO_DAILY', order: 1, category: 'resp_cuisine' }));
@@ -818,6 +818,11 @@ function seedAndMigrate() {
   // historique) ; « Brief Manager Soir » est créé par ensureTemplateByType.
   if (version < 14 && !freshDb) {
     db.prepare("UPDATE templates SET name = 'Brief Manager Midi' WHERE type = 'BRIEF_MANAGER'").run();
+  }
+  // Migration 15 : « Check fermeture » en 4e position cuisine, « Ménage hebdo » en 5e.
+  if (version < 15 && !freshDb) {
+    db.prepare("UPDATE templates SET ord = 4 WHERE type = 'CUISINE_CHECK_FERMETURE'").run();
+    db.prepare("UPDATE templates SET ord = 5 WHERE type = 'CUISINE_MENAGE_HEBDO'").run();
   }
   db.pragma('user_version = ' + SCHEMA_VERSION);
 }

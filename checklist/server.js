@@ -319,6 +319,15 @@ app.put('/api/templates/:id/tasks/order', (req, res) => {
   res.json({ ok: true });
 });
 
+// PUT /api/templates/order — réordonner les check-lists (glisser-déposer admin).
+app.put('/api/templates/order', (req, res) => {
+  const order = req.body && req.body.order;
+  if (!Array.isArray(order)) return res.status(400).json({ error: 'Format invalide' });
+  const upd = db.prepare('UPDATE templates SET ord = ? WHERE id = ?');
+  db.transaction(() => { order.forEach((id, i) => upd.run(i + 1, String(id))); })();
+  res.json({ ok: true });
+});
+
 // PATCH /api/tasks/:id — renommer et/ou changer les jours programmés (days)
 app.patch('/api/tasks/:id', (req, res) => {
   const b = req.body || {};

@@ -122,7 +122,7 @@ function createFormHTML() {
 }
 
 function render() {
-  const cards = templates.map((tm) => {
+  const accsHtml = templates.map((tm) => {
     const open = expanded === tm.id;
     const body = open ? `<div class="acc-body">
       <div class="tlist" data-tmpl="${esc(tm.id)}">
@@ -137,17 +137,21 @@ function render() {
         <button class="del" data-del-tmpl="${esc(tm.id)}" data-del-name="${esc(tm.name)}">🗑 Supprimer cette check-list</button>
       </div>
     </div>` : '';
-    return `<div class="card acc">
+    return `<div class="card acc" data-id="${esc(tm.id)}">
       <button class="acc-head" data-toggle="${esc(tm.id)}">
+        <span class="drag cl-drag" title="Glisser pour réordonner">⠿</span>
         <div class="l"><span class="ic">${esc(tm.icon)}</span>
           <div><div class="nm">${esc(tm.name)}</div><div class="mode">${tm.tasks.length} tâches • ${MODE_LABEL[tm.resetMode] || ''}</div></div>
         </div>
         <span class="caret">${open ? '▲' : '▼'}</span>
       </button>${body}
     </div>`;
-  }).join('') || '<div class="empty" style="margin-bottom:16px">Aucune check-list cuisine pour l\'instant.</div>';
+  }).join('');
 
-  content.innerHTML = cards + createFormHTML();
+  content.innerHTML = (templates.length
+    ? `<div id="cl-list">${accsHtml}</div>`
+    : '<div class="empty" style="margin-bottom:16px">Aucune check-list cuisine pour l\'instant.</div>')
+    + createFormHTML();
 
   document.getElementById('new-cl-create').addEventListener('click', createTemplate);
   document.getElementById('new-cl-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') createTemplate(); });
@@ -186,6 +190,19 @@ function render() {
       onEnd: () => saveOrder(list.dataset.tmpl, [...list.querySelectorAll('.trow')].map((r) => r.dataset.id)),
     });
   });
+  const clList = document.getElementById('cl-list');
+  if (clList && window.Sortable) {
+    window.Sortable.create(clList, {
+      handle: '.cl-drag', draggable: '.acc', animation: 150,
+      onEnd: () => saveTemplateOrder([...clList.querySelectorAll('.acc')].map((a) => a.dataset.id)),
+    });
+  }
+}
+async function saveTemplateOrder(order) {
+  await fetch('api/templates/order', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order }),
+  });
+  await fetchData();
 }
 
 fetchData();

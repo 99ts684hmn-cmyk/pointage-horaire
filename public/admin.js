@@ -1283,12 +1283,16 @@ $('pdf-nohours-btn').addEventListener('click', () => {
   document.title = (from && to) ? `Planning ${fr(from)} au ${fr(to)}` : 'Planning';
   planningNoHours = true;
   renderPlanning();
-  window.addEventListener('afterprint', () => {
+  // window.print() est bloquant (Safari/Chrome) : on restaure l'affichage normal
+  // APRÈS son retour, jamais dans un handler afterprint — re-rendre une grosse
+  // table pendant le cycle d'impression fait planter Safari.
+  try {
+    window.print();
+  } finally {
     document.title = prev;
     planningNoHours = false;
     renderPlanning();
-  }, { once: true });
-  window.print();
+  }
 });
 
 // --- Audit des demi -------------------------------------------------------

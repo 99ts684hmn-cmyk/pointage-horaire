@@ -262,6 +262,12 @@ function parsePostes(raw) {
   } catch { return {}; }
 }
 
+// Liste publique des cuisiniers ACTIFS (noms seuls) — sert au sélecteur de
+// clôture des check-lists cuisine. Pas de données sensibles.
+app.get('/api/cooks', (req, res) => {
+  res.json(db.prepare('SELECT id, name FROM employees WHERE active = 1 ORDER BY name COLLATE NOCASE').all());
+});
+
 app.get('/api/admin/employees', requireAdmin, (req, res) => {
   const rows = db.prepare(
     'SELECT id, name, category, rest_days, continuous_service, sort_order, active, end_date, created_at, postes FROM employees ORDER BY active DESC, sort_order ASC, name COLLATE NOCASE'

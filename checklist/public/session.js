@@ -8,6 +8,8 @@ const params = new URLSearchParams(location.search);
 const sessionId = params.get('id');
 // « Retour » dépend de la provenance : cuisine, rapports, ou (défaut) salle.
 const from = params.get('from');
+// Sélecteur de clôture : salle = salariés pointage ; cuisine = cuisiniers du planning cuisine.
+const STAFF_URL = (from === 'cuisine' || from === 'resp') ? '/cuisine/api/cooks' : '/api/employees';
 if (from === 'cuisine') {
   const back = document.getElementById('back-link');
   const navList = document.getElementById('nav-list');
@@ -175,7 +177,7 @@ overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.cla
 if (!sessionId) {
   content.innerHTML = '<div class="empty">Aucune check-list indiquée.</div>';
 } else {
-  // Personnel = salariés actifs du pointage (même origine, app principale).
-  fetch('/api/employees').then((r) => r.json()).then((e) => { employees = Array.isArray(e) ? e : []; }).catch(() => {});
+  // Personnel proposé à la clôture : salle = salariés pointage, cuisine = cuisiniers du planning cuisine.
+  fetch(STAFF_URL).then((r) => r.json()).then((e) => { employees = Array.isArray(e) ? e : []; }).catch(() => {});
   fetchSession();
 }

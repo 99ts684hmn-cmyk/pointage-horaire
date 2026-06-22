@@ -1279,20 +1279,46 @@ $('pdf-nohours-btn').addEventListener('click', () => {
   const from = $('rep-from').value;
   const to = $('rep-to').value;
   const fr = (iso) => (iso || '').split('-').reverse().join('-');
-  const prev = document.title;
-  document.title = (from && to) ? `Planning ${fr(from)} au ${fr(to)}` : 'Planning';
+  const title = (from && to) ? `Planning ${fr(from)} au ${fr(to)}` : 'Planning';
+  const sub = (from && to) ? ` — du ${frDate(from)} au ${frDate(to)}` : '';
+
+  // On rend la table en mode « sans horaire », on capture son HTML, puis on
+  // restaure aussitôt la grille normale (synchrone → aucun clignotement).
   planningNoHours = true;
   renderPlanning();
-  // window.print() est bloquant (Safari/Chrome) : on restaure l'affichage normal
-  // APRÈS son retour, jamais dans un handler afterprint — re-rendre une grosse
-  // table pendant le cycle d'impression fait planter Safari.
-  try {
-    window.print();
-  } finally {
-    document.title = prev;
-    planningNoHours = false;
-    renderPlanning();
-  }
+  const tableHtml = $('planning-output').innerHTML;
+  planningNoHours = false;
+  renderPlanning();
+
+  // Impression dans un iframe ISOLÉ contenant uniquement le tableau : Safari ne
+  // plante plus (on n'imprime plus toute la page admin avec sa colonne sticky,
+  // ses panneaux et ses gestionnaires d'événements). La feuille de styles est
+  // chargée dans l'iframe → les règles @media print (.planning.no-hours) jouent.
+  const ifr = document.createElement('iframe');
+  ifr.setAttribute('aria-hidden', 'true');
+  ifr.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+  document.body.appendChild(ifr);
+  const doc = ifr.contentWindow.document;
+  doc.open();
+  doc.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>${title}</title>`
+    + '<link rel="stylesheet" href="styles.css?v=2">'
+    + '<style>'
+    + '@page{size:A4 landscape;margin:8mm}'
+    + 'html,body{margin:0;padding:0;background:#fff}'
+    + 'h1{font-family:inherit;font-size:14px;margin:0 0 10px;text-align:center}'
+    + '.planning{width:auto;margin:0 auto}'
+    + '*{-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+    + '</style></head><body>'
+    + `<h1>Planning${sub}</h1>${tableHtml}</body></html>`);
+  doc.close();
+
+  const go = () => {
+    try { ifr.contentWindow.focus(); ifr.contentWindow.print(); } catch (e) { /* ignore */ }
+    setTimeout(() => ifr.remove(), 3000);
+  };
+  // Attendre le chargement de la feuille de styles avant d'imprimer.
+  if (doc.readyState === 'complete') setTimeout(go, 300);
+  else ifr.onload = () => setTimeout(go, 200);
 });
 
 // --- Audit des demi -------------------------------------------------------

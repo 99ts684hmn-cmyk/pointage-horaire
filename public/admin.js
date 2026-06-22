@@ -590,7 +590,7 @@ function renderPlanning() {
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
   if (!actives.length) { out.innerHTML = '<div class="empty">Aucun salarié.</div>'; return; }
 
-  let html = '<table class="planning"><thead><tr><th class="pl-name">Salarié</th>';
+  let html = `<table class="planning${planningNoHours ? ' no-hours' : ''}"><thead><tr><th class="pl-name">Salarié</th>`;
   for (const d of days) html += `<th class="pl-day-head" data-day="${d}" title="Cliquer pour copier les arrivées du jour">${planningDayLabel(d)}</th>`;
   html += planningNoHours
     ? '<th></th><th></th></tr></thead><tbody>'

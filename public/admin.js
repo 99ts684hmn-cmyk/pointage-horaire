@@ -654,14 +654,14 @@ function renderPlanning() {
           const isCont = hasHours && (emp.continuous || cont.length > 0);
           let stack;
           if (isCont) {
-            const body = planningNoHours ? 'Journée' : day.segments.map(fmt).join('<br>');
+            const body = planningNoHours ? '' : day.segments.map(fmt).join('<br>');
             stack = `<div class="pl-half pl-cont">${body}</div>`;
             midiCount[d]++; soirCount[d]++;
           } else {
             let midiHalf;
             if (midi.length) {
-              const isFirst = Math.min(...midi.map((s) => s.clockIn)) === firstMidiT[d];
-              const body = planningNoHours ? 'PM' : midi.map(fmt).join('<br>');
+              const isFirst = !planningNoHours && Math.min(...midi.map((s) => s.clockIn)) === firstMidiT[d];
+              const body = planningNoHours ? '' : midi.map(fmt).join('<br>');
               midiHalf = `<div class="pl-half${isFirst ? ' pl-first' : ''}">${body}</div>`;
               midiCount[d]++;
             } else if (demiMidi) {
@@ -673,8 +673,8 @@ function renderPlanning() {
             }
             let soirHalf;
             if (soir.length) {
-              const isOpen = Math.min(...soir.map((s) => s.clockIn)) === firstSoirT[d];
-              const body = planningNoHours ? 'PS' : soir.map(fmt).join('<br>');
+              const isOpen = !planningNoHours && Math.min(...soir.map((s) => s.clockIn)) === firstSoirT[d];
+              const body = planningNoHours ? '' : soir.map(fmt).join('<br>');
               soirHalf = `<div class="pl-half${isOpen ? ' pl-open' : ''}">${body}</div>`;
               soirCount[d]++;
             } else if (demiSoir) {

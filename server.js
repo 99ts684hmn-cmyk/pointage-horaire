@@ -1031,9 +1031,24 @@ app.get('/api/admin/avg-hours', requireAdmin, (req, res) => {
       worked[emp.employeeId][wk] = (worked[emp.employeeId][wk] || 0) + d.seconds;
     }
   }
+  // Présence par service depuis les pointages, pour ne compter un demi que s'il
+  // S'AFFICHE réellement comme tel dans le planning (règle du badge) : service
+  // marqué VIDE, et pas un jour de repos sans aucune heure. Classement midi/soir
+  // par heure d'arrivée (serveur en heure locale, comme le reste de l'app).
+  const svc = {}; // "empId|day" -> { midi, soir, has }
+  for (const emp of report) {
+    for (const d of emp.days) {
+      let midi = 0; let soir = 0;
+      for (const seg of d.segments) { if (new Date(seg.clockIn).getHours() < 17) midi++; else soir++; }
+      svc[emp.employeeId + '|' + d.day] = { midi, soir, has: (midi + soir) > 0 };
+    }
+  }
+  const restByEmp = {}; // empId -> périodes de repos
+  for (const e of db.prepare('SELECT id, rest_days FROM employees').all()) restByEmp[e.id] = parseRestPeriods(e.rest_days);
+
   const cpEcole = {}; // empId -> { weekMon -> nb jours CP/École }
   const halfCp = {}; // empId -> { weekMon -> secondes de ½ CP (3h midi / 4h soir) }
-  const demis = {}; // empId -> nb de demi-journées (demi_midi/demi_soir) sur la période
+  const demis = {}; // empId -> nb de demi-journées RÉELLEMENT affichées (demi_midi/demi_soir)
   const HALF_CP_SEC = { demi_cp_midi: 3 * 3600, demi_cp_soir: 4 * 3600 };
   for (const s of statuses) {
     const wk = mondayStr(s.day);
@@ -1044,7 +1059,14 @@ app.get('/api/admin/avg-hours', requireAdmin, (req, res) => {
       halfCp[s.employee_id] = halfCp[s.employee_id] || {};
       halfCp[s.employee_id][wk] = (halfCp[s.employee_id][wk] || 0) + HALF_CP_SEC[s.status];
     } else if (s.status === 'demi_midi' || s.status === 'demi_soir') {
-      demis[s.employee_id] = (demis[s.employee_id] || 0) + 1;
+      const p = svc[s.employee_id + '|' + s.day] || { midi: 0, soir: 0, has: false };
+      const serviceEmpty = s.status === 'demi_midi' ? p.midi === 0 : p.soir === 0;
+      const wd = new Date(`${s.day}T12:00:00`).getDay();
+      const isRest = restDaysOn(restByEmp[s.employee_id] || [], s.day).includes(wd);
+      // Compté seulement si le service marqué est vide ET (jour non-repos OU a des heures).
+      if (serviceEmpty && (!isRest || p.has)) {
+        demis[s.employee_id] = (demis[s.employee_id] || 0) + 1;
+      }
     }
   }
 

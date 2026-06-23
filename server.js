@@ -712,10 +712,14 @@ app.put('/api/admin/employees/:id', requireAdmin, (req, res) => {
   if (req.body && Array.isArray(req.body.restDays)) {
     const clean = [...new Set(req.body.restDays
       .map((x) => Number(x)).filter((n) => Number.isInteger(n) && n >= 0 && n <= 6))].sort((a, b) => a - b);
-    // Date d'effet : par défaut aujourd'hui ; le futur n'altère pas le passé/présent.
+    // Date d'effet : par défaut aujourd'hui ; le passé (périodes antérieures) est
+    // conservé pour l'historique des rapports.
     const from = /^\d{4}-\d{2}-\d{2}$/.test(req.body.restDaysFrom || '')
       ? req.body.restDaysFrom : localDay(Date.now());
-    const periods = parseRestPeriods(emp.rest_days).filter((p) => p.from !== from);
+    // « À partir du <from>, repos = X » gouverne TOUT l'avenir : on retire toute
+    // période datée de <from> ou PLUS TARD (sinon une ancienne période future
+    // resterait et masquerait les semaines à venir — décalage des jours observé).
+    const periods = parseRestPeriods(emp.rest_days).filter((p) => p.from < from);
     periods.push({ from, days: clean });
     periods.sort((a, b) => a.from.localeCompare(b.from));
     db.prepare('UPDATE employees SET rest_days = ? WHERE id = ?')

@@ -1009,6 +1009,10 @@ function mondayStr(dateStr) {
 }
 app.get('/api/admin/avg-hours', requireAdmin, (req, res) => {
   const today = businessDay(Date.now());
+  // Borne haute du compteur de demis = dernière date affichée sur le planning à
+  // l'écran (paramètre upto = dernier jour de la semaine visualisée). Au-delà =
+  // futur, jamais compté. Par défaut (absent) : aujourd'hui.
+  const upto = /^\d{4}-\d{2}-\d{2}$/.test(req.query.upto || '') ? req.query.upto : today;
   const curMon = mondayStr(today);
   const firstMon = mondayStr(AVG_START);
   const lastMon = addDaysStr(curMon, -7); // dernière semaine TERMINÉE
@@ -1061,18 +1065,18 @@ app.get('/api/admin/avg-hours', requireAdmin, (req, res) => {
     averages[id] = n ? Math.round(sum / n) : null;
   }
 
-  // --- Compteur de demis : uniquement les demis DÉJÀ PASSÉS (du 01/06 à
-  // aujourd'hui inclus) ; le futur planifié n'est jamais compté. On ne compte un
-  // demi que s'il s'affiche vraiment comme tel (règle du badge planning) :
-  // service marqué VIDE, et pas un jour de repos sans aucune heure.
+  // --- Compteur de demis : du 01/06 jusqu'à la dernière date affichée du planning
+  // (upto) incluse ; au-delà = futur, jamais compté. On ne compte un demi que s'il
+  // s'affiche vraiment comme tel (règle du badge planning) : service marqué VIDE,
+  // et pas un jour de repos sans aucune heure.
   const demis = {};
   const demiRows = db.prepare(
     "SELECT employee_id, day, status FROM day_status WHERE day >= ? AND day <= ? AND status IN ('demi_midi', 'demi_soir')"
-  ).all(firstMon, today);
+  ).all(firstMon, upto);
   if (demiRows.length) {
-    const pres = {}; // "empId|day" -> { midi, soir } depuis les pointages, du 01/06 à aujourd'hui
+    const pres = {}; // "empId|day" -> { midi, soir } depuis les pointages, du 01/06 à upto
     const teRows = db.prepare('SELECT employee_id, clock_in FROM time_entries WHERE clock_in >= ? AND clock_in < ?')
-      .all(businessDayStart(firstMon), businessDayStart(today) + DAY_MS);
+      .all(businessDayStart(firstMon), businessDayStart(upto) + DAY_MS);
     for (const r of teRows) {
       const k = r.employee_id + '|' + businessDay(r.clock_in);
       pres[k] = pres[k] || { midi: 0, soir: 0 };

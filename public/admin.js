@@ -569,7 +569,7 @@ async function loadPlanning() {
     api('/api/admin/report?' + params.toString()),
     api('/api/admin/day-statuses?' + params.toString()),
     api('/api/admin/extra?' + params.toString()),
-    api('/api/admin/avg-hours'),
+    api('/api/admin/avg-hours?upto=' + encodeURIComponent(to)),
   ]);
   planningReport = (rep.ok && rep.data) ? rep.data : [];
   avgHours = (avg.ok && avg.data && avg.data.averages) ? avg.data.averages : {};
@@ -611,7 +611,7 @@ function renderPlanning() {
   for (const d of days) html += `<th class="pl-day-head" data-day="${d}" title="Cliquer pour copier les arrivées du jour">${planningDayLabel(d)}</th>`;
   html += planningNoHours
     ? '<th></th><th></th><th></th></tr></thead><tbody>'
-    : '<th style="text-align:right">Total</th><th style="text-align:right" title="Moyenne des heures hebdomadaires depuis le 01/06 (semaines terminées ; CP/École = 7h/jour ; semaine complète CP/École exclue)">Moy. /sem</th><th style="text-align:right" title="Nombre de demi-journées (demi midi / demi soir) depuis le 01/06 jusqu'à aujourd'hui — les demis planifiés dans le futur ne sont pas comptés">Demis</th></tr></thead><tbody>';
+    : '<th style="text-align:right">Total</th><th style="text-align:right" title="Moyenne des heures hebdomadaires depuis le 01/06 (semaines terminées ; CP/École = 7h/jour ; semaine complète CP/École exclue)">Moy. /sem</th><th style="text-align:right" title="Demi-journées (demi midi / demi soir) comptées du 01/06 au dernier jour de la semaine affichée — au-delà (futur) non compté">Demis</th></tr></thead><tbody>';
 
   const dayTotals = {};
   const midiCount = {};

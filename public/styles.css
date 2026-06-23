@@ -424,18 +424,19 @@ td.num { font-variant-numeric: tabular-nums; }
   .planning { min-width: 0; width: 100%; font-size: 9px; }
   .planning th, .planning td { padding: 3px 4px; }
   .planning .pl-name { position: static; box-shadow: none; }
-  /* À l'impression : noms + jours + horaires + ligne des présents (sans totaux). */
+  /* À l'impression : noms + jours + horaires + Total ; on masque Moy. /sem et Demis. */
   .planning .pl-tot-row { display: none !important; }
-  .planning thead th:last-child, .planning tbody td:last-child { display: none !important; }
+  .planning thead th:last-child, .planning tbody td:last-child,
+  .planning thead th:nth-last-child(2), .planning tbody td:nth-last-child(2) { display: none !important; }
   /* PDF « sans horaire » : grille compacte et centrée (pas étirée sur toute la
      largeur → fini les lignes trop longues), lignes d'une hauteur régulière, et
-     on retire les deux colonnes de droite (Total + Moy.) restées vides. */
+     on retire les trois colonnes de droite (Total + Moy. + Demis) restées vides. */
   .planning.no-hours { width: auto; margin: 0 auto; font-size: 10px; }
   .planning.no-hours .pl-day-head { width: 88px; }
   .planning.no-hours .pl-name { width: 130px; }
   .planning.no-hours tbody tr.pl-emp-row { height: 26px; }
-  .planning.no-hours thead th:nth-last-child(2),
-  .planning.no-hours tbody td:nth-last-child(2) { display: none !important; }
+  .planning.no-hours thead th:nth-last-child(3),
+  .planning.no-hours tbody td:nth-last-child(3) { display: none !important; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   @page { size: A4 landscape; margin: 8mm; }
 }

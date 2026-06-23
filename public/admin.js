@@ -539,6 +539,7 @@ function classifyDay(segments) {
 // Données du planning (toujours complètes, indépendantes du filtre du rapport).
 let planningReport = [];
 let avgHours = {}; // empId → moyenne hebdo (secondes) depuis le 01/06
+let demisTotal = {}; // empId → nb de demis depuis le 01/06 (semaines terminées)
 let statusMap = new Map(); // clé "empId|day" → 'cp'|'am'|'ecole'
 let extraMap = {}; // clé "YYYY-MM-DD|midi" / "…|soir" → texte libre (ligne « Extra »)
 let planningNoHours = false; // PDF « sans horaire » : on affiche PM/PS au lieu des heures, sans les totaux
@@ -563,6 +564,7 @@ async function loadPlanning() {
   ]);
   planningReport = (rep.ok && rep.data) ? rep.data : [];
   avgHours = (avg.ok && avg.data && avg.data.averages) ? avg.data.averages : {};
+  demisTotal = (avg.ok && avg.data && avg.data.demis) ? avg.data.demis : {};
   statusMap = new Map();
   if (st.ok && Array.isArray(st.data)) {
     for (const s of st.data) statusMap.set(s.employeeId + '|' + s.day, s.status);
@@ -595,8 +597,8 @@ function renderPlanning() {
   let html = `<table class="planning${planningNoHours ? ' no-hours' : ''}"><thead><tr><th class="pl-name">Salarié</th>`;
   for (const d of days) html += `<th class="pl-day-head" data-day="${d}" title="Cliquer pour copier les arrivées du jour">${planningDayLabel(d)}</th>`;
   html += planningNoHours
-    ? '<th></th><th></th></tr></thead><tbody>'
-    : '<th style="text-align:right">Total</th><th style="text-align:right" title="Moyenne des heures hebdomadaires depuis le 01/06 (semaines terminées ; CP/École = 7h/jour ; semaine complète CP/École exclue)">Moy. /sem</th></tr></thead><tbody>';
+    ? '<th></th><th></th><th></th></tr></thead><tbody>'
+    : '<th style="text-align:right">Total</th><th style="text-align:right" title="Moyenne des heures hebdomadaires depuis le 01/06 (semaines terminées ; CP/École = 7h/jour ; semaine complète CP/École exclue)">Moy. /sem</th><th style="text-align:right" title="Nombre de demi-journées (demi midi / demi soir) depuis le 01/06, sur les semaines terminées">Demis</th></tr></thead><tbody>';
 
   const dayTotals = {};
   const midiCount = {};
@@ -719,7 +721,9 @@ function renderPlanning() {
       const avg = avgHours[emp.id];
       const avgCell = planningNoHours ? '<td class="pl-total"></td>' : `<td class="pl-total" style="color:var(--gold)">${avg ? fmtH(avg) : '—'}</td>`;
       const totCell = planningNoHours ? '<td class="pl-total"></td>' : `<td class="pl-total">${fmtH(tot)}</td>`;
-      html += `<tr class="pl-emp-row">${nameCell}${dayCells}${totCell}${avgCell}</tr>`;
+      const dc = demisTotal[emp.id] || 0;
+      const demisCell = planningNoHours ? '<td class="pl-total"></td>' : `<td class="pl-total">${dc || '—'}</td>`;
+      html += `<tr class="pl-emp-row">${nameCell}${dayCells}${totCell}${avgCell}${demisCell}</tr>`;
   }
 
   // Ligne « Extra » : saisie libre par service ; chaque texte saisi compte +1 présent.
@@ -734,19 +738,19 @@ function renderPlanning() {
       + '</div>';
     html += `<td class="pl-extra-cell">${sub('midi', m)}${sub('soir', s)}</td>`;
   }
-  html += '<td></td><td></td></tr>';
+  html += '<td></td><td></td><td></td></tr>';
 
   // Nombre de présents par service (par jour).
   html += '<tr class="pl-svc-row"><td class="pl-name">Pres. midi</td>';
   for (const d of days) html += `<td>${midiCount[d] || '—'}</td>`;
-  html += '<td></td><td></td></tr>';
+  html += '<td></td><td></td><td></td></tr>';
   html += '<tr class="pl-svc-row"><td class="pl-name">Pres. soir</td>';
   for (const d of days) html += `<td>${soirCount[d] || '—'}</td>`;
-  html += '<td></td><td></td></tr>';
+  html += '<td></td><td></td><td></td></tr>';
 
   html += '<tr class="pl-tot-row"><td class="pl-name">Total / jour</td>';
   for (const d of days) html += `<td>${dayTotals[d] ? fmtH(dayTotals[d]) : '—'}</td>`;
-  html += `<td class="pl-total">${fmtH(grand)}</td><td></td></tr>`;
+  html += `<td class="pl-total">${fmtH(grand)}</td><td></td><td></td></tr>`;
   html += '</tbody></table>';
   out.innerHTML = html;
 

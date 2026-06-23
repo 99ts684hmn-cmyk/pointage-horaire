@@ -1033,6 +1033,7 @@ app.get('/api/admin/avg-hours', requireAdmin, (req, res) => {
   }
   const cpEcole = {}; // empId -> { weekMon -> nb jours CP/École }
   const halfCp = {}; // empId -> { weekMon -> secondes de ½ CP (3h midi / 4h soir) }
+  const demis = {}; // empId -> nb de demi-journées (demi_midi/demi_soir) sur la période
   const HALF_CP_SEC = { demi_cp_midi: 3 * 3600, demi_cp_soir: 4 * 3600 };
   for (const s of statuses) {
     const wk = mondayStr(s.day);
@@ -1042,6 +1043,8 @@ app.get('/api/admin/avg-hours', requireAdmin, (req, res) => {
     } else if (HALF_CP_SEC[s.status]) {
       halfCp[s.employee_id] = halfCp[s.employee_id] || {};
       halfCp[s.employee_id][wk] = (halfCp[s.employee_id][wk] || 0) + HALF_CP_SEC[s.status];
+    } else if (s.status === 'demi_midi' || s.status === 'demi_soir') {
+      demis[s.employee_id] = (demis[s.employee_id] || 0) + 1;
     }
   }
 
@@ -1060,7 +1063,7 @@ app.get('/api/admin/avg-hours', requireAdmin, (req, res) => {
     }
     averages[id] = n ? Math.round(sum / n) : null;
   }
-  res.json({ start: AVG_START, weeks: weeks.length, averages });
+  res.json({ start: AVG_START, weeks: weeks.length, averages, demis });
 });
 
 app.get('/api/admin/report.csv', requireAdmin, (req, res) => {

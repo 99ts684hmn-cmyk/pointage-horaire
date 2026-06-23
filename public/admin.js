@@ -22,6 +22,15 @@ function clearMsg(el) { el.className = 'msg'; el.textContent = ''; }
 function localISO(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
+// Date de début d'un salarié sur le planning = début de sa 1re période de repos.
+// Les salariés hérités ont une période depuis 2000-01-01 → visibles partout.
+// Sans aucune période de repos → pas de contrainte (visible partout, '0000-01-01').
+function empStartDate(emp) {
+  const ps = emp.restPeriods || [];
+  if (!ps.length) return '0000-01-01';
+  return ps.reduce((min, p) => (p.from < min ? p.from : min), ps[0].from);
+}
+
 // Jours de repos applicables à une date (dernière période dont from <= date).
 function restDaysOn(periods, dateStr) {
   let best = null;
@@ -589,8 +598,12 @@ function renderPlanning() {
   const byId = new Map((planningReport || []).map((e) => [e.employeeId, e]));
   // Salariés visibles cette semaine : actifs, OU sortis mais dont le dernier jour
   // tombe cette semaine ou après (ils restent sur les plannings jusque-là).
+  // …et qui ont DÉBUTÉ au plus tard cette semaine : un nouveau salarié n'apparaît
+  // qu'à partir de la semaine où commencent ses premiers repos (sauf s'il a déjà
+  // des heures pointées cette semaine-là, qu'on ne masque jamais).
   const actives = allEmployees
     .filter((e) => e.active || (e.endDate && e.endDate >= from))
+    .filter((e) => empStartDate(e) <= to || byId.has(e.id))
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
   if (!actives.length) { out.innerHTML = '<div class="empty">Aucun salarié.</div>'; return; }
 

@@ -819,7 +819,7 @@ app.delete('/api/admin/entries/:id', requireAdmin, (req, res) => {
 
 // --- Statuts de journée (CP / AM / École) ---------------------------------
 
-const DAY_STATUSES = ['cp', 'am', 'ecole', 'absent', 'repos', 'demi_midi', 'demi_soir', 'echange_midi', 'echange_soir', 'echange_both'];
+const DAY_STATUSES = ['cp', 'am', 'ecole', 'absent', 'repos', 'demi_midi', 'demi_soir', 'demi_cp_midi', 'demi_cp_soir', 'echange_midi', 'echange_soir', 'echange_both'];
 
 app.get('/api/admin/day-statuses', requireAdmin, (req, res) => {
   const { from, to } = req.query;
@@ -1032,23 +1032,30 @@ app.get('/api/admin/avg-hours', requireAdmin, (req, res) => {
     }
   }
   const cpEcole = {}; // empId -> { weekMon -> nb jours CP/École }
+  const halfCp = {}; // empId -> { weekMon -> secondes de ½ CP (3h midi / 4h soir) }
+  const HALF_CP_SEC = { demi_cp_midi: 3 * 3600, demi_cp_soir: 4 * 3600 };
   for (const s of statuses) {
-    if (s.status !== 'cp' && s.status !== 'ecole') continue;
     const wk = mondayStr(s.day);
-    cpEcole[s.employee_id] = cpEcole[s.employee_id] || {};
-    cpEcole[s.employee_id][wk] = (cpEcole[s.employee_id][wk] || 0) + 1;
+    if (s.status === 'cp' || s.status === 'ecole') {
+      cpEcole[s.employee_id] = cpEcole[s.employee_id] || {};
+      cpEcole[s.employee_id][wk] = (cpEcole[s.employee_id][wk] || 0) + 1;
+    } else if (HALF_CP_SEC[s.status]) {
+      halfCp[s.employee_id] = halfCp[s.employee_id] || {};
+      halfCp[s.employee_id][wk] = (halfCp[s.employee_id][wk] || 0) + HALF_CP_SEC[s.status];
+    }
   }
 
-  const ids = new Set([...Object.keys(worked), ...Object.keys(cpEcole)].map(Number));
+  const ids = new Set([...Object.keys(worked), ...Object.keys(cpEcole), ...Object.keys(halfCp)].map(Number));
   const averages = {};
   for (const id of ids) {
     let sum = 0; let n = 0;
     for (const wk of weeks) {
       const w = (worked[id] && worked[id][wk]) || 0;
       const cp = (cpEcole[id] && cpEcole[id][wk]) || 0;
+      const hcp = (halfCp[id] && halfCp[id][wk]) || 0;
       if (cp >= 6) continue; // semaine complète CP/École → exclue
-      if (w === 0 && cp === 0) continue; // semaine vide → ignorée
-      sum += w + cp * 7 * 3600;
+      if (w === 0 && cp === 0 && hcp === 0) continue; // semaine vide → ignorée
+      sum += w + cp * 7 * 3600 + hcp;
       n += 1;
     }
     averages[id] = n ? Math.round(sum / n) : null;

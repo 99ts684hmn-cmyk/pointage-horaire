@@ -543,8 +543,10 @@ let statusMap = new Map(); // clé "empId|day" → 'cp'|'am'|'ecole'
 let extraMap = {}; // clé "YYYY-MM-DD|midi" / "…|soir" → texte libre (ligne « Extra »)
 let planningNoHours = false; // PDF « sans horaire » : on affiche PM/PS au lieu des heures, sans les totaux
 const STATUS_SHORT = { cp: 'CP', am: 'AM', ecole: 'École', absent: 'Abs', repos: 'Repos' };
-const STATUS_FULL = { cp: 'Congés payés', am: 'Arrêt maladie', ecole: 'École', absent: 'Absent', repos: 'Repos', demi_midi: 'Demi midi (présent soir)', demi_soir: 'Demi soir (présent midi)', echange_midi: 'Échange midi', echange_soir: 'Échange soir', echange_both: 'Échange midi + soir' };
+const STATUS_FULL = { cp: 'Congés payés', am: 'Arrêt maladie', ecole: 'École', absent: 'Absent', repos: 'Repos', demi_midi: 'Demi midi (présent soir)', demi_soir: 'Demi soir (présent midi)', demi_cp_midi: '½ CP midi (3h, absent midi)', demi_cp_soir: '½ CP soir (4h, absent soir)', echange_midi: 'Échange midi', echange_soir: 'Échange soir', echange_both: 'Échange midi + soir' };
 const AWAY_STATUSES = ['cp', 'am', 'absent', 'ecole'];
+// Demi-CP : la personne ne travaille pas ce service (payé comme un CP). Midi = 3h, soir = 4h.
+const HALF_CP = { demi_cp_midi: 3 * 3600, demi_cp_soir: 4 * 3600 };
 // Croix (X) en coin à coin, remplit la case (repos) ou la demi-case (demi).
 const CROSS_SVG = '<svg class="pl-cross" viewBox="0 0 10 10" preserveAspectRatio="none" aria-hidden="true"><line x1="0" y1="0" x2="10" y2="10"/><line x1="10" y1="0" x2="0" y2="10"/></svg>';
 
@@ -628,6 +630,7 @@ function renderPlanning() {
       const rep = byId.get(emp.id);
       let dayCells = '';
       let demiCount = 0; // nombre de demi-journées (un seul service) sur la semaine
+      let cpBonusSec = 0; // heures de ½ CP (3h midi / 4h soir) à créditer cette semaine
       for (const d of days) {
         const day = rep && rep.days.find((x) => x.day === d);
         const hasHours = !!(day && day.segments.length);
@@ -635,6 +638,7 @@ function renderPlanning() {
         const awayStatus = AWAY_STATUSES.includes(status) ? status : null; // cp/am/absent/ecole
         const isRest = restDaysOn(emp.restPeriods, d).includes(weekday[d]) || status === 'repos';
         const demiMidi = status === 'demi_midi'; const demiSoir = status === 'demi_soir';
+        const demiCpMidi = status === 'demi_cp_midi'; const demiCpSoir = status === 'demi_cp_soir';
         const echMidi = status === 'echange_midi' || status === 'echange_both';
         const echSoir = status === 'echange_soir' || status === 'echange_both';
         let inner; let fillCls = ''; let exchangeMark = '';
@@ -666,6 +670,8 @@ function renderPlanning() {
               midiCount[d]++;
             } else if (demiMidi) {
               midiHalf = `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;
+            } else if (demiCpMidi) {
+              midiHalf = '<div class="pl-half pl-cphalf">½CP</div>'; // congé payé midi → non compté présent
             } else if (echMidi) {
               midiHalf = '<div class="pl-half pl-echange" title="Échange midi">É</div>'; // non compté
             } else {
@@ -679,6 +685,8 @@ function renderPlanning() {
               soirCount[d]++;
             } else if (demiSoir) {
               soirHalf = `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;
+            } else if (demiCpSoir) {
+              soirHalf = '<div class="pl-half pl-cphalf">½CP</div>'; // congé payé soir → non compté présent
             } else if (echSoir) {
               soirHalf = '<div class="pl-half pl-echange" title="Échange soir">É</div>'; // non compté
             } else {
@@ -693,12 +701,17 @@ function renderPlanning() {
           inner = `<div class="pl-stack">${stack}</div>`;
           fillCls = ' pl-filled';
           if (hasHours) dayTotals[d] += day.seconds;
+          // ½ CP : crédite 3h (midi) / 4h (soir) au total du jour et de la semaine,
+          // seulement si le service concerné n'a pas d'heures réelles (sinon double compte).
+          const cpSec = (demiCpMidi && !midi.length ? HALF_CP.demi_cp_midi : 0)
+            + (demiCpSoir && !soir.length ? HALF_CP.demi_cp_soir : 0);
+          if (cpSec) { dayTotals[d] += cpSec; cpBonusSec += cpSec; }
           if (isRest && hasHours) exchangeMark = '<span class="pl-exchange" title="Échange — travaillé un jour de repos">E</span>';
         }
         const cls = 'pl-cell pl-click' + fillCls;
         dayCells += `<td class="${cls}" data-emp="${emp.id}" data-day="${d}">${exchangeMark}${inner}</td>`;
       }
-      const tot = rep ? rep.totalSeconds : 0;
+      const tot = (rep ? rep.totalSeconds : 0) + cpBonusSec; // + heures de ½ CP de la semaine
       grand += tot;
       const nameCell = `<td class="pl-name"><div class="pl-name-inner"><span class="pl-name-txt">${escapeHtml(emp.name)}</span>`
         + (demiCount ? `<span class="pl-demi-count" title="${demiCount} demi cette semaine">${demiCount}</span>` : '')
@@ -1466,6 +1479,8 @@ function openCellEditor(empId, day) {
       ${isApprenti ? `<button class="btn btn-ghost st-btn st-ecole${status === 'ecole' ? ' active' : ''}" data-st="ecole">École</button>` : ''}
       <button class="btn btn-ghost st-btn st-demi${status === 'demi_midi' ? ' active' : ''}" data-st="demi_midi">Demi midi</button>
       <button class="btn btn-ghost st-btn st-demi${status === 'demi_soir' ? ' active' : ''}" data-st="demi_soir">Demi soir</button>
+      <button class="btn btn-ghost st-btn st-cp${status === 'demi_cp_midi' ? ' active' : ''}" data-st="demi_cp_midi">½ CP midi (3h)</button>
+      <button class="btn btn-ghost st-btn st-cp${status === 'demi_cp_soir' ? ' active' : ''}" data-st="demi_cp_soir">½ CP soir (4h)</button>
       <button class="btn btn-ghost ech-btn st-echange${(status === 'echange_midi' || status === 'echange_both') ? ' active' : ''}" data-ech="midi">Échange midi</button>
       <button class="btn btn-ghost ech-btn st-echange${(status === 'echange_soir' || status === 'echange_both') ? ' active' : ''}" data-ech="soir">Échange soir</button>
       ${status ? '<button class="btn btn-ghost" id="ce-clear">Effacer le statut</button>' : ''}

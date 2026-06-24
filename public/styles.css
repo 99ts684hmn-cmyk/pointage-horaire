@@ -437,12 +437,13 @@ td.num { font-variant-numeric: tabular-nums; }
   .planning { min-width: 0; width: 100%; font-size: 9px; }
   .planning th, .planning td { padding: 3px 4px; }
   .planning .pl-name { position: static; box-shadow: none; }
-  /* À l'impression : noms + jours + horaires + Total ; on masque Moy. /sem, Demis et Infos. */
+  /* À l'impression : noms + jours + horaires + Total + Infos ; on masque Moy. /sem et Demis. */
   .planning .pl-tot-row { display: none !important; }
-  .planning thead th:nth-last-child(-n+3), .planning tbody td:nth-last-child(-n+3) { display: none !important; }
+  .planning thead th:nth-last-child(2), .planning tbody td:nth-last-child(2),
+  .planning thead th:nth-last-child(3), .planning tbody td:nth-last-child(3) { display: none !important; }
   /* PDF « sans horaire » : grille compacte et centrée (pas étirée sur toute la
-     largeur → fini les lignes trop longues), lignes d'une hauteur régulière, et
-     on retire les quatre colonnes de droite (Total + Moy. + Demis + Infos). */
+     largeur → fini les lignes trop longues), lignes d'une hauteur régulière. On
+     retire Total + Moy. + Demis mais on GARDE la colonne Infos. */
   .planning.no-hours { width: auto; margin: 0 auto; font-size: 10px; }
   .planning.no-hours .pl-day-head { width: 88px; }
   .planning.no-hours .pl-name { width: 130px; }

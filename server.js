@@ -273,7 +273,21 @@ app.get('/api/planning', (req, res) => {
   ).all(from, to);
   let extra = {};
   try { const v = JSON.parse(getSetting('extra_notes') || '{}'); if (v && typeof v === 'object') extra = v; } catch { /* ignore */ }
-  res.json({ employees, report, statuses, extra });
+  // Colonne « Infos » (par salarié, pour la semaine = lundi `from`) et grande case
+  // « Notes » (pour toute la semaine), affichées aussi sur l'écran de pointage.
+  const weekInfo = {};
+  try {
+    const v = JSON.parse(getSetting('week_info') || '{}');
+    if (v && typeof v === 'object') {
+      for (const [k, txt] of Object.entries(v)) {
+        const sep = k.lastIndexOf('|');
+        if (sep > 0 && k.slice(sep + 1) === from) weekInfo[k.slice(0, sep)] = txt;
+      }
+    }
+  } catch { /* ignore */ }
+  let weekNote = '';
+  try { const v = JSON.parse(getSetting('week_notes') || '{}'); if (v && typeof v === 'object' && v[from]) weekNote = v[from]; } catch { /* ignore */ }
+  res.json({ employees, report, statuses, extra, weekInfo, weekNote });
 });
 
 // Arrivées encore ouvertes (sans départ) de la journée de travail en cours,

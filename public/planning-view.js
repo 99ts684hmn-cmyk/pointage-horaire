@@ -68,6 +68,8 @@
     const statusMap = new Map();
     for (const s of (data.statuses || [])) statusMap.set(s.employeeId + '|' + s.day, s.status);
     const extraMap = (data.extra && typeof data.extra === 'object') ? data.extra : {};
+    const weekInfo = (data.weekInfo && typeof data.weekInfo === 'object') ? data.weekInfo : {};
+    const weekNote = (data.weekNote || '').trim();
 
     const actives = (data.employees || [])
       .filter((e) => e.active || (e.endDate && e.endDate >= from))
@@ -76,7 +78,7 @@
 
     let html = '<table class="planning"><thead><tr><th class="pl-name">Salarié</th>';
     for (const d of days) html += `<th>${planningDayLabel(d)}</th>`;
-    html += '<th style="text-align:right">Total</th></tr></thead><tbody>';
+    html += '<th style="text-align:right">Total</th><th class="pl-info-head">Infos</th></tr></thead><tbody>';
 
     const dayTotals = {}; const midiCount = {}; const soirCount = {}; const weekday = {};
     days.forEach((d) => { dayTotals[d] = 0; midiCount[d] = 0; soirCount[d] = 0; weekday[d] = new Date(d + 'T12:00:00').getDay(); });
@@ -168,7 +170,9 @@
       const nameCell = `<td class="pl-name"><div class="pl-name-inner"><span class="pl-name-txt">${escapeHtml(emp.name)}</span>`
         + (demiCount ? `<span class="pl-demi-count">${demiCount}</span>` : '')
         + '</div></td>';
-      html += `<tr class="pl-emp-row">${nameCell}${dayCells}<td class="pl-total">${fmtH(tot)}</td></tr>`;
+      const noteTxt = (weekInfo[emp.id] || '').trim();
+      const infoCell = `<td class="pl-info">${noteTxt ? `<span class="pl-info-txt">${escapeHtml(noteTxt)}</span>` : ''}</td>`;
+      html += `<tr class="pl-emp-row">${nameCell}${dayCells}<td class="pl-total">${fmtH(tot)}</td>${infoCell}</tr>`;
     }
 
     // Ligne « Extra » (lecture seule : texte si présent, sinon vide).
@@ -183,18 +187,24 @@
         + '</div>';
       html += `<td class="pl-extra-cell">${sub(m)}${sub(s)}</td>`;
     }
-    html += '<td></td></tr>';
+    html += '<td></td><td></td></tr>';
 
     html += '<tr class="pl-svc-row"><td class="pl-name">Pres. midi</td>';
     for (const d of days) html += `<td>${midiCount[d] || '—'}</td>`;
-    html += '<td></td></tr>';
+    html += '<td></td><td></td></tr>';
     html += '<tr class="pl-svc-row"><td class="pl-name">Pres. soir</td>';
     for (const d of days) html += `<td>${soirCount[d] || '—'}</td>`;
-    html += '<td></td></tr>';
+    html += '<td></td><td></td></tr>';
 
     html += '<tr class="pl-tot-row"><td class="pl-name">Total / jour</td>';
     for (const d of days) html += `<td>${dayTotals[d] ? fmtH(dayTotals[d]) : '—'}</td>`;
-    html += `<td class="pl-total">${fmtH(grand)}</td></tr>`;
+    html += `<td class="pl-total">${fmtH(grand)}</td><td></td></tr>`;
+
+    // Grande case « Notes » de la semaine (lecture seule), sur la largeur des 7 jours.
+    html += '<tr class="pl-notes-row"><td class="pl-name">Notes</td>'
+      + `<td class="pl-notes-cell" colspan="${days.length}">${weekNote ? `<span class="pl-wn-txt">${escapeHtml(weekNote)}</span>` : ''}</td>`
+      + '<td></td><td></td></tr>';
+
     html += '</tbody></table>';
 
     container.innerHTML = html;

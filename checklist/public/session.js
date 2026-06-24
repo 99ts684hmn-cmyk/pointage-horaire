@@ -80,8 +80,28 @@ async function finalize() {
   fetchSession();
 }
 
-// Petite animation de fête (confettis + emojis cuisine) à la validation. Pure
-// vanilla, sans dépendance, retirée toute seule après ~2,6 s.
+// Blagues façon Carambar, tirées au sort à la validation.
+const JOKES = [
+  'Quel est le comble pour un électricien ? Ne pas être au courant !',
+  'Pourquoi le café est-il un mauvais élève ? Il se fait toujours repasser !',
+  'Quel poisson ne fête jamais son anniversaire ? Le poisson pané !',
+  'Quel est le comble pour un jardinier ? Raconter des salades !',
+  'Que fait une fraise sur un cheval ? Tagada, tagada !',
+  'Qu\'est-ce qui est jaune et qui attend ? Jonathan !',
+  'Quel est le comble pour un cuisinier ? Avoir un poil dans la main !',
+  'Pourquoi les plongeurs plongent-ils en arrière ? Sinon ils tombent dans le bateau !',
+  'Que dit une maman tomate à son petit qui traîne ? Dépêche-toi, tu vas finir en pizza !',
+  'Quel est le comble pour un boucher ? Avoir un caractère de cochon !',
+  'Pourquoi les vaches ferment-elles les yeux quand on les trait ? Pour faire du lait concentré !',
+  'Monsieur et Madame Térieur ont un fils. Comment s\'appelle-t-il ? Alain ! (Alain Térieur)',
+  'Comment appelle-t-on un chien sans pattes ? On ne l\'appelle pas, on va le chercher !',
+  'Quel est le sport le plus fruité ? La boxe : on y prend des pêches !',
+  'Que dit un oignon quand il se cogne ? Ail ail ail !',
+  'Quelle est la femelle du hamster ? L\'Amsterdam !',
+];
+
+// Petite animation de fête (confettis + emojis cuisine + blague) à la validation.
+// Pure vanilla, sans dépendance, retirée toute seule après ~4,2 s.
 function celebrate(name) {
   try {
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -111,12 +131,14 @@ function celebrate(name) {
     e.style.animationDelay = (0.04 * i) + 's';
     layer.appendChild(e);
   }
+  const joke = JOKES[Math.floor(Math.random() * JOKES.length)];
   const b = document.createElement('div');
   b.className = 'cele-bravo';
-  b.textContent = name ? `Bravo ${name} ! 🎉` : 'Bravo ! 🎉';
+  b.innerHTML = `<div class="cele-bravo-title">${name ? 'Bravo ' + esc(name) + ' ! 🎉' : 'Bravo ! 🎉'}</div>`
+    + `<div class="cele-joke">${esc(joke)}</div>`;
   layer.appendChild(b);
   document.body.appendChild(layer);
-  setTimeout(() => layer.remove(), 2600);
+  setTimeout(() => layer.remove(), 4200);
 }
 
 function render() {

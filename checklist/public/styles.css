@@ -203,11 +203,14 @@ body {
   animation: cele-burst 1.5s ease-out forwards; will-change: transform, opacity;
 }
 .celebrate-layer .cele-bravo {
-  position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%);
-  background: var(--dark); color: var(--cream); font-weight: 800; font-size: 1.4rem;
-  padding: 14px 24px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,.3);
-  white-space: nowrap; animation: cele-bravo 2.2s ease-out forwards;
+  position: absolute; left: 50%; top: 44%; transform: translate(-50%, -50%);
+  background: var(--dark); color: var(--cream);
+  padding: 16px 22px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,.3);
+  width: max-content; max-width: min(90vw, 440px); text-align: center;
+  animation: cele-bravo 4s ease-out forwards;
 }
+.celebrate-layer .cele-bravo-title { font-size: 1.4rem; font-weight: 800; }
+.celebrate-layer .cele-joke { margin-top: 9px; font-size: .96rem; font-weight: 600; line-height: 1.35; color: var(--gold); }
 @keyframes cele-fall {
   0% { transform: translateY(0) rotate(0); opacity: 1; }
   100% { transform: translateY(125vh) rotate(720deg); opacity: 1; }

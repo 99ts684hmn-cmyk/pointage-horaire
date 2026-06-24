@@ -178,7 +178,13 @@ body {
 /* Modal */
 .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 50; }
 .overlay.show { display: flex; }
-.modal { background: #fff; border-radius: 16px; padding: 22px; width: 100%; max-width: 380px; box-shadow: 0 8px 28px rgba(0,0,0,.22); color: var(--dark); }
+.modal { background: #fff; border-radius: 16px; padding: 22px; width: 100%; max-width: 380px; box-shadow: 0 8px 28px rgba(0,0,0,.22); color: var(--dark);
+  /* iPhone : si le contenu dépasse l'écran, la fenêtre défile au lieu d'être coupée
+     (le bouton « Confirmer » reste atteignable). */
+  max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow-y: auto;
+  -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+/* Liste des noms : défilable, pour que les boutons Annuler/Confirmer restent visibles. */
+#emp-list { max-height: 42vh; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
 .modal h2 { font-size: 1.25rem; font-weight: 800; margin: 0 0 4px; }
 .modal .q { font-size: .85rem; color: var(--muted); margin: 0 0 16px; }
 .emp-opt { width: 100%; text-align: left; padding: 12px 14px; border-radius: 12px; border: 2px solid var(--border); background: transparent; color: var(--dark); font-weight: 600; font-size: .9rem; cursor: pointer; margin-bottom: 8px; font-family: inherit; }

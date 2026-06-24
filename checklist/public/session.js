@@ -140,7 +140,7 @@ const JOKES = [
 ];
 
 // Petite animation de fête (confettis + emojis cuisine + blague) à la validation.
-// Pure vanilla, sans dépendance, retirée toute seule après ~6,2 s.
+// Pure vanilla, sans dépendance, retirée toute seule après ~4,2 s.
 function celebrate(name) {
   try {
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -177,7 +177,7 @@ function celebrate(name) {
     + `<div class="cele-joke">${esc(joke)}</div>`;
   layer.appendChild(b);
   document.body.appendChild(layer);
-  setTimeout(() => layer.remove(), 6200);
+  setTimeout(() => layer.remove(), 4200);
 }
 
 function render() {

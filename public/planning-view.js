@@ -62,6 +62,8 @@
   function countExtra(txt) {
     return String(txt || '').split('+').map((x) => x.trim()).filter(Boolean).length;
   }
+  // Demi-CP : la personne ne travaille pas ce service (payé comme un CP). Midi = 3h, soir = 4h.
+  const HALF_CP = { demi_cp_midi: 3 * 3600, demi_cp_soir: 4 * 3600 };
   const CROSS_SVG = '<svg class="pl-cross" viewBox="0 0 10 10" preserveAspectRatio="none" aria-hidden="true"><line x1="0" y1="0" x2="10" y2="10"/><line x1="10" y1="0" x2="0" y2="10"/></svg>';
 
   function render(container, data) {
@@ -107,6 +109,7 @@
       const rep = byId.get(emp.id);
       let dayCells = '';
       let demiCount = 0;
+      let cpBonusSec = 0; // heures de ½ CP (3h midi / 4h soir) à créditer cette semaine
       for (const d of days) {
         const day = rep && rep.days.find((x) => x.day === d);
         const hasHours = !!(day && day.segments.length);
@@ -114,6 +117,7 @@
         const awayStatus = AWAY_STATUSES.includes(status) ? status : null;
         const isRest = restDaysOn(emp.restPeriods, d).includes(weekday[d]) || status === 'repos';
         const demiMidi = status === 'demi_midi'; const demiSoir = status === 'demi_soir';
+        const demiCpMidi = status === 'demi_cp_midi'; const demiCpSoir = status === 'demi_cp_soir';
         const echMidi = status === 'echange_midi' || status === 'echange_both';
         const echSoir = status === 'echange_soir' || status === 'echange_both';
         let inner; let fillCls = ''; let exchangeMark = '';
@@ -140,6 +144,8 @@
               midiCount[d]++;
             } else if (demiMidi) {
               midiHalf = `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;
+            } else if (demiCpMidi) {
+              midiHalf = '<div class="pl-half pl-cphalf">½CP</div>';
             } else if (echMidi) {
               midiHalf = '<div class="pl-half pl-echange" title="Échange midi">É</div>';
             } else {
@@ -152,6 +158,8 @@
               soirCount[d]++;
             } else if (demiSoir) {
               soirHalf = `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;
+            } else if (demiCpSoir) {
+              soirHalf = '<div class="pl-half pl-cphalf">½CP</div>';
             } else if (echSoir) {
               soirHalf = '<div class="pl-half pl-echange" title="Échange soir">É</div>';
             } else {
@@ -165,11 +173,15 @@
           inner = `<div class="pl-stack">${stack}</div>`;
           fillCls = ' pl-filled';
           if (hasHours) dayTotals[d] += day.seconds;
+          // ½ CP : crédite 3h (midi) / 4h (soir) si le service concerné est vide.
+          const cpSec = (demiCpMidi && !midi.length ? HALF_CP.demi_cp_midi : 0)
+            + (demiCpSoir && !soir.length ? HALF_CP.demi_cp_soir : 0);
+          if (cpSec) { dayTotals[d] += cpSec; cpBonusSec += cpSec; }
           if (isRest && hasHours) exchangeMark = '<span class="pl-exchange" title="Échange">E</span>';
         }
         dayCells += `<td class="pl-cell${fillCls}">${exchangeMark}${inner}</td>`;
       }
-      const tot = rep ? rep.totalSeconds : 0;
+      const tot = (rep ? rep.totalSeconds : 0) + cpBonusSec; // + heures de ½ CP de la semaine
       grand += tot;
       const nameCell = `<td class="pl-name"><div class="pl-name-inner"><span class="pl-name-txt">${escapeHtml(emp.name)}</span>`
         + (demiCount ? `<span class="pl-demi-count">${demiCount}</span>` : '')

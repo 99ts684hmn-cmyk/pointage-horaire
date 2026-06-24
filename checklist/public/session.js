@@ -76,7 +76,47 @@ async function finalize() {
     body: JSON.stringify({ action: 'complete', completedBy: name }),
   });
   overlay.classList.remove('show');
+  celebrate(name);
   fetchSession();
+}
+
+// Petite animation de fête (confettis + emojis cuisine) à la validation. Pure
+// vanilla, sans dépendance, retirée toute seule après ~2,6 s.
+function celebrate(name) {
+  try {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  } catch (e) { /* ignore */ }
+  const layer = document.createElement('div');
+  layer.className = 'celebrate-layer';
+  const colors = ['#e63946', '#f4a261', '#2a9d8f', '#e9c46a', '#ff8fab', '#8ecae6', '#ffd166'];
+  for (let i = 0; i < 40; i++) {
+    const c = document.createElement('i');
+    c.className = 'confetti';
+    c.style.left = (Math.random() * 100) + 'vw';
+    c.style.background = colors[i % colors.length];
+    c.style.animationDuration = (1.6 + Math.random() * 1.3) + 's';
+    c.style.animationDelay = (Math.random() * 0.6) + 's';
+    layer.appendChild(c);
+  }
+  const emojis = ['🥩', '🔥', '🍔', '👨‍🍳', '🎉', '👏', '🧑‍🍳', '✅', '🍟', '⭐'];
+  for (let i = 0; i < emojis.length; i++) {
+    const e = document.createElement('span');
+    e.className = 'cele-emoji';
+    e.textContent = emojis[i];
+    const ang = (i / emojis.length) * Math.PI * 2;
+    const dist = 150 + Math.random() * 60;
+    e.style.setProperty('--dx', (Math.cos(ang) * dist) + 'px');
+    e.style.setProperty('--dy', (Math.sin(ang) * dist - 30) + 'px');
+    e.style.setProperty('--rot', (Math.random() * 160 - 80) + 'deg');
+    e.style.animationDelay = (0.04 * i) + 's';
+    layer.appendChild(e);
+  }
+  const b = document.createElement('div');
+  b.className = 'cele-bravo';
+  b.textContent = name ? `Bravo ${name} ! 🎉` : 'Bravo ! 🎉';
+  layer.appendChild(b);
+  document.body.appendChild(layer);
+  setTimeout(() => layer.remove(), 2600);
 }
 
 function render() {

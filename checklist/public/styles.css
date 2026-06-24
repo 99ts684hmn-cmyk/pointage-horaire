@@ -192,6 +192,41 @@ body {
 .modal input[type=text] { width: 100%; border-radius: 12px; padding: 12px 14px; font-size: .9rem; border: 2px solid var(--border); color: var(--dark); font-family: inherit; }
 .modal .actions { display: flex; gap: 12px; margin-top: 16px; }
 
+/* --- Petite animation de fête à la validation d'une check-list ------------- */
+.celebrate-layer { position: fixed; inset: 0; z-index: 100; pointer-events: none; overflow: hidden; }
+.celebrate-layer .confetti {
+  position: absolute; top: -12vh; width: 10px; height: 14px; border-radius: 2px;
+  animation: cele-fall linear forwards;
+}
+.celebrate-layer .cele-emoji {
+  position: absolute; left: 50%; top: 46%; font-size: 2.4rem; line-height: 1;
+  animation: cele-burst 1.5s ease-out forwards; will-change: transform, opacity;
+}
+.celebrate-layer .cele-bravo {
+  position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%);
+  background: var(--dark); color: var(--cream); font-weight: 800; font-size: 1.4rem;
+  padding: 14px 24px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,.3);
+  white-space: nowrap; animation: cele-bravo 2.2s ease-out forwards;
+}
+@keyframes cele-fall {
+  0% { transform: translateY(0) rotate(0); opacity: 1; }
+  100% { transform: translateY(125vh) rotate(720deg); opacity: 1; }
+}
+@keyframes cele-burst {
+  0% { transform: translate(-50%, -50%) scale(0) rotate(0); opacity: 0; }
+  25% { transform: translate(-50%, -50%) scale(1.25); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1) rotate(var(--rot)); opacity: 0; }
+}
+@keyframes cele-bravo {
+  0% { transform: translate(-50%, -50%) scale(.4); opacity: 0; }
+  18% { transform: translate(-50%, -50%) scale(1.12); opacity: 1; }
+  82% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -52%) scale(1); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .celebrate-layer { display: none; }
+}
+
 /* Admin */
 .tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: 12px; background: var(--dark); margin: 18px 0; width: fit-content; max-width: 100%; }
 .tabs button { padding: 8px 16px; border-radius: 9px; border: 0; font-size: .85rem; font-weight: 800; cursor: pointer; background: none; color: rgba(255,248,240,.55); font-family: inherit; }

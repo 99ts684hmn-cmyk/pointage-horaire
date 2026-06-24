@@ -149,7 +149,7 @@
       var box = document.getElementById('bday');
 
       Promise.all([
-        fetch('anniversaires.json?v=10').then(function (r) { return r.json(); }).catch(function () { return []; }),
+        fetch('anniversaires.json?v=11').then(function (r) { return r.json(); }).catch(function () { return []; }),
         fetch('journees-mondiales.json?v=10').then(function (r) { return r.json(); }).catch(function () { return {}; })
       ]).then(function (res) {
         var list = Array.isArray(res[0]) ? res[0] : [];

@@ -254,6 +254,13 @@ td.num { font-variant-numeric: tabular-nums; }
   font-weight: 400; font-size: .78rem; line-height: 1.25; cursor: pointer; color: var(--dark); }
 .planning td.pl-info:hover { background: #fff7ec; }
 .planning td.pl-info .pl-empty { color: #cdc8c0; }
+/* Grande case « Notes » de la semaine (sur la largeur des 7 jours), éditable. */
+.planning .pl-notes-row .pl-name { background: #fff7ec; vertical-align: top; }
+.planning td.pl-notes-cell { text-align: left; white-space: pre-wrap; word-break: break-word;
+  font-weight: 400; font-size: .82rem; line-height: 1.35; padding: 8px 10px; min-height: 46px;
+  cursor: pointer; color: var(--dark); vertical-align: top; }
+.planning td.pl-notes-cell:hover { background: #fff7ec; }
+.planning td.pl-notes-cell .pl-empty { color: #cdc8c0; }
 .planning .pl-tot-row td { background: #f0eadf; font-weight: 700; }
 .planning .pl-svc-row td { background: #eef4ff; font-weight: 700; color: #1e3a8a; }
 .planning .pl-svc-row .pl-name { background: #eef4ff; }

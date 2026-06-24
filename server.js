@@ -901,6 +901,27 @@ app.put('/api/admin/week-info', requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
+// --- Grande case « Notes » en bas du planning (texte libre par semaine) -------
+// Clé "<lundiSemaine>" → texte. Une seule note par semaine (toute la semaine).
+function readWeekNotes() {
+  try {
+    const v = JSON.parse(getSetting('week_notes') || '{}');
+    return (v && typeof v === 'object' && !Array.isArray(v)) ? v : {};
+  } catch { return {}; }
+}
+app.get('/api/admin/week-note', requireAdmin, (req, res) => {
+  res.json(readWeekNotes());
+});
+app.put('/api/admin/week-note', requireAdmin, (req, res) => {
+  const { week, text } = req.body || {};
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(week || '')) return res.status(400).json({ error: 'Semaine invalide' });
+  const map = readWeekNotes();
+  const t = String(text == null ? '' : text).trim().slice(0, 2000);
+  if (t) map[week] = t; else delete map[week];
+  setSetting('week_notes', JSON.stringify(map));
+  res.json({ ok: true });
+});
+
 // Pose un statut sur une PLAGE de jours (ex. toute la semaine) pour plusieurs
 // salariés — bouton « Hors entreprise ». École réservée aux apprentis (ignorée sinon).
 app.put('/api/admin/day-status/range', requireAdmin, (req, res) => {

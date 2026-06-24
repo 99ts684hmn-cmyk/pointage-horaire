@@ -550,6 +550,7 @@ let planningReport = [];
 let avgHours = {}; // empId → moyenne hebdo (secondes) depuis le 01/06
 let demisTotal = {}; // empId → nb de demis depuis le 01/06 (semaines terminées)
 let weekInfo = {}; // "empId|lundiSemaine" → texte libre (colonne Infos)
+let weekNotes = {}; // "lundiSemaine" → texte libre (grande case Notes en bas)
 let statusMap = new Map(); // clé "empId|day" → 'cp'|'am'|'ecole'
 let extraMap = {}; // clé "YYYY-MM-DD|midi" / "…|soir" → texte libre (ligne « Extra »)
 let planningNoHours = false; // PDF « sans horaire » : on affiche PM/PS au lieu des heures, sans les totaux
@@ -566,17 +567,19 @@ async function loadPlanning() {
   const to = $('rep-to').value;
   if (!from || !to) { renderPlanning(); return; }
   const params = new URLSearchParams({ from, to });
-  const [rep, st, ex, avg, wi] = await Promise.all([
+  const [rep, st, ex, avg, wi, wn] = await Promise.all([
     api('/api/admin/report?' + params.toString()),
     api('/api/admin/day-statuses?' + params.toString()),
     api('/api/admin/extra?' + params.toString()),
     api('/api/admin/avg-hours?upto=' + encodeURIComponent(to)),
     api('/api/admin/week-info'),
+    api('/api/admin/week-note'),
   ]);
   planningReport = (rep.ok && rep.data) ? rep.data : [];
   avgHours = (avg.ok && avg.data && avg.data.averages) ? avg.data.averages : {};
   demisTotal = (avg.ok && avg.data && avg.data.demis) ? avg.data.demis : {};
   weekInfo = (wi.ok && wi.data && typeof wi.data === 'object') ? wi.data : {};
+  weekNotes = (wn.ok && wn.data && typeof wn.data === 'object') ? wn.data : {};
   statusMap = new Map();
   if (st.ok && Array.isArray(st.data)) {
     for (const s of st.data) statusMap.set(s.employeeId + '|' + s.day, s.status);
@@ -771,6 +774,17 @@ function renderPlanning() {
   html += '<tr class="pl-tot-row"><td class="pl-name">Total / jour</td>';
   for (const d of days) html += `<td>${dayTotals[d] ? fmtH(dayTotals[d]) : '—'}</td>`;
   html += `<td class="pl-total">${fmtH(grand)}</td><td></td><td></td><td></td></tr>`;
+
+  // Grande case « Notes » de la semaine : s'étend sur les 7 colonnes des jours.
+  const weekNote = (weekNotes[from] || '').trim();
+  const noteInner = planningNoHours
+    ? `<span class="pl-wn-txt">${escapeHtml(weekNote)}</span>`
+    : (weekNote ? `<span class="pl-wn-txt">${escapeHtml(weekNote)}</span>` : '<span class="pl-empty">+ Ajouter une note pour la semaine…</span>');
+  const noteCls = 'pl-notes-cell' + (planningNoHours ? '' : ' pl-note-click');
+  html += '<tr class="pl-notes-row"><td class="pl-name">Notes</td>'
+    + `<td class="${noteCls}" colspan="${days.length}">${noteInner}</td>`
+    + '<td></td><td></td><td></td><td></td></tr>';
+
   html += '</tbody></table>';
   out.innerHTML = html;
 
@@ -786,6 +800,42 @@ function renderPlanning() {
   out.querySelectorAll('.pl-info-click').forEach((td) => {
     td.addEventListener('click', () => openInfoEditor(Number(td.dataset.emp)));
   });
+  const noteCell = out.querySelector('.pl-note-click');
+  if (noteCell) noteCell.addEventListener('click', openWeekNoteEditor);
+}
+
+// Éditeur de la grande case « Notes » de la semaine affichée (texte libre).
+function openWeekNoteEditor() {
+  const week = $('rep-from').value;
+  if (!week) return;
+  const cur = (weekNotes[week] || '');
+  cellModal.innerHTML = `
+    <h2>Notes de la semaine</h2>
+    <div class="sub">Semaine du ${frDate(week)}</div>
+    <div class="field" style="margin-top:12px">
+      <textarea id="wn-text" style="width:100%;height:150px;font-family:inherit;font-size:.95rem;padding:10px;border:1px solid var(--border);border-radius:10px" placeholder="Note libre pour toute la semaine…">${escapeHtml(cur)}</textarea>
+    </div>
+    <div class="action-buttons" style="margin-top:12px;grid-template-columns:repeat(2,1fr)">
+      <button class="btn btn-green" id="wn-save">Enregistrer</button>
+      ${cur ? '<button class="btn btn-ghost" id="wn-clear">Effacer</button>' : ''}
+    </div>
+    <div class="msg error" id="wn-msg"></div>
+    <div style="margin-top:12px"><button class="btn btn-ghost" id="wn-close">Fermer</button></div>
+  `;
+  const save = async (text) => {
+    const { ok, data } = await api('/api/admin/week-note', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ week, text }),
+    });
+    if (!ok) { const m = $('wn-msg'); if (m) { m.textContent = (data && data.error) || 'Erreur'; m.classList.add('show'); } return; }
+    cellOverlay.classList.remove('show');
+    loadPlanning();
+  };
+  cellModal.querySelector('#wn-save').addEventListener('click', () => save(cellModal.querySelector('#wn-text').value));
+  const clr = cellModal.querySelector('#wn-clear');
+  if (clr) clr.addEventListener('click', () => save(''));
+  cellModal.querySelector('#wn-close').addEventListener('click', () => cellOverlay.classList.remove('show'));
+  cellOverlay.classList.add('show');
 }
 
 // Éditeur de la case « Infos » d'un salarié pour la semaine affichée (texte libre).

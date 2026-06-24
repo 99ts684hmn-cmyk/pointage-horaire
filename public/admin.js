@@ -559,6 +559,11 @@ const STATUS_FULL = { cp: 'Congés payés', am: 'Arrêt maladie', ecole: 'École
 const AWAY_STATUSES = ['cp', 'am', 'absent', 'ecole'];
 // Demi-CP : la personne ne travaille pas ce service (payé comme un CP). Midi = 3h, soir = 4h.
 const HALF_CP = { demi_cp_midi: 3 * 3600, demi_cp_soir: 4 * 3600 };
+// Nombre de personnes dans une case « Extra » : prénoms séparés par « + »
+// (ex. « Paul + Marie » = 2). Case vide = 0.
+function countExtra(txt) {
+  return String(txt || '').split('+').map((x) => x.trim()).filter(Boolean).length;
+}
 // Croix (X) en coin à coin, remplit la case (repos) ou la demi-case (demi).
 const CROSS_SVG = '<svg class="pl-cross" viewBox="0 0 10 10" preserveAspectRatio="none" aria-hidden="true"><line x1="0" y1="0" x2="10" y2="10"/><line x1="10" y1="0" x2="0" y2="10"/></svg>';
 
@@ -754,8 +759,8 @@ function renderPlanning() {
   for (const d of days) {
     const m = (extraMap[d + '|midi'] || '').trim();
     const s = (extraMap[d + '|soir'] || '').trim();
-    if (m) midiCount[d]++;
-    if (s) soirCount[d]++;
+    midiCount[d] += countExtra(m);
+    soirCount[d] += countExtra(s);
     const sub = (svc, val) => `<div class="pl-extra-sub${val ? ' has' : ''}" data-day="${d}" data-svc="${svc}">`
       + (val ? `<span class="pl-extra-txt">${escapeHtml(val)}</span>` : '<span class="pl-empty">+</span>')
       + '</div>';

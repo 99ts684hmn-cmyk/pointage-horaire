@@ -58,6 +58,10 @@
   }
   const STATUS_SHORT = { cp: 'CP', am: 'AM', ecole: 'École', absent: 'Abs', repos: 'Repos' };
   const AWAY_STATUSES = ['cp', 'am', 'absent', 'ecole'];
+  // Nombre de personnes dans une case « Extra » : prénoms séparés par « + » (ex. « Paul + Marie » = 2).
+  function countExtra(txt) {
+    return String(txt || '').split('+').map((x) => x.trim()).filter(Boolean).length;
+  }
   const CROSS_SVG = '<svg class="pl-cross" viewBox="0 0 10 10" preserveAspectRatio="none" aria-hidden="true"><line x1="0" y1="0" x2="10" y2="10"/><line x1="10" y1="0" x2="0" y2="10"/></svg>';
 
   function render(container, data) {
@@ -180,8 +184,8 @@
     for (const d of days) {
       const m = (extraMap[d + '|midi'] || '').trim();
       const s = (extraMap[d + '|soir'] || '').trim();
-      if (m) midiCount[d]++;
-      if (s) soirCount[d]++;
+      midiCount[d] += countExtra(m);
+      soirCount[d] += countExtra(s);
       const sub = (val) => `<div class="pl-extra-sub${val ? ' has' : ''}">`
         + (val ? `<span class="pl-extra-txt">${escapeHtml(val)}</span>` : '<span class="pl-empty">&nbsp;</span>')
         + '</div>';

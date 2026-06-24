@@ -248,6 +248,12 @@ td.num { font-variant-numeric: tabular-nums; }
 .planning .pl-cell { font-variant-numeric: tabular-nums; line-height: 1.5; }
 .planning .pl-empty { color: #cdc8c0; }
 .planning .pl-total { text-align: right; font-weight: 700; }
+/* Colonne « Infos » : note libre par salarié et par semaine, éditable au clic. */
+.planning .pl-info-head { text-align: left; }
+.planning td.pl-info { width: 160px; text-align: left; white-space: normal; word-break: break-word;
+  font-weight: 400; font-size: .78rem; line-height: 1.25; cursor: pointer; color: var(--dark); }
+.planning td.pl-info:hover { background: #fff7ec; }
+.planning td.pl-info .pl-empty { color: #cdc8c0; }
 .planning .pl-tot-row td { background: #f0eadf; font-weight: 700; }
 .planning .pl-svc-row td { background: #eef4ff; font-weight: 700; color: #1e3a8a; }
 .planning .pl-svc-row .pl-name { background: #eef4ff; }
@@ -424,19 +430,18 @@ td.num { font-variant-numeric: tabular-nums; }
   .planning { min-width: 0; width: 100%; font-size: 9px; }
   .planning th, .planning td { padding: 3px 4px; }
   .planning .pl-name { position: static; box-shadow: none; }
-  /* À l'impression : noms + jours + horaires + Total ; on masque Moy. /sem et Demis. */
+  /* À l'impression : noms + jours + horaires + Total ; on masque Moy. /sem, Demis et Infos. */
   .planning .pl-tot-row { display: none !important; }
-  .planning thead th:last-child, .planning tbody td:last-child,
-  .planning thead th:nth-last-child(2), .planning tbody td:nth-last-child(2) { display: none !important; }
+  .planning thead th:nth-last-child(-n+3), .planning tbody td:nth-last-child(-n+3) { display: none !important; }
   /* PDF « sans horaire » : grille compacte et centrée (pas étirée sur toute la
      largeur → fini les lignes trop longues), lignes d'une hauteur régulière, et
-     on retire les trois colonnes de droite (Total + Moy. + Demis) restées vides. */
+     on retire les quatre colonnes de droite (Total + Moy. + Demis + Infos). */
   .planning.no-hours { width: auto; margin: 0 auto; font-size: 10px; }
   .planning.no-hours .pl-day-head { width: 88px; }
   .planning.no-hours .pl-name { width: 130px; }
   .planning.no-hours tbody tr.pl-emp-row { height: 26px; }
-  .planning.no-hours thead th:nth-last-child(3),
-  .planning.no-hours tbody td:nth-last-child(3) { display: none !important; }
+  .planning.no-hours thead th:nth-last-child(4),
+  .planning.no-hours tbody td:nth-last-child(4) { display: none !important; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   @page { size: A4 landscape; margin: 8mm; }
 }

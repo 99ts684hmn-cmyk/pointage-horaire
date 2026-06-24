@@ -549,6 +549,7 @@ function classifyDay(segments) {
 let planningReport = [];
 let avgHours = {}; // empId → moyenne hebdo (secondes) depuis le 01/06
 let demisTotal = {}; // empId → nb de demis depuis le 01/06 (semaines terminées)
+let weekInfo = {}; // "empId|lundiSemaine" → texte libre (colonne Infos)
 let statusMap = new Map(); // clé "empId|day" → 'cp'|'am'|'ecole'
 let extraMap = {}; // clé "YYYY-MM-DD|midi" / "…|soir" → texte libre (ligne « Extra »)
 let planningNoHours = false; // PDF « sans horaire » : on affiche PM/PS au lieu des heures, sans les totaux
@@ -565,15 +566,17 @@ async function loadPlanning() {
   const to = $('rep-to').value;
   if (!from || !to) { renderPlanning(); return; }
   const params = new URLSearchParams({ from, to });
-  const [rep, st, ex, avg] = await Promise.all([
+  const [rep, st, ex, avg, wi] = await Promise.all([
     api('/api/admin/report?' + params.toString()),
     api('/api/admin/day-statuses?' + params.toString()),
     api('/api/admin/extra?' + params.toString()),
     api('/api/admin/avg-hours?upto=' + encodeURIComponent(to)),
+    api('/api/admin/week-info'),
   ]);
   planningReport = (rep.ok && rep.data) ? rep.data : [];
   avgHours = (avg.ok && avg.data && avg.data.averages) ? avg.data.averages : {};
   demisTotal = (avg.ok && avg.data && avg.data.demis) ? avg.data.demis : {};
+  weekInfo = (wi.ok && wi.data && typeof wi.data === 'object') ? wi.data : {};
   statusMap = new Map();
   if (st.ok && Array.isArray(st.data)) {
     for (const s of st.data) statusMap.set(s.employeeId + '|' + s.day, s.status);
@@ -610,8 +613,8 @@ function renderPlanning() {
   let html = `<table class="planning${planningNoHours ? ' no-hours' : ''}"><thead><tr><th class="pl-name">Salarié</th>`;
   for (const d of days) html += `<th class="pl-day-head" data-day="${d}" title="Cliquer pour copier les arrivées du jour">${planningDayLabel(d)}</th>`;
   html += planningNoHours
-    ? '<th></th><th></th><th></th></tr></thead><tbody>'
-    : '<th style="text-align:right">Total</th><th style="text-align:right" title="Moyenne des heures hebdomadaires depuis le 01/06 (semaines terminées ; CP/École = 7h/jour ; semaine complète CP/École exclue)">Moy. /sem</th><th style="text-align:right" title="Demi-journées (demi midi / demi soir) comptées du 01/06 au dernier jour de la semaine affichée — au-delà (futur) non compté">Demis</th></tr></thead><tbody>';
+    ? '<th></th><th></th><th></th><th></th></tr></thead><tbody>'
+    : '<th style="text-align:right">Total</th><th style="text-align:right" title="Moyenne des heures hebdomadaires depuis le 01/06 (semaines terminées ; CP/École = 7h/jour ; semaine complète CP/École exclue)">Moy. /sem</th><th style="text-align:right" title="Demi-journées (demi midi / demi soir) comptées du 01/06 au dernier jour de la semaine affichée — au-delà (futur) non compté">Demis</th><th class="pl-info-head" title="Note libre par salarié pour la semaine affichée">Infos</th></tr></thead><tbody>';
 
   const dayTotals = {};
   const midiCount = {};
@@ -736,7 +739,11 @@ function renderPlanning() {
       const totCell = planningNoHours ? '<td class="pl-total"></td>' : `<td class="pl-total">${fmtH(tot)}</td>`;
       const dc = demisTotal[emp.id] || 0;
       const demisCell = planningNoHours ? '<td class="pl-total"></td>' : `<td class="pl-total">${dc || '—'}</td>`;
-      html += `<tr class="pl-emp-row">${nameCell}${dayCells}${totCell}${avgCell}${demisCell}</tr>`;
+      const noteTxt = (weekInfo[emp.id + '|' + from] || '').trim();
+      const infoCell = planningNoHours
+        ? '<td class="pl-info"></td>'
+        : `<td class="pl-info pl-info-click" data-emp="${emp.id}">${noteTxt ? `<span class="pl-info-txt">${escapeHtml(noteTxt)}</span>` : '<span class="pl-empty">+</span>'}</td>`;
+      html += `<tr class="pl-emp-row">${nameCell}${dayCells}${totCell}${avgCell}${demisCell}${infoCell}</tr>`;
   }
 
   // Ligne « Extra » : saisie libre par service ; chaque texte saisi compte +1 présent.
@@ -751,19 +758,19 @@ function renderPlanning() {
       + '</div>';
     html += `<td class="pl-extra-cell">${sub('midi', m)}${sub('soir', s)}</td>`;
   }
-  html += '<td></td><td></td><td></td></tr>';
+  html += '<td></td><td></td><td></td><td></td></tr>';
 
   // Nombre de présents par service (par jour).
   html += '<tr class="pl-svc-row"><td class="pl-name">Pres. midi</td>';
   for (const d of days) html += `<td>${midiCount[d] || '—'}</td>`;
-  html += '<td></td><td></td><td></td></tr>';
+  html += '<td></td><td></td><td></td><td></td></tr>';
   html += '<tr class="pl-svc-row"><td class="pl-name">Pres. soir</td>';
   for (const d of days) html += `<td>${soirCount[d] || '—'}</td>`;
-  html += '<td></td><td></td><td></td></tr>';
+  html += '<td></td><td></td><td></td><td></td></tr>';
 
   html += '<tr class="pl-tot-row"><td class="pl-name">Total / jour</td>';
   for (const d of days) html += `<td>${dayTotals[d] ? fmtH(dayTotals[d]) : '—'}</td>`;
-  html += `<td class="pl-total">${fmtH(grand)}</td><td></td><td></td></tr>`;
+  html += `<td class="pl-total">${fmtH(grand)}</td><td></td><td></td><td></td></tr>`;
   html += '</tbody></table>';
   out.innerHTML = html;
 
@@ -776,6 +783,44 @@ function renderPlanning() {
   out.querySelectorAll('.pl-extra-sub').forEach((el) => {
     el.addEventListener('click', () => openExtraEditor(el.dataset.day, el.dataset.svc));
   });
+  out.querySelectorAll('.pl-info-click').forEach((td) => {
+    td.addEventListener('click', () => openInfoEditor(Number(td.dataset.emp)));
+  });
+}
+
+// Éditeur de la case « Infos » d'un salarié pour la semaine affichée (texte libre).
+function openInfoEditor(empId) {
+  const emp = allEmployees.find((e) => e.id === empId);
+  const week = $('rep-from').value;
+  if (!emp || !week) return;
+  const cur = (weekInfo[empId + '|' + week] || '');
+  cellModal.innerHTML = `
+    <h2>Infos — ${escapeHtml(emp.name)}</h2>
+    <div class="sub">Semaine du ${frDate(week)} (note propre à cette semaine)</div>
+    <div class="field" style="margin-top:12px">
+      <textarea id="wi-text" style="width:100%;height:100px;font-family:inherit;font-size:.95rem;padding:10px;border:1px solid var(--border);border-radius:10px" placeholder="Note libre…">${escapeHtml(cur)}</textarea>
+    </div>
+    <div class="action-buttons" style="margin-top:12px;grid-template-columns:repeat(2,1fr)">
+      <button class="btn btn-green" id="wi-save">Enregistrer</button>
+      ${cur ? '<button class="btn btn-ghost" id="wi-clear">Effacer</button>' : ''}
+    </div>
+    <div class="msg error" id="wi-msg"></div>
+    <div style="margin-top:12px"><button class="btn btn-ghost" id="wi-close">Fermer</button></div>
+  `;
+  const save = async (text) => {
+    const { ok, data } = await api('/api/admin/week-info', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employeeId: empId, week, text }),
+    });
+    if (!ok) { const m = $('wi-msg'); if (m) { m.textContent = (data && data.error) || 'Erreur'; m.classList.add('show'); } return; }
+    cellOverlay.classList.remove('show');
+    loadPlanning();
+  };
+  cellModal.querySelector('#wi-save').addEventListener('click', () => save(cellModal.querySelector('#wi-text').value));
+  const clr = cellModal.querySelector('#wi-clear');
+  if (clr) clr.addEventListener('click', () => save(''));
+  cellModal.querySelector('#wi-close').addEventListener('click', () => cellOverlay.classList.remove('show'));
+  cellOverlay.classList.add('show');
 }
 
 // Éditeur d'une case « Extra » (texte libre pour un service donné).

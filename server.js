@@ -877,6 +877,30 @@ app.put('/api/admin/extra', requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
+// --- Colonne « Infos » du planning (texte libre par salarié et par semaine) ---
+// Clé "<employeeId>|<lundiSemaine>" → texte. Stocké comme l'Extra (settings JSON).
+function readWeekInfo() {
+  try {
+    const v = JSON.parse(getSetting('week_info') || '{}');
+    return (v && typeof v === 'object' && !Array.isArray(v)) ? v : {};
+  } catch { return {}; }
+}
+app.get('/api/admin/week-info', requireAdmin, (req, res) => {
+  res.json(readWeekInfo());
+});
+app.put('/api/admin/week-info', requireAdmin, (req, res) => {
+  const { employeeId, week, text } = req.body || {};
+  const id = Number(employeeId);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Salarié invalide' });
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(week || '')) return res.status(400).json({ error: 'Semaine invalide' });
+  const map = readWeekInfo();
+  const key = `${id}|${week}`;
+  const t = String(text == null ? '' : text).trim().slice(0, 500);
+  if (t) map[key] = t; else delete map[key];
+  setSetting('week_info', JSON.stringify(map));
+  res.json({ ok: true });
+});
+
 // Pose un statut sur une PLAGE de jours (ex. toute la semaine) pour plusieurs
 // salariés — bouton « Hors entreprise ». École réservée aux apprentis (ignorée sinon).
 app.put('/api/admin/day-status/range', requireAdmin, (req, res) => {

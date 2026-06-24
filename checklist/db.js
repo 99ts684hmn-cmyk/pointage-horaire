@@ -599,6 +599,21 @@ const CUISINE_CHECK_FERMETURE_TASKS = [
   'Congèle bas allumée',
 ];
 
+// Toilettes salle (mêmes tâches pour le midi et le soir).
+const TOILETTES_TASKS = [
+  'Nettoyer la façade où il y a les essuie-mains',
+  'Nettoyer le miroir',
+  'Enlever la poussière sur la boîte noire du rouleau de PQ',
+  'Nettoyer la porte (intérieur et extérieur)',
+  'Nettoyer le coin de l\'évier à droite, sur le mur où les gouttes tombent',
+  'Nettoyer derrière la porte',
+  'Nettoyer sous les toilettes (la porcelaine)',
+  'Nettoyer la tablette derrière les toilettes',
+  'Nettoyer la chasse d\'eau',
+  'Nettoyer les bidons de savon',
+  'Nettoyer les murs autour des toilettes',
+];
+
 // Les 4 anciennes check-lists d'exemple (Ouverture, Fermeture, Nettoyage,
 // Inventaire) ont été retirées : plus créées sur une base neuve, et désactivées
 // sur les bases existantes (migration 3).
@@ -678,6 +693,9 @@ function seedAndMigrate() {
   ensureTemplateByType('BAR_FERM_SOIR_HAUT', () => { const id = insertTemplate({ name: 'Fermeture soir bar du haut', type: 'BAR_FERM_SOIR_HAUT', color: 'bg-rose-700', icon: '🍷', resetMode: 'AUTO_DAILY', order: 10, category: 'general' }); BAR_FERM_SOIR_HAUT_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
   // Ménage de service hebdo — onglet « Check-lists », reset chaque lundi 8h.
   ensureTemplateByType('MENAGE_HEBDO', () => { const id = insertTemplate({ name: 'Ménage de service hebdo', type: 'MENAGE_HEBDO', color: 'bg-teal-500', icon: '🧽', resetMode: 'WEEKLY_MONDAY', order: 12, category: 'general' }); MENAGE_HEBDO_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
+  // Toilettes salle : une après le midi (bloc Midi), une après le soir (bloc Soir).
+  ensureTemplateByType('TOILETTES_MIDI', () => { const id = insertTemplate({ name: 'Toilettes midi', type: 'TOILETTES_MIDI', color: 'bg-amber-600', icon: '🚽', resetMode: 'AUTO_DAILY', order: 13, category: 'general' }); TOILETTES_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
+  ensureTemplateByType('TOILETTES_SOIR', () => { const id = insertTemplate({ name: 'Toilettes soir', type: 'TOILETTES_SOIR', color: 'bg-indigo-600', icon: '🚽', resetMode: 'AUTO_DAILY', order: 14, category: 'general' }); TOILETTES_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
   // Check-lists CUISINE (page dédiée, catégorie « cuisine »), reset quotidien.
   ensureTemplateByType('CUISINE_PLANCHA', () => { const id = insertTemplate({ name: 'Plancha', type: 'CUISINE_PLANCHA', color: 'bg-orange-600', icon: '🔥', resetMode: 'AUTO_DAILY', order: 1, category: 'cuisine' }); CUISINE_PLANCHA_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
   ensureTemplateByType('CUISINE_GARNITURE', () => { const id = insertTemplate({ name: 'Poste garniture', type: 'CUISINE_GARNITURE', color: 'bg-green-600', icon: '🥗', resetMode: 'AUTO_DAILY', order: 2, category: 'cuisine' }); CUISINE_GARNITURE_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });

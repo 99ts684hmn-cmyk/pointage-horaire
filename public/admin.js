@@ -75,6 +75,7 @@ async function showAdmin() {
   await loadEmployees();
   await loadBreaks();
   await loadEstablishment();
+  loadStaffCode();
   // Période par défaut : semaine calendaire en cours (lundi → dimanche).
   const { monday, sunday } = weekBounds(new Date());
   $('rep-from').value = localISO(monday);
@@ -106,6 +107,31 @@ $('estab-btn').addEventListener('click', async () => {
     showMsg($('estab-msg'), 'Nom de l\'établissement enregistré.', 'success');
     applyEstablishment(); // met à jour le bandeau immédiatement
   } else showMsg($('estab-msg'), (data && data.error) || 'Erreur');
+});
+
+async function loadStaffCode() {
+  const { data } = await api('/api/admin/staff-code');
+  const el = $('staff-code-status');
+  if (el) el.textContent = (data && data.enabled)
+    ? '🔒 Barrière ACTIVE : un code est demandé pour accéder au site.'
+    : '🔓 Barrière inactive : le site est accessible avec le lien, sans code.';
+}
+$('staff-code-btn').addEventListener('click', async () => {
+  clearMsg($('staff-code-msg'));
+  const code = $('staff-code').value.trim();
+  const warn = code
+    ? 'Enregistrer ce code ? Tous les appareils (dont celui-ci) devront le ressaisir.'
+    : 'Désactiver la barrière ? Le site redeviendra accessible avec le simple lien.';
+  if (!confirm(warn)) return;
+  const { ok, data } = await api('/api/admin/staff-code', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  });
+  if (ok) {
+    $('staff-code').value = '';
+    showMsg($('staff-code-msg'), code ? 'Code enregistré. Communique-le à l\'équipe.' : 'Barrière désactivée.', 'success');
+    loadStaffCode();
+  } else showMsg($('staff-code-msg'), (data && data.error) || 'Erreur');
 });
 
 $('login-btn').addEventListener('click', login);

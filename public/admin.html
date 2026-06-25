@@ -176,6 +176,20 @@
       </div>
 
       <div class="panel">
+        <h2>Accès du personnel (code du site)</h2>
+        <p style="color:var(--muted); margin:0 0 12px">Code unique demandé <strong>une fois par appareil</strong> pour accéder à tout le site (pointage, check-lists, cuisine). Le <strong>changer déconnecte tous les appareils</strong> — pratique quand quelqu'un part ou si le lien a fuité. Laisser vide = barrière désactivée.</p>
+        <div class="row">
+          <div class="field">
+            <label for="staff-code">Nouveau code (min. 4 caractères ; vide = désactivé)</label>
+            <input type="text" id="staff-code" autocomplete="off" placeholder="Ex. bistrot2026">
+          </div>
+          <button class="btn btn-blue" id="staff-code-btn" style="flex:0 0 auto">Enregistrer</button>
+        </div>
+        <div class="sub" id="staff-code-status" style="font-size:.85rem; margin-top:6px"></div>
+        <div class="msg" id="staff-code-msg"></div>
+      </div>
+
+      <div class="panel">
         <h2>Sauvegardes</h2>
         <p style="color:var(--muted); margin:0 0 12px">Télécharge une copie des bases sur ton appareil, à garder en lieu sûr <strong>hors de Render</strong> (par ex. une fois par semaine).</p>
         <div class="row" style="gap:8px; flex-wrap:wrap">
@@ -199,6 +213,6 @@
   </div>
 
   <script src="sortable.min.js"></script>
-  <script src="admin.js?v=15"></script>
+  <script src="admin.js?v=16"></script>
 </body>
 </html>

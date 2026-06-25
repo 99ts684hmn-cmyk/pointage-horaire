@@ -18,8 +18,44 @@ const COOKIE_NAME = 'ph_session';
 const ETABLISSEMENT = (process.env.ETABLISSEMENT || '').trim();
 // En production (HTTPS), sécuriser le cookie admin. Activé par COOKIE_SECURE=1.
 const COOKIE_SECURE = process.env.COOKIE_SECURE === '1' ? '; Secure' : '';
+const GATE_COOKIE = 'bc_access';
+// Anti-bruteforce simple, en mémoire : compte les échecs par clé (ip+action).
+const _attempts = new Map();
 
 app.use(express.json());
+
+// --- Barrière d'accès du personnel ---------------------------------------
+// Si un code d'accès est défini (réglage « staff_access_code »), TOUT le site
+// (pointage + /checklist + /cuisine) exige un cookie d'accès valide. Sans code,
+// la barrière est INACTIVE → déploiement non disruptif : on l'active en posant
+// un code depuis l'admin. Changer le code invalide tous les cookies existants.
+app.use((req, res, next) => {
+  const expected = gateToken();
+  if (!expected) return next();                 // pas de code → barrière inactive
+  if (req.path === '/api/gate') return next();  // endpoint de saisie du code
+  if (safeEq(parseCookies(req)[GATE_COOKIE], expected)) return next();
+  if (req.method === 'GET' && (req.headers.accept || '').includes('text/html')) {
+    res.set('Cache-Control', 'no-store');
+    return res.status(200).send(gatePage());
+  }
+  return res.status(401).json({ error: 'Accès non autorisé' });
+});
+app.post('/api/gate', (req, res) => {
+  const key = 'gate:' + clientIp(req);
+  if (tooMany(key)) return res.status(429).json({ error: 'Trop d\'essais. Réessayez dans quelques minutes.' });
+  const expected = gateToken();
+  if (!expected) return res.json({ ok: true });
+  const code = ((req.body && req.body.code) || '').trim();
+  const cand = code ? crypto.createHmac('sha256', getSetting('session_secret')).update('gate:' + code).digest('base64url') : '';
+  if (safeEq(cand, expected)) {
+    recordOk(key);
+    res.setHeader('Set-Cookie', `${GATE_COOKIE}=${expected}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${120 * 24 * 3600}${COOKIE_SECURE}`);
+    return res.json({ ok: true });
+  }
+  recordFail(key);
+  return res.status(401).json({ error: 'Code incorrect' });
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // --- Planning Cuisine : appli montée sous /cuisine ------------------------
@@ -50,6 +86,10 @@ try {
 // montage est sous try/catch, une panne ne doit jamais bloquer le pointage.
 try {
   const checklistApp = require('./checklist/server');
+  // On injecte le contrôle admin du POINTAGE : les actions structurelles des
+  // check-lists (créer/supprimer check-lists, tâches, employés) exigeront le
+  // même mot de passe admin que le pointage (cookie ph_session, Path=/).
+  checklistApp.locals.requireAdmin = requireAdmin;
   app.use((req, res, next) => {
     if (req.originalUrl === '/checklist') return res.redirect(301, '/checklist/');
     next();
@@ -78,6 +118,63 @@ function parseCookies(req) {
     out[part.slice(0, idx).trim()] = decodeURIComponent(part.slice(idx + 1).trim());
   }
   return out;
+}
+
+// Comparaison à temps constant tolérante (longueurs/valeurs nulles).
+function safeEq(a, b) {
+  if (!a || !b || a.length !== b.length) return false;
+  try { return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b)); } catch { return false; }
+}
+function clientIp(req) {
+  return String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'ip').split(',')[0].trim();
+}
+// Jeton attendu pour la barrière d'accès = HMAC(secret, code). Null si pas de code.
+function gateToken() {
+  const code = (getSetting('staff_access_code') || '').trim();
+  if (!code) return null;
+  return crypto.createHmac('sha256', getSetting('session_secret')).update('gate:' + code).digest('base64url');
+}
+// Anti-bruteforce : 8 échecs max par fenêtre de 10 min, puis blocage 10 min.
+function tooMany(key) {
+  const e = _attempts.get(key);
+  if (!e) return false;
+  if (Date.now() > e.until) { _attempts.delete(key); return false; }
+  return e.count >= 8;
+}
+function recordFail(key) {
+  const now = Date.now();
+  const e = _attempts.get(key);
+  if (!e || now > e.until) _attempts.set(key, { count: 1, until: now + 10 * 60 * 1000 });
+  else { e.count += 1; e.until = now + 10 * 60 * 1000; }
+}
+function recordOk(key) { _attempts.delete(key); }
+// Page « Entrez le code » (autonome, styles intégrés) servie quand la barrière
+// est active et que le cookie d'accès est absent/invalide.
+function gatePage() {
+  return '<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">'
+    + '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">'
+    + '<title>Accès — Bœuf &amp; Cow</title><style>'
+    + '*{box-sizing:border-box}body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;'
+    + 'background:#1f2120;color:#fff8f0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;padding:24px}'
+    + '.card{width:100%;max-width:360px;text-align:center}.logo{font-weight:800;font-size:1.5rem;letter-spacing:.04em;margin-bottom:6px}'
+    + '.logo .amp{color:#e9c46a}.sub{color:#b8b2a8;font-size:.9rem;margin-bottom:22px}'
+    + 'input{width:100%;padding:14px 16px;border-radius:12px;border:2px solid #3a3c3a;background:#2a2c2a;color:#fff8f0;'
+    + 'font-size:1.1rem;text-align:center;letter-spacing:.1em;font-family:inherit}'
+    + 'button{width:100%;margin-top:12px;padding:14px;border:0;border-radius:12px;background:#e9c46a;color:#1f2120;'
+    + 'font-weight:800;font-size:1rem;cursor:pointer;font-family:inherit}'
+    + '.err{color:#ff8f8f;font-size:.85rem;min-height:1.2em;margin-top:10px}</style></head><body><div class="card">'
+    + '<div class="logo">BŒUF <span class="amp">&amp;</span> COW</div>'
+    + '<div class="sub">Accès réservé au personnel</div>'
+    + '<input id="c" type="password" inputmode="text" autocomplete="off" placeholder="Code d\'accès" autofocus>'
+    + '<button id="b">Entrer</button><div class="err" id="e"></div></div><script>'
+    + 'var i=document.getElementById("c"),b=document.getElementById("b"),e=document.getElementById("e");'
+    + 'function go(){e.textContent="";b.disabled=true;'
+    + 'fetch("/api/gate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:i.value})})'
+    + '.then(function(r){if(r.ok){location.reload();return;}return r.json().then(function(d){'
+    + 'e.textContent=(d&&d.error)||"Code incorrect";b.disabled=false;i.select();});})'
+    + '.catch(function(){e.textContent="Erreur réseau";b.disabled=false;});}'
+    + 'b.addEventListener("click",go);i.addEventListener("keydown",function(ev){if(ev.key==="Enter")go();});'
+    + '</script></body></html>';
 }
 
 function signSession(payload) {
@@ -535,11 +632,15 @@ app.delete('/api/my-entries/:id', (req, res) => {
 // =========================================================================
 
 app.post('/api/admin/login', (req, res) => {
+  const key = 'login:' + clientIp(req);
+  if (tooMany(key)) return res.status(429).json({ error: 'Trop d\'essais. Réessayez dans quelques minutes.' });
   const { password } = req.body || {};
   const stored = getSetting('admin_password');
   if (!password || !verifySecret(password, stored)) {
+    recordFail(key);
     return res.status(403).json({ error: 'Mot de passe incorrect' });
   }
+  recordOk(key);
   const token = signSession({ role: 'admin', exp: Date.now() + 8 * 3600 * 1000 });
   res.setHeader('Set-Cookie',
     `${COOKIE_NAME}=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${8 * 3600}${COOKIE_SECURE}`);
@@ -582,6 +683,21 @@ app.put('/api/admin/establishment', requireAdmin, (req, res) => {
   const { name } = req.body || {};
   setSetting('establishment', String(name || '').trim());
   res.json({ ok: true });
+});
+
+// --- Code d'accès du personnel (barrière d'accès à tout le site) -----------
+// On n'expose jamais le code lui-même, seulement s'il est actif. Le poser/changer
+// invalide les cookies d'accès → tout le monde devra ressaisir le nouveau code.
+app.get('/api/admin/staff-code', requireAdmin, (req, res) => {
+  res.json({ enabled: !!(getSetting('staff_access_code') || '').trim() });
+});
+app.put('/api/admin/staff-code', requireAdmin, (req, res) => {
+  const c = String((req.body && req.body.code) == null ? '' : req.body.code).trim();
+  if (c && c.length < 4) {
+    return res.status(400).json({ error: 'Le code doit faire au moins 4 caractères (ou être vide pour désactiver la barrière).' });
+  }
+  setSetting('staff_access_code', c);
+  res.json({ ok: true, enabled: !!c });
 });
 
 // --- Téléchargement des sauvegardes (admin) -------------------------------

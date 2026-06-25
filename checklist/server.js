@@ -255,10 +255,19 @@ app.get('/api/templates', (req, res) => {
   res.json(templates);
 });
 
+// Verrou « admin check-lists » : délègue au contrôle injecté par le serveur
+// principal (même mot de passe que l'admin pointage). En exécution autonome
+// (pas d'injection), on laisse passer pour ne pas casser un lancement isolé.
+function requireAdmin(req, res, next) {
+  const fn = req.app.locals.requireAdmin;
+  if (typeof fn !== 'function') return next();
+  return fn(req, res, next);
+}
+
 // POST /api/templates — créer une nouvelle check-list (depuis l'admin)
 const RESET_MODES = ['AUTO_DAILY', 'CARRY_OVER', 'MANUAL', 'WEEKLY_CARRY_OVER', 'WEEKLY_MONDAY'];
 const CATEGORIES = ['general', 'manager', 'bar', 'cuisine', 'resp_cuisine'];
-app.post('/api/templates', (req, res) => {
+app.post('/api/templates', requireAdmin, (req, res) => {
   const b = req.body || {};
   const name = (b.name || '').trim();
   if (!name) return res.status(400).json({ error: 'Nom requis' });
@@ -276,13 +285,13 @@ app.post('/api/templates', (req, res) => {
 
 // DELETE /api/templates/:id — désactiver une check-list (soft delete : l'historique
 // des sessions/coches reste en base, la check-list disparaît simplement de l'app).
-app.delete('/api/templates/:id', (req, res) => {
+app.delete('/api/templates/:id', requireAdmin, (req, res) => {
   db.prepare('UPDATE templates SET is_active = 0 WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
 });
 
 // PATCH /api/templates/:id — renommer (et/ou changer l'icône) une check-list.
-app.patch('/api/templates/:id', (req, res) => {
+app.patch('/api/templates/:id', requireAdmin, (req, res) => {
   const b = req.body || {};
   const sets = [];
   const args = [];
@@ -296,7 +305,7 @@ app.patch('/api/templates/:id', (req, res) => {
 });
 
 // POST /api/templates/:id/tasks — ajouter une tâche
-app.post('/api/templates/:id/tasks', (req, res) => {
+app.post('/api/templates/:id/tasks', requireAdmin, (req, res) => {
   const title = (req.body && req.body.title || '').trim();
   if (!title) return res.status(400).json({ error: 'Titre requis' });
   const last = db.prepare('SELECT MAX(ord) m FROM tasks WHERE template_id = ?').get(req.params.id);
@@ -311,7 +320,7 @@ app.post('/api/templates/:id/tasks', (req, res) => {
 });
 
 // PUT /api/templates/:id/tasks/order — réordonner les tâches (glisser-déposer)
-app.put('/api/templates/:id/tasks/order', (req, res) => {
+app.put('/api/templates/:id/tasks/order', requireAdmin, (req, res) => {
   const order = req.body && req.body.order;
   if (!Array.isArray(order)) return res.status(400).json({ error: 'Format invalide' });
   const upd = db.prepare('UPDATE tasks SET ord = ? WHERE id = ? AND template_id = ?');
@@ -320,7 +329,7 @@ app.put('/api/templates/:id/tasks/order', (req, res) => {
 });
 
 // PUT /api/templates/order — réordonner les check-lists (glisser-déposer admin).
-app.put('/api/templates/order', (req, res) => {
+app.put('/api/templates/order', requireAdmin, (req, res) => {
   const order = req.body && req.body.order;
   if (!Array.isArray(order)) return res.status(400).json({ error: 'Format invalide' });
   const upd = db.prepare('UPDATE templates SET ord = ? WHERE id = ?');
@@ -329,7 +338,7 @@ app.put('/api/templates/order', (req, res) => {
 });
 
 // PATCH /api/tasks/:id — renommer et/ou changer les jours programmés (days)
-app.patch('/api/tasks/:id', (req, res) => {
+app.patch('/api/tasks/:id', requireAdmin, (req, res) => {
   const b = req.body || {};
   if (typeof b.days === 'string') {
     // Normalise "1,3,5" (jours 1-7 uniques, triés). Chaîne vide = aucun jour.
@@ -345,7 +354,7 @@ app.patch('/api/tasks/:id', (req, res) => {
 });
 
 // DELETE /api/tasks/:id — désactiver (soft delete)
-app.delete('/api/tasks/:id', (req, res) => {
+app.delete('/api/tasks/:id', requireAdmin, (req, res) => {
   db.prepare('UPDATE tasks SET is_active = 0 WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
 });
@@ -354,14 +363,14 @@ app.delete('/api/tasks/:id', (req, res) => {
 app.get('/api/employees', (req, res) => {
   res.json(db.prepare('SELECT id, name FROM employees WHERE is_active = 1 ORDER BY name ASC').all());
 });
-app.post('/api/employees', (req, res) => {
+app.post('/api/employees', requireAdmin, (req, res) => {
   const name = (req.body && req.body.name || '').trim();
   if (!name) return res.status(400).json({ error: 'Nom requis' });
   const id = uid();
   db.prepare('INSERT INTO employees(id,name,is_active) VALUES(?,?,1)').run(id, name);
   res.status(201).json({ id, name });
 });
-app.delete('/api/employees/:id', (req, res) => {
+app.delete('/api/employees/:id', requireAdmin, (req, res) => {
   db.prepare('UPDATE employees SET is_active = 0 WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
 });

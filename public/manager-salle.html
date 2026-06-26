@@ -47,6 +47,20 @@
     .gate input{width:100%;border:1.5px solid var(--card-border);border-radius:11px;padding:12px 14px;font-size:.95rem;background:rgba(0,0,0,.2);color:var(--cream);font-family:inherit}
     .gate button{width:100%;margin-top:12px;border:0;border-radius:11px;padding:12px;font-weight:700;font-size:.95rem;background:var(--gold);color:#1f2120;cursor:pointer;font-family:inherit}
     .gate .err{color:#f0999b;font-size:.85rem;margin-top:10px;min-height:1em}
+    /* Bandeau aperçu (identique à la cuisine) : prochains groupes + menu de la semaine */
+    .apercu{width:100%;max-width:720px;display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:0 0 22px}
+    @media (max-width:620px){.apercu{grid-template-columns:1fr}}
+    .ap-col{background:rgba(0,0,0,.28);border:1px solid rgba(197,157,95,.25);border-radius:14px;padding:14px 16px}
+    .ap-title{color:var(--gold);font-weight:800;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+    .ap-line{display:flex;gap:10px;justify-content:space-between;padding:6px 0;font-size:.9rem;border-top:1px solid rgba(255,255,255,.06)}
+    .ap-line:first-child{border-top:0}
+    .ap-d{color:var(--gold);font-weight:700;white-space:nowrap}
+    .ap-when{font-weight:600;font-size:.8rem;color:rgba(255,248,240,.45)}
+    .ap-when.soon{color:var(--gold)}
+    .ap-n{color:var(--cream);text-align:right}
+    .ap-lbl{color:rgba(255,248,240,.6);font-weight:700}
+    .ap-v{color:var(--cream);text-align:right}
+    .ap-empty{color:rgba(255,248,240,.45);font-size:.85rem}
   </style>
 </head>
 <body>
@@ -61,6 +75,17 @@
     <button id="login-btn">Entrer</button>
     <div class="err" id="err"></div>
   </div>
+
+  <section class="apercu" id="apercu" hidden>
+    <div class="ap-col">
+      <div class="ap-title">👥 Prochains groupes</div>
+      <div id="ap-groupes"></div>
+    </div>
+    <div class="ap-col">
+      <div class="ap-title" id="ap-menu-title">📋 Menu de la semaine</div>
+      <div id="ap-menu"></div>
+    </div>
+  </section>
 
   <main class="grid" id="tiles" hidden>
     <a class="tile" href="/checklist/rapports.html?scope=salle">
@@ -88,8 +113,44 @@
   <script>
     var gate = document.getElementById('gate');
     var tiles = document.getElementById('tiles');
+    var apercu = document.getElementById('apercu');
     var err = document.getElementById('err');
-    function showTiles(ok) { tiles.hidden = !ok; gate.hidden = ok; if (!ok) document.getElementById('pw').focus(); }
+    function showTiles(ok) {
+      tiles.hidden = !ok; gate.hidden = ok;
+      if (ok) loadApercu(); else { apercu.hidden = true; document.getElementById('pw').focus(); }
+    }
+
+    // --- Bandeau aperçu (mêmes données et rendu que la page Cuisine) ----------
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
+    var DOW = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+    function dayHead(iso) { var d = new Date(iso + 'T12:00:00'); var p = iso.split('-'); return DOW[d.getDay()] + ' ' + p[2] + '/' + p[1]; }
+    function daysUntil(iso) { var t = new Date(); t.setHours(0, 0, 0, 0); return Math.round((new Date(iso + 'T00:00:00') - t) / 86400000); }
+    function whenInfo(iso) { var n = daysUntil(iso); if (n <= 0) return { txt: "aujourd'hui", soon: true }; if (n === 1) return { txt: 'demain', soon: true }; return { txt: 'dans ' + n + ' j', soon: false }; }
+    function menuLine(label, a, b) {
+      var parts = [a, b].filter(function (v) { return v && v.trim(); });
+      return '<div class="ap-line"><span class="ap-lbl">' + label + '</span><span class="ap-v">' + (parts.length ? parts.map(esc).join(' · ') : '—') + '</span></div>';
+    }
+    function loadApercu() {
+      fetch('/checklist/api/menus/apercu').then(function (r) { return r.json(); }).then(function (d) {
+        var cells = d.menu || {};
+        var grp = Array.isArray(d.groupes) ? d.groupes : [];
+        document.getElementById('ap-groupes').innerHTML = grp.length
+          ? grp.map(function (g) {
+            var w = whenInfo(g.date);
+            return '<div class="ap-line"><span class="ap-d">' + dayHead(g.date) + ' <span class="ap-when' + (w.soon ? ' soon' : '') + '">' + w.txt + '</span></span><span class="ap-n">' + esc(g.nom) + (g.pers ? ' · ' + esc(g.pers) + ' pers' : '') + '</span></div>';
+          }).join('')
+          : '<div class="ap-empty">Aucun groupe à venir</div>';
+        var mt = document.getElementById('ap-menu-title');
+        if (mt) mt.textContent = d.menuNextWeek ? '📋 Menu de la semaine prochaine' : '📋 Menu de la semaine';
+        var hasMenu = ['debut_entree', 'fin_entree', 'debut_pj', 'fin_pj', 'debut_dessert', 'fin_dessert'].some(function (k) { return (cells[k] || '').trim(); });
+        document.getElementById('ap-menu').innerHTML = hasMenu
+          ? menuLine('Entrées', cells.debut_entree, cells.fin_entree)
+            + menuLine('Plats', cells.debut_pj, cells.fin_pj)
+            + menuLine('Desserts', cells.debut_dessert, cells.fin_dessert)
+          : '<div class="ap-empty">Menu de la semaine non renseigné</div>';
+        apercu.hidden = false;
+      }).catch(function () { /* en cas d'erreur, on n'affiche simplement pas le bandeau */ });
+    }
     async function login() {
       err.textContent = '';
       var pw = document.getElementById('pw').value;

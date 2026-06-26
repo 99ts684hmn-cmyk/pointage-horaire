@@ -130,6 +130,20 @@
       var parts = [a, b].filter(function (v) { return v && v.trim(); });
       return '<div class="ap-line"><span class="ap-lbl">' + label + '</span><span class="ap-v">' + (parts.length ? parts.map(esc).join(' · ') : '—') + '</span></div>';
     }
+    function buildMenuText(cells, title) {
+      var lines = [title];
+      function add(label, a, b) { var p = [a, b].filter(function (v) { return v && v.trim(); }); if (p.length) lines.push(label + ' : ' + p.join(' · ')); }
+      add('Entrées', cells.debut_entree, cells.fin_entree);
+      add('Plats', cells.debut_pj, cells.fin_pj);
+      add('Desserts', cells.debut_dessert, cells.fin_dessert);
+      return lines.join('\n');
+    }
+    function copyText(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
+      return new Promise(function (resolve, reject) {
+        try { var ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.focus(); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); resolve(); } catch (e) { reject(e); }
+      });
+    }
     function loadApercu() {
       fetch('/checklist/api/menus/apercu').then(function (r) { return r.json(); }).then(function (d) {
         var cells = d.menu || {};
@@ -140,14 +154,25 @@
             return '<div class="ap-line"><span class="ap-d">' + dayHead(g.date) + ' <span class="ap-when' + (w.soon ? ' soon' : '') + '">' + w.txt + '</span></span><span class="ap-n">' + esc(g.nom) + (g.pers ? ' · ' + esc(g.pers) + ' pers' : '') + '</span></div>';
           }).join('')
           : '<div class="ap-empty">Aucun groupe à venir</div>';
+        var menuTitle = d.menuNextWeek ? '📋 Menu de la semaine prochaine' : '📋 Menu de la semaine';
         var mt = document.getElementById('ap-menu-title');
-        if (mt) mt.textContent = d.menuNextWeek ? '📋 Menu de la semaine prochaine' : '📋 Menu de la semaine';
+        if (mt) mt.textContent = menuTitle;
         var hasMenu = ['debut_entree', 'fin_entree', 'debut_pj', 'fin_pj', 'debut_dessert', 'fin_dessert'].some(function (k) { return (cells[k] || '').trim(); });
         document.getElementById('ap-menu').innerHTML = hasMenu
           ? menuLine('Entrées', cells.debut_entree, cells.fin_entree)
             + menuLine('Plats', cells.debut_pj, cells.fin_pj)
             + menuLine('Desserts', cells.debut_dessert, cells.fin_dessert)
           : '<div class="ap-empty">Menu de la semaine non renseigné</div>';
+        var menuCol = document.getElementById('ap-menu').closest('.ap-col');
+        if (menuCol && hasMenu) {
+          menuCol.style.cursor = 'pointer';
+          menuCol.title = 'Cliquer pour copier le menu (prêt à coller dans un message)';
+          menuCol.onclick = function () {
+            copyText(buildMenuText(cells, menuTitle)).then(function () {
+              if (mt) { mt.textContent = '✅ Menu copié !'; setTimeout(function () { mt.textContent = menuTitle; }, 1400); }
+            }).catch(function () {});
+          };
+        }
         apercu.hidden = false;
       }).catch(function () { /* en cas d'erreur, on n'affiche simplement pas le bandeau */ });
     }

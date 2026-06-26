@@ -56,7 +56,8 @@ function menuTable(monday) {
     const tds = MENU_COLS.map(([col]) => {
       const slot = `${col}_${row}`;
       const v = (data.cells[monday] && data.cells[monday][slot]) || '';
-      return `<td><textarea rows="1" data-date="${monday}" data-slot="${slot}">${esc(v)}</textarea></td>`;
+      const pinned = !!(data.pins && data.pins[monday] && data.pins[monday][slot]);
+      return `<td class="mcell"><input type="checkbox" class="pin-chk" data-date="${monday}" data-slot="${slot}"${pinned ? ' checked' : ''} title="Cocher pour afficher cette case dans le bandeau (cuisine + managers salle)"><textarea rows="1" data-date="${monday}" data-slot="${slot}">${esc(v)}</textarea></td>`;
     }).join('');
     return `<tr><td class="lbl">${esc(label)}</td>${tds}</tr>`;
   }).join('');
@@ -176,6 +177,7 @@ function render() {
     t.addEventListener('input', () => autoGrow(t));
     t.addEventListener('change', () => saveCell(t));
   });
+  content.querySelectorAll('.pin-chk').forEach((c) => c.addEventListener('change', () => savePin(c)));
   content.querySelectorAll('.g-item').forEach((b) => b.addEventListener('click', () => openGroup(b.dataset.date, parseInt(b.dataset.index, 10))));
   content.querySelectorAll('.g-add').forEach((b) => b.addEventListener('click', () => openGroup(b.dataset.date, null)));
   const prev = document.getElementById('g-prev'); if (prev) prev.addEventListener('click', () => reloadGroupes(addDaysIso(data.groupStart, -7)));
@@ -215,6 +217,17 @@ async function saveCell(t) {
   try {
     await fetch('api/menus/cell', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date, slot, value }) });
     t.classList.remove('saved-flash'); void t.offsetWidth; t.classList.add('saved-flash');
+  } catch (e) { /* gardé localement */ }
+}
+
+// Épingle / désépingle une case (affichée ou non dans le bandeau aperçu).
+async function savePin(c) {
+  const date = c.dataset.date; const slot = c.dataset.slot; const pinned = c.checked;
+  if (!data.pins) data.pins = {};
+  if (!data.pins[date]) data.pins[date] = {};
+  if (pinned) data.pins[date][slot] = 1; else delete data.pins[date][slot];
+  try {
+    await fetch('api/menus/pin', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date, slot, pinned }) });
   } catch (e) { /* gardé localement */ }
 }
 

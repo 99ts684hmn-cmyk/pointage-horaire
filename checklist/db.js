@@ -147,6 +147,11 @@ if (!db.prepare('PRAGMA table_info(templates)').all().some((c) => c.name === 'ca
 if (!db.prepare('PRAGMA table_info(tasks)').all().some((c) => c.name === 'days')) {
   db.exec('ALTER TABLE tasks ADD COLUMN days TEXT');
 }
+// Colonne « pinned » des cases de menu : 1 = case épinglée → affichée dans le
+// bandeau aperçu (cuisine + managers salle). Par défaut 0 (non affichée).
+if (!db.prepare('PRAGMA table_info(menu_cells)').all().some((c) => c.name === 'pinned')) {
+  db.exec('ALTER TABLE menu_cells ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0');
+}
 
 const uid = () => crypto.randomUUID();
 const nowISO = () => new Date().toISOString();

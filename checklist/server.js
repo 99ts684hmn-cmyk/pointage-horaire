@@ -523,11 +523,15 @@ app.get('/api/menus', (req, res) => {
   const groupes = Array.from({ length: 7 }, (_, i) => addDays(gStart, i));
   const dates = [...new Set([m1, m2, m3, ...groupes])];
   const rows = dates.length
-    ? db.prepare(`SELECT date, slot, value FROM menu_cells WHERE date IN (${dates.map(() => '?').join(',')})`).all(...dates)
+    ? db.prepare(`SELECT date, slot, value, pinned FROM menu_cells WHERE date IN (${dates.map(() => '?').join(',')})`).all(...dates)
     : [];
   const cells = {};
-  for (const r of rows) { (cells[r.date] = cells[r.date] || {})[r.slot] = r.value; }
-  res.json({ semaineMonday: m1, semaineProMonday: m2, semaineSuivMonday: m3, today, groupStart: gStart, groupes, cells });
+  const pins = {}; // { date: { slot: 1 } } — cases épinglées (affichées au bandeau)
+  for (const r of rows) {
+    (cells[r.date] = cells[r.date] || {})[r.slot] = r.value;
+    if (r.pinned) (pins[r.date] = pins[r.date] || {})[r.slot] = 1;
+  }
+  res.json({ semaineMonday: m1, semaineProMonday: m2, semaineSuivMonday: m3, today, groupStart: gStart, groupes, cells, pins });
 });
 
 // GET /api/menus/recap — tout l'historique, par date décroissante.
@@ -555,7 +559,8 @@ app.get('/api/menus/apercu', (req, res) => {
   const dow = getDayOfWeek(today); // 1=lundi..7=dimanche
   const menuNextWeek = (dow === 6 && hourParis() >= 8) || dow === 7;
   const menuMonday = menuNextWeek ? m2 : m1;
-  const menuRows = db.prepare('SELECT slot, value FROM menu_cells WHERE date = ?').all(menuMonday);
+  // Bandeau : on n'affiche QUE les cases épinglées (pinned = 1) et non vides.
+  const menuRows = db.prepare("SELECT slot, value FROM menu_cells WHERE date = ? AND pinned = 1 AND TRIM(value) <> ''").all(menuMonday);
   const menu = {};
   menuRows.forEach((r) => { if (r.slot !== 'groupe') menu[r.slot] = r.value; });
 
@@ -605,6 +610,22 @@ app.put('/api/menus/cell', (req, res) => {
   const id = uid();
   db.prepare('INSERT INTO menu_cells(id,date,slot,value,updated_at) VALUES(?,?,?,?,?)').run(id, date, slot, value, nowISO());
   res.status(201).json({ ok: true, id });
+});
+
+// PUT /api/menus/pin — épingler / désépingler une case (affichée au bandeau aperçu).
+app.put('/api/menus/pin', (req, res) => {
+  const b = req.body || {};
+  const date = String(b.date || '').trim();
+  const slot = String(b.slot || '').trim();
+  const pinned = b.pinned ? 1 : 0;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !slot) return res.status(400).json({ error: 'Paramètres invalides' });
+  const existing = db.prepare('SELECT id FROM menu_cells WHERE date = ? AND slot = ?').get(date, slot);
+  if (existing) {
+    db.prepare('UPDATE menu_cells SET pinned = ?, updated_at = ? WHERE id = ?').run(pinned, nowISO(), existing.id);
+  } else {
+    db.prepare('INSERT INTO menu_cells(id,date,slot,value,pinned,updated_at) VALUES(?,?,?,?,?,?)').run(uid(), date, slot, '', pinned, nowISO());
+  }
+  res.json({ ok: true, pinned: !!pinned });
 });
 
 // =========================================================================

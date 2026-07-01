@@ -306,8 +306,12 @@ function openProfile(empId) {
   const thisMonday = localISO(weekBounds(new Date()).monday);
   profileModal.innerHTML = `
     <h2>${escapeHtml(emp.name)}</h2>
-    <div class="sub">Profil — repos &amp; service</div>
+    <div class="sub">Profil — nom, repos &amp; service</div>
     <div class="field">
+      <label for="pf-name">Nom du salarié</label>
+      <input type="text" id="pf-name" value="${escapeHtml(emp.name)}" autocomplete="off">
+    </div>
+    <div class="field" style="margin-top:10px">
       <label>Jours de repos hebdomadaires</label>
       <div class="preset-chips" id="pf-rest">
         ${DOW.map((d) => `<button type="button" class="chip ${rest.has(d.n) ? 'active' : ''}" data-d="${d.n}">${d.l}</button>`).join('')}
@@ -334,12 +338,14 @@ function openProfile(empId) {
     c.addEventListener('click', () => c.classList.toggle('active'));
   });
   profileModal.querySelector('#pf-save').addEventListener('click', async () => {
+    const name = profileModal.querySelector('#pf-name').value.trim();
+    if (!name) { const m = $('pf-msg'); m.textContent = 'Le nom ne peut pas être vide.'; m.className = 'msg show error'; return; }
     const restDays = [...profileModal.querySelectorAll('#pf-rest .chip.active')].map((c) => Number(c.dataset.d));
     const restDaysFrom = profileModal.querySelector('#pf-from').value;
     const continuous = profileModal.querySelector('#pf-continu').checked;
     const { ok, data } = await api(`/api/admin/employees/${empId}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ restDays, restDaysFrom, continuous }),
+      body: JSON.stringify({ name, restDays, restDaysFrom, continuous }),
     });
     if (!ok) { const m = $('pf-msg'); m.textContent = (data && data.error) || 'Erreur'; m.className = 'msg show error'; return; }
     profileOverlay.classList.remove('show');

@@ -131,7 +131,10 @@
         } else {
           const fmt = (s) => (s.open ? fmtTime(s.clockIn) : `${fmtTime(s.clockIn)}–${fmtTime(s.clockOut)}`);
           const { cont, midi, soir } = hasHours ? classifyDay(day.segments) : { cont: [], midi: [], soir: [] };
-          const isCont = hasHours && (emp.continuous || cont.length > 0);
+          // Continu (rouge plein) seulement si la journée l'est VRAIMENT (mêmes
+          // règles que l'admin : coupure visible ou demi/½CP => demi-cases).
+          const isCont = hasHours && (cont.length > 0
+            || (emp.continuous && !(midi.length && soir.length) && !demiMidi && !demiSoir && !demiCpMidi && !demiCpSoir));
           let stack;
           if (isCont) {
             stack = `<div class="pl-half pl-cont">${day.segments.map(fmt).join('<br>')}</div>`;

@@ -610,7 +610,11 @@ function renderPlanning() {
             ? ' <span class="pl-c" title="Plus de 7h en continu">C</span>' : '');
           const fmt = (s) => (s.open ? fmtTime(s.clockIn) : `${fmtTime(s.clockIn)}–${fmtTime(s.clockOut)}`) + cMark(s);
           const { cont, midi, soir } = hasHours ? classifyDay(day.segments) : { cont: [], midi: [], soir: [] };
-          const isCont = hasHours && (emp.continuous || cont.length > 0);
+          // Continu (rouge plein) seulement si la journée l'est VRAIMENT : segment
+          // couvrant les deux services, ou profil « continu » sans coupure visible
+          // ni demi posée ce jour-là.
+          const isCont = hasHours && (cont.length > 0
+            || (emp.continuous && !(midi.length && soir.length) && !demiMidi && !demiSoir));
           const pmKey = posteOf[emp.id + '|' + d + '|midi'];
           const psKey = posteOf[emp.id + '|' + d + '|soir'];
           // Liseré sur les affectations manuelles (≠ automatiques).

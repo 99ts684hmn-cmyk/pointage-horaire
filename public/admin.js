@@ -713,7 +713,11 @@ function renderPlanning() {
           // demi manuel → croix sur le service non travaillé.
           const fmt = (s) => (s.open ? fmtTime(s.clockIn) : `${fmtTime(s.clockIn)}–${fmtTime(s.clockOut)}`);
           const { cont, midi, soir } = hasHours ? classifyDay(day.segments) : { cont: [], midi: [], soir: [] };
-          const isCont = hasHours && (emp.continuous || cont.length > 0);
+          // Continu (rouge plein) seulement si la journée l'est VRAIMENT : un segment
+          // couvrant les deux services, ou profil « continu » SANS coupure visible
+          // (midi ET soir saisis séparément) ni demi/½CP posé ce jour-là.
+          const isCont = hasHours && (cont.length > 0
+            || (emp.continuous && !(midi.length && soir.length) && !demiMidi && !demiSoir && !demiCpMidi && !demiCpSoir));
           let stack;
           if (isCont) {
             const body = planningNoHours ? '' : day.segments.map(fmt).join('<br>');

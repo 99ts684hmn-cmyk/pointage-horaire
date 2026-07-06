@@ -1379,7 +1379,7 @@ function openGroupArrival() {
     <div class="field"><label for="grp-day">Jour</label><select id="grp-day">${dayOpts}</select></div>
     <div class="field" style="margin-bottom:6px">
       <label for="grp-time">Heure d'arrivée</label>
-      <input type="time" id="grp-time" value="11:50">
+      <input type="time" id="grp-time" value="11:45">
       <div class="preset-chips" id="grp-chips"></div>
     </div>
     <div class="grp-list" id="grp-list"></div>
@@ -1388,7 +1388,7 @@ function openGroupArrival() {
       <button class="btn btn-green" id="grp-save">Enregistrer l'arrivée</button>
       <button class="btn btn-ghost" id="grp-cancel">Annuler</button>
     </div>`;
-  fillChips(cellModal.querySelector('#grp-chips'), ['11:50', '18:00', '18:50'], cellModal.querySelector('#grp-time'));
+  fillChips(cellModal.querySelector('#grp-chips'), ['11:45', '18:00', '18:45'], cellModal.querySelector('#grp-time'));
   const daySel = cellModal.querySelector('#grp-day');
   const refreshList = () => {
     const list = cellModal.querySelector('#grp-list');
@@ -1549,8 +1549,8 @@ $('audit-demi-btn').addEventListener('click', openDemiAudit);
 // --- Éditeur de case du planning ------------------------------------------
 // Raccourcis d'horaires d'arrivée proposés dans l'éditeur de case (deux services).
 // Les départs se saisissent manuellement (pas de raccourcis).
-const ARR_MORNING = ['09:00', '09:30', '10:00', '10:30', '11:00', '11:50'];
-const ARR_EVENING = ['17:00', '17:30', '18:00', '18:50'];
+const ARR_MORNING = ['09:00', '09:30', '10:00', '10:30', '11:00', '11:45'];
+const ARR_EVENING = ['17:00', '17:30', '18:00', '18:45'];
 
 // Sélecteurs d'heure défilants : heures de 8h à 2h (en passant par la nuit), minutes 00/15/30/45/50.
 const HOUR_ORDER = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2];

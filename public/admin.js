@@ -690,6 +690,16 @@ function renderPlanning() {
       let demiCount = 0; // nombre de demi-journées (un seul service) sur la semaine
       let cpBonusSec = 0; // heures créditées : CP/École/AM (7h/jour) + ½ CP (3h/4h)
       let awayDays = 0; // jours CP/École/AM crédités cette semaine (plafond : 5)
+      // Semaine à 6 ou 7 jours posés (CP/École/AM sans heures) : rien n'est
+      // crédité au total (même règle que l'exclusion de la moyenne).
+      let posedCount = 0;
+      for (const d of days) {
+        const st = statusMap.get(emp.id + '|' + d);
+        if (st === 'cp' || st === 'ecole' || st === 'am') {
+          const dd = rep && rep.days.find((x) => x.day === d);
+          if (!(dd && dd.segments.length)) posedCount++;
+        }
+      }
       for (const d of days) {
         const day = rep && rep.days.find((x) => x.day === d);
         const hasHours = !!(day && day.segments.length);
@@ -706,9 +716,9 @@ function renderPlanning() {
           inner = `<span class="pl-status-lbl">${STATUS_SHORT[awayStatus]}</span>`;
           fillCls = ` pl-statusfill st-${awayStatus}`;
           // CP / École / AM = 7h créditées au total du jour et de la semaine,
-          // SAUF sur un jour de repos (0h, comme un repos) et au-delà de
-          // 5 jours crédités dans la semaine (plafond 35h). Absent = 0h.
-          if ((awayStatus === 'cp' || awayStatus === 'ecole' || awayStatus === 'am') && !isRest && awayDays < 5) {
+          // SAUF : jour de repos (0h), plafond de 5 jours crédités (35h), et
+          // semaine à 6-7 jours posés (rien n'est crédité). Absent = 0h.
+          if ((awayStatus === 'cp' || awayStatus === 'ecole' || awayStatus === 'am') && !isRest && awayDays < 5 && posedCount < 6) {
             awayDays += 1; dayTotals[d] += 7 * 3600; cpBonusSec += 7 * 3600;
           }
         } else if (isRest && !hasHours) {

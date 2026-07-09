@@ -1210,12 +1210,31 @@ app.get('/api/admin/avg-hours', requireAdmin, (req, res) => {
       worked[emp.employeeId][wk] = (worked[emp.employeeId][wk] || 0) + d.seconds;
     }
   }
-  const cpEcole = {}; // empId -> { weekMon -> nb jours CP/École }
+  // Périodes de repos par salarié (AM posé sur un jour de repos = 0h, comme un repos).
+  const restByEmp = {};
+  for (const e of db.prepare('SELECT id, rest_days FROM employees').all()) restByEmp[e.id] = parseRestPeriods(e.rest_days);
+  // Jours ayant des heures réelles : un statut posé dessus ne crédite PAS 7h en
+  // plus (même règle que l'affichage du planning, qui ignore le statut si heures).
+  const workedDay = new Set();
+  for (const emp of report) {
+    for (const d of emp.days) {
+      // Un jour avec des heures saisies — même une arrivée encore ouverte —
+      // est un jour travaillé (même règle que l'affichage du planning).
+      if (d.segments && d.segments.length) workedDay.add(emp.employeeId + '|' + d.day);
+    }
+  }
+
+  const cpEcole = {}; // empId -> { weekMon -> nb jours CP/École/AM valorisés 7h }
   const halfCp = {}; // empId -> { weekMon -> secondes de ½ CP (3h midi / 4h soir) }
   const HALF_CP_SEC = { demi_cp_midi: 3 * 3600, demi_cp_soir: 4 * 3600 };
   for (const s of statuses) {
     const wk = mondayStr(s.day);
-    if (s.status === 'cp' || s.status === 'ecole') {
+    if (s.status === 'cp' || s.status === 'ecole' || s.status === 'am') {
+      if (workedDay.has(s.employee_id + '|' + s.day)) continue; // jour travaillé → pas de double compte
+      if (s.status === 'am') {
+        const wd = new Date(`${s.day}T12:00:00`).getDay();
+        if (restDaysOn(restByEmp[s.employee_id] || [], s.day).includes(wd)) continue; // AM sur repos → 0h
+      }
       cpEcole[s.employee_id] = cpEcole[s.employee_id] || {};
       cpEcole[s.employee_id][wk] = (cpEcole[s.employee_id][wk] || 0) + 1;
     } else if (HALF_CP_SEC[s.status]) {
@@ -1232,7 +1251,7 @@ app.get('/api/admin/avg-hours', requireAdmin, (req, res) => {
       const w = (worked[id] && worked[id][wk]) || 0;
       const cp = (cpEcole[id] && cpEcole[id][wk]) || 0;
       const hcp = (halfCp[id] && halfCp[id][wk]) || 0;
-      if (cp >= 6) continue; // semaine complète CP/École → exclue
+      if (cp >= 6) continue; // semaine complète CP/École/AM → exclue
       if (w === 0 && cp === 0 && hcp === 0) continue; // semaine vide → ignorée
       sum += w + cp * 7 * 3600 + hcp;
       n += 1;
@@ -1257,8 +1276,6 @@ app.get('/api/admin/avg-hours', requireAdmin, (req, res) => {
       pres[k] = pres[k] || { midi: 0, soir: 0 };
       if (new Date(r.clock_in).getHours() < 17) pres[k].midi++; else pres[k].soir++;
     }
-    const restByEmp = {};
-    for (const e of db.prepare('SELECT id, rest_days FROM employees').all()) restByEmp[e.id] = parseRestPeriods(e.rest_days);
     for (const s of demiRows) {
       const p = pres[s.employee_id + '|' + s.day] || { midi: 0, soir: 0 };
       const has = (p.midi + p.soir) > 0;

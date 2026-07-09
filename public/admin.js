@@ -654,7 +654,7 @@ function renderPlanning() {
   for (const d of days) html += `<th class="pl-day-head" data-day="${d}" title="Cliquer pour copier les arrivées du jour">${planningDayLabel(d)}</th>`;
   html += planningNoHours
     ? '<th></th><th></th><th></th><th></th></tr></thead><tbody>'
-    : '<th style="text-align:right">Total</th><th style="text-align:right" title="Moyenne des heures hebdomadaires depuis le 01/06 (semaines terminées ; CP/École = 7h/jour ; semaine complète CP/École exclue)">Moy. /sem</th><th style="text-align:right" title="Demi-journées (demi midi / demi soir) comptées du 01/06 au dernier jour de la semaine affichée — au-delà (futur) non compté">Demis</th><th class="pl-info-head" title="Note libre par salarié pour la semaine affichée">Infos</th></tr></thead><tbody>';
+    : '<th style="text-align:right">Total</th><th style="text-align:right" title="Moyenne des heures hebdomadaires depuis le 01/06 (semaines terminées ; CP/École/AM = 7h/jour, AM sur jour de repos = 0h ; semaine complète CP/École/AM exclue)">Moy. /sem</th><th style="text-align:right" title="Demi-journées (demi midi / demi soir) comptées du 01/06 au dernier jour de la semaine affichée — au-delà (futur) non compté">Demis</th><th class="pl-info-head" title="Note libre par salarié pour la semaine affichée">Infos</th></tr></thead><tbody>';
 
   const dayTotals = {};
   const midiCount = {};
@@ -688,7 +688,7 @@ function renderPlanning() {
       const rep = byId.get(emp.id);
       let dayCells = '';
       let demiCount = 0; // nombre de demi-journées (un seul service) sur la semaine
-      let cpBonusSec = 0; // heures de ½ CP (3h midi / 4h soir) à créditer cette semaine
+      let cpBonusSec = 0; // heures créditées : CP/École/AM (7h/jour) + ½ CP (3h/4h)
       for (const d of days) {
         const day = rep && rep.days.find((x) => x.day === d);
         const hasHours = !!(day && day.segments.length);
@@ -704,6 +704,11 @@ function renderPlanning() {
         if (awayStatus && !hasHours) {
           inner = `<span class="pl-status-lbl">${STATUS_SHORT[awayStatus]}</span>`;
           fillCls = ` pl-statusfill st-${awayStatus}`;
+          // CP / École / AM = 7h créditées au total du jour et de la semaine.
+          // AM posé sur un jour de repos = 0h (comme un repos). Absent = 0h.
+          if (awayStatus === 'cp' || awayStatus === 'ecole' || (awayStatus === 'am' && !isRest)) {
+            dayTotals[d] += 7 * 3600; cpBonusSec += 7 * 3600;
+          }
         } else if (isRest && !hasHours) {
           inner = CROSS_SVG;
           fillCls = ' pl-rest';
@@ -773,7 +778,7 @@ function renderPlanning() {
         const cls = 'pl-cell pl-click' + fillCls;
         dayCells += `<td class="${cls}" data-emp="${emp.id}" data-day="${d}">${exchangeMark}${inner}</td>`;
       }
-      const tot = (rep ? rep.totalSeconds : 0) + cpBonusSec; // + heures de ½ CP de la semaine
+      const tot = (rep ? rep.totalSeconds : 0) + cpBonusSec; // + CP/École/AM (7h) et ½ CP
       grand += tot;
       const nameCell = `<td class="pl-name"><div class="pl-name-inner"><span class="pl-name-txt">${escapeHtml(emp.name)}</span>`
         + (demiCount ? `<span class="pl-demi-count" title="${demiCount} demi cette semaine">${demiCount}</span>` : '')

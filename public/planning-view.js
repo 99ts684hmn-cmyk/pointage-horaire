@@ -125,6 +125,10 @@
         if (awayStatus && !hasHours) {
           inner = `<span class="pl-status-lbl">${STATUS_SHORT[awayStatus]}</span>`;
           fillCls = ` pl-statusfill st-${awayStatus}`;
+          // CP / École / AM = 7h créditées (AM sur jour de repos = 0h ; Absent = 0h).
+          if (awayStatus === 'cp' || awayStatus === 'ecole' || (awayStatus === 'am' && !isRest)) {
+            dayTotals[d] += 7 * 3600; cpBonusSec += 7 * 3600;
+          }
         } else if (isRest && !hasHours) {
           inner = CROSS_SVG;
           fillCls = ' pl-rest';

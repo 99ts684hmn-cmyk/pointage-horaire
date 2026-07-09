@@ -1224,34 +1224,40 @@ app.get('/api/admin/avg-hours', requireAdmin, (req, res) => {
     }
   }
 
-  const cpEcole = {}; // empId -> { weekMon -> nb jours CP/École/AM valorisés 7h }
+  const posed = {}; // empId -> { weekMon -> jours CP/École/AM POSÉS (test semaine complète) }
+  const credit = {}; // empId -> { weekMon -> jours crédités 7h (hors jours de repos) }
   const halfCp = {}; // empId -> { weekMon -> secondes de ½ CP (3h midi / 4h soir) }
   const HALF_CP_SEC = { demi_cp_midi: 3 * 3600, demi_cp_soir: 4 * 3600 };
   for (const s of statuses) {
     const wk = mondayStr(s.day);
     if (s.status === 'cp' || s.status === 'ecole' || s.status === 'am') {
       if (workedDay.has(s.employee_id + '|' + s.day)) continue; // jour travaillé → pas de double compte
-      if (s.status === 'am') {
-        const wd = new Date(`${s.day}T12:00:00`).getDay();
-        if (restDaysOn(restByEmp[s.employee_id] || [], s.day).includes(wd)) continue; // AM sur repos → 0h
-      }
-      cpEcole[s.employee_id] = cpEcole[s.employee_id] || {};
-      cpEcole[s.employee_id][wk] = (cpEcole[s.employee_id][wk] || 0) + 1;
+      posed[s.employee_id] = posed[s.employee_id] || {};
+      posed[s.employee_id][wk] = (posed[s.employee_id][wk] || 0) + 1;
+      // CP/École/AM posé sur un jour de repos → 0h (comme un repos), mais le jour
+      // compte quand même dans le test « semaine complète » ci-dessus.
+      const wd = new Date(`${s.day}T12:00:00`).getDay();
+      if (restDaysOn(restByEmp[s.employee_id] || [], s.day).includes(wd)) continue;
+      credit[s.employee_id] = credit[s.employee_id] || {};
+      credit[s.employee_id][wk] = (credit[s.employee_id][wk] || 0) + 1;
     } else if (HALF_CP_SEC[s.status]) {
       halfCp[s.employee_id] = halfCp[s.employee_id] || {};
       halfCp[s.employee_id][wk] = (halfCp[s.employee_id][wk] || 0) + HALF_CP_SEC[s.status];
     }
   }
 
-  const ids = new Set([...Object.keys(worked), ...Object.keys(cpEcole), ...Object.keys(halfCp)].map(Number));
+  const ids = new Set([...Object.keys(worked), ...Object.keys(posed), ...Object.keys(halfCp)].map(Number));
   const averages = {};
   for (const id of ids) {
     let sum = 0; let n = 0;
     for (const wk of weeks) {
       const w = (worked[id] && worked[id][wk]) || 0;
-      const cp = (cpEcole[id] && cpEcole[id][wk]) || 0;
+      const nbPosed = (posed[id] && posed[id][wk]) || 0;
+      // Crédit plafonné à 5 jours × 7h par semaine (filet quand les repos ne sont
+      // pas configurés dans le profil).
+      const cp = Math.min((credit[id] && credit[id][wk]) || 0, 5);
       const hcp = (halfCp[id] && halfCp[id][wk]) || 0;
-      if (cp >= 6) continue; // semaine complète CP/École/AM → exclue
+      if (nbPosed >= 6) continue; // semaine complète CP/École/AM → exclue
       if (w === 0 && cp === 0 && hcp === 0) continue; // semaine vide → ignorée
       sum += w + cp * 7 * 3600 + hcp;
       n += 1;

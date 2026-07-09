@@ -109,7 +109,8 @@
       const rep = byId.get(emp.id);
       let dayCells = '';
       let demiCount = 0;
-      let cpBonusSec = 0; // heures de ½ CP (3h midi / 4h soir) à créditer cette semaine
+      let cpBonusSec = 0; // heures créditées : CP/École/AM (7h/jour) + ½ CP (3h/4h)
+      let awayDays = 0; // jours CP/École/AM crédités cette semaine (plafond : 5)
       for (const d of days) {
         const day = rep && rep.days.find((x) => x.day === d);
         const hasHours = !!(day && day.segments.length);
@@ -125,9 +126,10 @@
         if (awayStatus && !hasHours) {
           inner = `<span class="pl-status-lbl">${STATUS_SHORT[awayStatus]}</span>`;
           fillCls = ` pl-statusfill st-${awayStatus}`;
-          // CP / École / AM = 7h créditées (AM sur jour de repos = 0h ; Absent = 0h).
-          if (awayStatus === 'cp' || awayStatus === 'ecole' || (awayStatus === 'am' && !isRest)) {
-            dayTotals[d] += 7 * 3600; cpBonusSec += 7 * 3600;
+          // CP / École / AM = 7h créditées, SAUF sur jour de repos (0h) et
+          // au-delà de 5 jours crédités dans la semaine (plafond 35h). Absent = 0h.
+          if ((awayStatus === 'cp' || awayStatus === 'ecole' || awayStatus === 'am') && !isRest && awayDays < 5) {
+            awayDays += 1; dayTotals[d] += 7 * 3600; cpBonusSec += 7 * 3600;
           }
         } else if (isRest && !hasHours) {
           inner = CROSS_SVG;

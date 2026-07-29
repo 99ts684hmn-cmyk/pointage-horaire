@@ -642,7 +642,7 @@ function ensureTemplateByType(type, build) {
 }
 
 // Version de schéma/migrations appliquée à cette base (PRAGMA user_version).
-const SCHEMA_VERSION = 15;
+const SCHEMA_VERSION = 16;
 
 function seedAndMigrate() {
   const count = db.prepare('SELECT COUNT(*) c FROM templates').get().c;
@@ -697,7 +697,7 @@ function seedAndMigrate() {
   ensureTemplateByType('BAR_FERM_SOIR_BAS', () => { const id = insertTemplate({ name: 'Fermeture soir bar du bas', type: 'BAR_FERM_SOIR_BAS', color: 'bg-rose-700', icon: '🍺', resetMode: 'AUTO_DAILY', order: 9, category: 'general' }); BAR_FERM_SOIR_BAS_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
   ensureTemplateByType('BAR_FERM_SOIR_HAUT', () => { const id = insertTemplate({ name: 'Fermeture soir bar du haut', type: 'BAR_FERM_SOIR_HAUT', color: 'bg-rose-700', icon: '🍷', resetMode: 'AUTO_DAILY', order: 10, category: 'general' }); BAR_FERM_SOIR_HAUT_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
   // Ménage de service hebdo — onglet « Check-lists », reset chaque lundi 8h.
-  ensureTemplateByType('MENAGE_HEBDO', () => { const id = insertTemplate({ name: 'Ménage de service hebdo', type: 'MENAGE_HEBDO', color: 'bg-teal-500', icon: '🧽', resetMode: 'WEEKLY_MONDAY', order: 12, category: 'general' }); MENAGE_HEBDO_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
+  ensureTemplateByType('MENAGE_HEBDO', () => { const id = insertTemplate({ name: 'Ménage de service hebdo', type: 'MENAGE_HEBDO', color: 'bg-teal-500', icon: '🧽', resetMode: 'WEEKLY_CARRY_OVER', order: 12, category: 'general' }); MENAGE_HEBDO_TASKS.forEach((t, i) => insertTask(id, t, i + 1, null, '1')); });
   // Toilettes salle : une après le midi (bloc Midi), une après le soir (bloc Soir).
   ensureTemplateByType('TOILETTES_MIDI', () => { const id = insertTemplate({ name: 'Toilettes midi', type: 'TOILETTES_MIDI', color: 'bg-amber-600', icon: '🚽', resetMode: 'AUTO_DAILY', order: 13, category: 'general' }); TOILETTES_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
   ensureTemplateByType('TOILETTES_SOIR', () => { const id = insertTemplate({ name: 'Toilettes soir', type: 'TOILETTES_SOIR', color: 'bg-indigo-600', icon: '🚽', resetMode: 'AUTO_DAILY', order: 14, category: 'general' }); TOILETTES_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
@@ -846,6 +846,22 @@ function seedAndMigrate() {
   if (version < 15 && !freshDb) {
     db.prepare("UPDATE templates SET ord = 4 WHERE type = 'CUISINE_CHECK_FERMETURE'").run();
     db.prepare("UPDATE templates SET ord = 5 WHERE type = 'CUISINE_MENAGE_HEBDO'").run();
+  }
+  // Migration 16 : « Ménage de service hebdo » (renommée « Ménage A Faire Pdt
+  // Service ») passe du mode WEEKLY_MONDAY (session unique par semaine) au mode
+  // WEEKLY_CARRY_OVER : chaque tâche est programmée sur un ou plusieurs jours
+  // (pastilles L-M-M-J-V-S-D dans l'admin) et les non-faites sont reportées au
+  // lendemain. Les tâches existantes sans jour sont posées le LUNDI par défaut
+  // (elles se reportent ensuite jusqu'à être faites — comportement proche de
+  // l'ancien hebdo) ; à répartir sur la semaine via l'admin.
+  if (version < 16 && !freshDb) {
+    const t = db.prepare("SELECT id FROM templates WHERE type = 'MENAGE_HEBDO'").get();
+    if (t) {
+      db.prepare("UPDATE templates SET reset_mode = 'WEEKLY_CARRY_OVER' WHERE id = ?").run(t.id);
+      db.prepare("UPDATE tasks SET days = '1', day_of_week = NULL WHERE template_id = ? AND is_active = 1 AND (days IS NULL OR days = '') AND day_of_week IS NULL").run(t.id);
+      // Tâches héritées avec un jour unique (day_of_week) : converties en `days`.
+      db.prepare("UPDATE tasks SET days = CAST(day_of_week AS TEXT), day_of_week = NULL WHERE template_id = ? AND is_active = 1 AND (days IS NULL OR days = '') AND day_of_week IS NOT NULL").run(t.id);
+    }
   }
   db.pragma('user_version = ' + SCHEMA_VERSION);
 }

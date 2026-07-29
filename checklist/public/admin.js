@@ -159,10 +159,10 @@ function render() {
       const open = expanded === tm.id;
       const body = open ? `<div class="acc-body">
         <div class="tlist" data-tmpl="${esc(tm.id)}">
-          ${tm.tasks.map((task) => (editingTask === task.id
-    ? `<div class="trow editing" data-id="${esc(task.id)}"><input type="text" class="edit-input" data-edit-id="${esc(task.id)}" value="${esc(task.title)}"><button class="btn btn-red" data-save-task="${esc(task.id)}">OK</button><button class="del" data-cancel-edit="1">Annuler</button></div>`
-    : `<div class="trow" data-id="${esc(task.id)}"><span class="drag" title="Glisser pour réordonner">⠿</span><span class="t" data-edit-task="${esc(task.id)}">${esc(task.title)}</span><button class="edit" data-edit-task="${esc(task.id)}">Modifier</button><button class="del" data-del-task="${esc(task.id)}">Supprimer</button></div>`
-      + (tm.resetMode === 'WEEKLY_CARRY_OVER' && editingTask !== task.id ? dayPillsHTML(task) : ''))).join('')}
+          ${tm.tasks.map((task) => `<div class="titem" data-id="${esc(task.id)}">` + (editingTask === task.id
+    ? `<div class="trow editing"><input type="text" class="edit-input" data-edit-id="${esc(task.id)}" value="${esc(task.title)}"><button class="btn btn-red" data-save-task="${esc(task.id)}">OK</button><button class="del" data-cancel-edit="1">Annuler</button></div>`
+    : `<div class="trow"><span class="drag" title="Glisser pour réordonner">⠿</span><span class="t" data-edit-task="${esc(task.id)}">${esc(task.title)}</span><button class="edit" data-edit-task="${esc(task.id)}">Modifier</button><button class="del" data-del-task="${esc(task.id)}">Supprimer</button></div>`
+      + (tm.resetMode === 'WEEKLY_CARRY_OVER' ? dayPillsHTML(task) : '')) + '</div>').join('')}
         </div>
         <div class="addrow"><input type="text" placeholder="Nouvelle tâche…" data-add-input="${esc(tm.id)}"><button class="btn btn-red" data-add-task="${esc(tm.id)}">+ Ajouter</button></div>
         <div style="margin-top:12px;display:flex;justify-content:space-between;gap:8px">
@@ -221,8 +221,8 @@ function render() {
     content.querySelectorAll('.tlist').forEach((list) => {
       if (!window.Sortable) return;
       window.Sortable.create(list, {
-        handle: '.drag', animation: 150,
-        onEnd: () => saveOrder(list.dataset.tmpl, [...list.querySelectorAll('.trow')].map((r) => r.dataset.id)),
+        handle: '.drag', draggable: '.titem', animation: 150,
+        onEnd: () => saveOrder(list.dataset.tmpl, [...list.querySelectorAll('.titem')].map((r) => r.dataset.id)),
       });
     });
     // Réordonner les check-lists elles-mêmes (glisser la poignée de l'entête).

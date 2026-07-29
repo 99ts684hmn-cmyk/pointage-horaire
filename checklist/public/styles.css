@@ -244,7 +244,10 @@ body {
 .acc-head .cl-drag { cursor: grab; color: #b8b1a8; font-size: 1.05rem; line-height: 1; flex: 0 0 auto; touch-action: none; user-select: none; }
 .acc-head .cl-drag:active { cursor: grabbing; }
 .acc-body { border-top: 1px solid var(--border); }
-.trow { display: flex; align-items: center; gap: 10px; padding: 11px 18px; border-bottom: 1px solid #f5f0eb; background: #fff; }
+/* Bloc d'une tâche : la ligne ET sa rangée de jours (déplacés ensemble au tri). */
+.titem { background: #fff; border-bottom: 1px solid #f5f0eb; }
+.titem:last-child { border-bottom: 0; }
+.trow { display: flex; align-items: center; gap: 10px; padding: 11px 18px; background: #fff; }
 .trow .drag { cursor: grab; color: #b8b1a8; font-size: 1.05rem; line-height: 1; flex: 0 0 auto; touch-action: none; user-select: none; }
 .trow .drag:active { cursor: grabbing; }
 .trow .t { font-size: .88rem; color: var(--dark); flex: 1; min-width: 0; }

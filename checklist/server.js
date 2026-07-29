@@ -344,7 +344,9 @@ app.patch('/api/tasks/:id', requireAdmin, (req, res) => {
     // Normalise "1,3,5" (jours 1-7 uniques, triés). Chaîne vide = aucun jour.
     const days = b.days.split(',').map((n) => parseInt(n, 10)).filter((n) => n >= 1 && n <= 7);
     const uniq = [...new Set(days)].sort((a, c) => a - c).join(',');
-    db.prepare('UPDATE tasks SET days = ? WHERE id = ?').run(uniq || null, req.params.id);
+    // On efface aussi l'ancien champ day_of_week (jour unique hérité) : sinon il
+    // referait surface quand `days` est vidé (tous les jours décochés).
+    db.prepare('UPDATE tasks SET days = ?, day_of_week = NULL WHERE id = ?').run(uniq || null, req.params.id);
   }
   if (typeof b.title === 'string') {
     const title = b.title.trim();

@@ -66,6 +66,35 @@ const RESET_OPTS = [
   ['MANUAL', 'Manuel'],
   ['WEEKLY_MONDAY', 'Hebdo (lundi 8h)'],
 ];
+
+// --- Jours programmés d'une tâche (check-lists hebdo, mode WEEKLY_CARRY_OVER) ---
+const DAYS_SHORT = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+// Jours actuels d'une tâche : champ `days` ("1,3,5"), sinon l'ancien champ
+// `dayOfWeek` (jour unique, hérité des tâches hebdo salle d'origine).
+function taskDaysStr(task) {
+  return task.days || (task.dayOfWeek ? String(task.dayOfWeek) : '');
+}
+function dayPillsHTML(task) {
+  const set = new Set(taskDaysStr(task).split(',').map((n) => parseInt(n, 10)));
+  const pills = DAYS_SHORT.map((lbl, i) => {
+    const day = i + 1;
+    return `<button class="daypill${set.has(day) ? ' on' : ''}" data-dtask="${esc(task.id)}" data-day="${day}">${lbl}</button>`;
+  }).join('');
+  return `<div class="dayrow"><span class="daylbl">Jours :</span>${pills}</div>`;
+}
+async function toggleDay(taskId, day) {
+  let task = null;
+  for (const tm of templates) { const t = tm.tasks.find((x) => x.id === taskId); if (t) { task = t; break; } }
+  if (!task) return;
+  const set = new Set(taskDaysStr(task).split(',').map((n) => parseInt(n, 10)).filter(Boolean));
+  if (set.has(day)) set.delete(day); else set.add(day);
+  const days = [...set].sort((a, b) => a - b).join(',');
+  task.days = days; // maj locale pour rendu immédiat (prend le pas sur dayOfWeek)
+  render();
+  await fetch(`api/tasks/${encodeURIComponent(taskId)}`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ days }),
+  });
+}
 async function createTemplate(category) {
   const name = document.getElementById('new-cl-name').value.trim();
   if (!name) return;
@@ -132,7 +161,8 @@ function render() {
         <div class="tlist" data-tmpl="${esc(tm.id)}">
           ${tm.tasks.map((task) => (editingTask === task.id
     ? `<div class="trow editing" data-id="${esc(task.id)}"><input type="text" class="edit-input" data-edit-id="${esc(task.id)}" value="${esc(task.title)}"><button class="btn btn-red" data-save-task="${esc(task.id)}">OK</button><button class="del" data-cancel-edit="1">Annuler</button></div>`
-    : `<div class="trow" data-id="${esc(task.id)}"><span class="drag" title="Glisser pour réordonner">⠿</span><span class="t" data-edit-task="${esc(task.id)}">${esc(task.title)}</span><button class="edit" data-edit-task="${esc(task.id)}">Modifier</button><button class="del" data-del-task="${esc(task.id)}">Supprimer</button></div>`)).join('')}
+    : `<div class="trow" data-id="${esc(task.id)}"><span class="drag" title="Glisser pour réordonner">⠿</span><span class="t" data-edit-task="${esc(task.id)}">${esc(task.title)}</span><button class="edit" data-edit-task="${esc(task.id)}">Modifier</button><button class="del" data-del-task="${esc(task.id)}">Supprimer</button></div>`
+      + (tm.resetMode === 'WEEKLY_CARRY_OVER' && editingTask !== task.id ? dayPillsHTML(task) : ''))).join('')}
         </div>
         <div class="addrow"><input type="text" placeholder="Nouvelle tâche…" data-add-input="${esc(tm.id)}"><button class="btn btn-red" data-add-task="${esc(tm.id)}">+ Ajouter</button></div>
         <div style="margin-top:12px;display:flex;justify-content:space-between;gap:8px">
@@ -166,6 +196,7 @@ function render() {
       expanded = expanded === b.dataset.toggle ? null : b.dataset.toggle; render();
     }));
     content.querySelectorAll('[data-del-task]').forEach((b) => b.addEventListener('click', () => deleteTask(b.dataset.delTask)));
+    content.querySelectorAll('[data-dtask]').forEach((b) => b.addEventListener('click', () => toggleDay(b.dataset.dtask, parseInt(b.dataset.day, 10))));
     content.querySelectorAll('[data-edit-task]').forEach((b) => b.addEventListener('click', () => { editingTask = b.dataset.editTask; render(); }));
     content.querySelectorAll('[data-save-task]').forEach((b) => b.addEventListener('click', () => {
       const inp = content.querySelector(`[data-edit-id="${CSS.escape(b.dataset.saveTask)}"]`);

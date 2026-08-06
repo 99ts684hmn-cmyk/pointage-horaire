@@ -146,13 +146,15 @@ async function loadAvgPeriods() {
   const cell = (sec, weeks) => (sec == null
     ? '<td style="text-align:right;color:var(--muted)">—</td>'
     : `<td style="text-align:right;font-weight:600" title="${weeks} semaine(s) comptée(s)">${fmtH(sec)}</td>`);
-  // Salariés actifs, dans l'ordre du planning ; on inclut aussi ceux ayant des
-  // données mais désactivés depuis (affichés grisés en fin de liste).
+  // Salariés actifs dans l'ordre du planning, PUIS ceux désactivés depuis mais
+  // ayant des données (partis en cours d'année) — grisés en fin de liste.
   const actives = allEmployees.filter((e) => e.active).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  const inactifs = allEmployees.filter((e) => !e.active && data.rows[e.id])
+    .sort((a, b) => a.name.localeCompare(b.name));
   const rows = [];
-  for (const e of actives) {
+  const pushRow = (e, inactive) => {
     const r = data.rows[e.id];
-    rows.push(`<tr><td style="font-weight:600">${escapeHtml(e.name)}</td>`
+    rows.push(`<tr${inactive ? ' style="opacity:.55"' : ''}><td style="font-weight:600">${escapeHtml(e.name)}${inactive ? ' <span style="font-weight:400;font-size:.75rem;color:var(--muted)">(inactif)</span>' : ''}</td>`
       + cell(r ? r.p1 : null, r ? r.p1Weeks : 0)
       + cell(r ? r.p2 : null, r ? r.p2Weeks : 0)
       + cell(r ? r.p3 : null, r ? r.p3Weeks : 0)
@@ -160,7 +162,9 @@ async function loadAvgPeriods() {
         ? `<td style="text-align:right;font-weight:800;color:var(--gold-dark)" title="${r.totalWeeks} semaine(s) au total">${fmtH(r.general)}</td>`
         : '<td style="text-align:right;color:var(--muted)">—</td>')
       + '</tr>');
-  }
+  };
+  for (const e of actives) pushRow(e, false);
+  for (const e of inactifs) pushRow(e, true);
   out.innerHTML = `<table>
     <thead><tr>
       <th>Salarié</th>

@@ -1246,7 +1246,12 @@ app.get('/api/admin/avg-hours', requireAdmin, (req, res) => {
     }
   }
 
-  const ids = new Set([...Object.keys(worked), ...Object.keys(posed), ...Object.keys(halfCp)].map(Number));
+  // Base historique (moyennes d'AVANT le 01/06, fournies avec leur nombre de
+  // semaines) : fusion pondérée exacte avec les semaines calculées depuis le 01/06.
+  let avgBase = {};
+  try { const v = JSON.parse(getSetting('avg_base') || '{}'); if (v && typeof v === 'object') avgBase = v; } catch { /* ignore */ }
+
+  const ids = new Set([...Object.keys(worked), ...Object.keys(posed), ...Object.keys(halfCp), ...Object.keys(avgBase)].map(Number));
   const averages = {};
   for (const id of ids) {
     let sum = 0; let n = 0;
@@ -1262,7 +1267,13 @@ app.get('/api/admin/avg-hours', requireAdmin, (req, res) => {
       sum += w + cp * 7 * 3600 + hcp;
       n += 1;
     }
-    averages[id] = n ? Math.round(sum / n) : null;
+    const base = avgBase[id];
+    if (base && base.weeks > 0 && Number.isFinite(base.avgH)) {
+      // (moy_avant × sem_avant + heures depuis le 01/06) ÷ (sem_avant + sem_depuis)
+      averages[id] = Math.round((base.avgH * 3600 * base.weeks + sum) / (base.weeks + n));
+    } else {
+      averages[id] = n ? Math.round(sum / n) : null;
+    }
   }
 
   // --- Compteur de demis : du 01/06 jusqu'à la dernière date affichée du planning

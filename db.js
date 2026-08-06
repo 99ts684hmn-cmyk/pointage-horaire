@@ -111,6 +111,27 @@ function seed() {
   if (!getSetting('admin_password')) {
     setSetting('admin_password', hashSecret('admin123'));
   }
+  // Base historique des moyennes hebdo (période AVANT le 01/06/2026) : moyenne
+  // en heures décimales + nombre de semaines la constituant, par ID salarié.
+  // Fusionnée avec les semaines calculées depuis le 01/06 dans /api/admin/avg-hours
+  // (moyenne pondérée exacte). Posée une seule fois (tableau fourni par le patron) ;
+  // indexée par ID → insensible aux renommages. Salariés partis (Gabor, Axel,
+  // Océane) volontairement exclus.
+  if (!getSetting('avg_base')) {
+    setSetting('avg_base', JSON.stringify({
+      3: { avgH: 40.7475, weeks: 20 },       // Thomas
+      4: { avgH: 40.07142857, weeks: 7 },    // Charlelie
+      6: { avgH: 38.966, weeks: 20 },        // Toto
+      7: { avgH: 38.233, weeks: 20 },        // Kiki
+      8: { avgH: 38.12, weeks: 20 },         // Joffrey
+      9: { avgH: 41.777, weeks: 20 },        // Sarah
+      10: { avgH: 38.941, weeks: 20 },       // Hugo
+      11: { avgH: 40.1725, weeks: 20 },      // Zozo
+      12: { avgH: 37.4925, weeks: 20 },      // Zach
+      13: { avgH: 36.55, weeks: 20 },        // Inaya
+      14: { avgH: 39.355, weeks: 4 },        // Nico (Nicolas)
+    }));
+  }
   // Créneaux de pause obligatoire déduits automatiquement
   if (!getSetting('break_windows')) {
     setSetting('break_windows', JSON.stringify([

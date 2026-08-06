@@ -1182,25 +1182,24 @@ function mondayStr(dateStr) {
   const dow = (d.getDay() + 6) % 7; // 0=lundi..6=dimanche
   return addDaysStr(dateStr, -dow);
 }
-app.get('/api/admin/avg-hours', requireAdmin, (req, res) => {
-  const today = businessDay(Date.now());
-  // Borne haute du compteur de demis = dernière date affichée sur le planning à
-  // l'écran (paramètre upto = dernier jour de la semaine visualisée). Au-delà =
-  // futur, jamais compté. Par défaut (absent) : aujourd'hui.
-  const upto = /^\d{4}-\d{2}-\d{2}$/.test(req.query.upto || '') ? req.query.upto : today;
-  const curMon = mondayStr(today);
-  const firstMon = mondayStr(AVG_START);
-  const lastMon = addDaysStr(curMon, -7); // dernière semaine TERMINÉE
-  if (lastMon < firstMon) return res.json({ start: AVG_START, averages: {} });
-  const lastSun = addDaysStr(lastMon, 6);
+// Sommes hebdomadaires d'heures « payées » par salarié, avec TOUTES les règles de
+// la moyenne (CP/École/AM = 7h hors repos, plafond 5 j/sem, semaine à 6-7 jours
+// posés exclue, semaine vide ignorée, pas de double compte sur jour travaillé).
+// Plage : du lundi `fromMon` au dimanche `toSunWanted`, bornée à la dernière
+// semaine TERMINÉE. Retourne { sum: {empId→secondes}, n: {empId→nb semaines} }.
+function computeWeeklySums(fromMon, toSunWanted) {
+  const out = { sum: {}, n: {} };
+  const lastCompletedSun = addDaysStr(mondayStr(businessDay(Date.now())), -1);
+  const toSun = toSunWanted < lastCompletedSun ? toSunWanted : lastCompletedSun;
+  if (toSun < fromMon) return out;
+  const lastMon = mondayStr(toSun);
+  const weeks = [];
+  for (let m = fromMon; m <= lastMon; m = addDaysStr(m, 7)) weeks.push(m);
 
-  const report = buildReport({ from: firstMon, to: lastSun });
+  const report = buildReport({ from: fromMon, to: toSun });
   const statuses = db.prepare(
     'SELECT employee_id, day, status FROM day_status WHERE day >= ? AND day <= ?'
-  ).all(firstMon, lastSun);
-
-  const weeks = [];
-  for (let m = firstMon; m <= lastMon; m = addDaysStr(m, 7)) weeks.push(m);
+  ).all(fromMon, toSun);
 
   const worked = {}; // empId -> { weekMon -> secondes travaillées }
   for (const emp of report) {
@@ -1210,7 +1209,7 @@ app.get('/api/admin/avg-hours', requireAdmin, (req, res) => {
       worked[emp.employeeId][wk] = (worked[emp.employeeId][wk] || 0) + d.seconds;
     }
   }
-  // Périodes de repos par salarié (AM posé sur un jour de repos = 0h, comme un repos).
+  // Périodes de repos par salarié (AM/CP/École posé sur un jour de repos = 0h).
   const restByEmp = {};
   for (const e of db.prepare('SELECT id, rest_days FROM employees').all()) restByEmp[e.id] = parseRestPeriods(e.rest_days);
   // Jours ayant des heures réelles : un statut posé dessus ne crédite PAS 7h en
@@ -1218,8 +1217,6 @@ app.get('/api/admin/avg-hours', requireAdmin, (req, res) => {
   const workedDay = new Set();
   for (const emp of report) {
     for (const d of emp.days) {
-      // Un jour avec des heures saisies — même une arrivée encore ouverte —
-      // est un jour travaillé (même règle que l'affichage du planning).
       if (d.segments && d.segments.length) workedDay.add(emp.employeeId + '|' + d.day);
     }
   }
@@ -1234,8 +1231,6 @@ app.get('/api/admin/avg-hours', requireAdmin, (req, res) => {
       if (workedDay.has(s.employee_id + '|' + s.day)) continue; // jour travaillé → pas de double compte
       posed[s.employee_id] = posed[s.employee_id] || {};
       posed[s.employee_id][wk] = (posed[s.employee_id][wk] || 0) + 1;
-      // CP/École/AM posé sur un jour de repos → 0h (comme un repos), mais le jour
-      // compte quand même dans le test « semaine complète » ci-dessus.
       const wd = new Date(`${s.day}T12:00:00`).getDay();
       if (restDaysOn(restByEmp[s.employee_id] || [], s.day).includes(wd)) continue;
       credit[s.employee_id] = credit[s.employee_id] || {};
@@ -1246,27 +1241,50 @@ app.get('/api/admin/avg-hours', requireAdmin, (req, res) => {
     }
   }
 
-  // Base historique (moyennes d'AVANT le 01/06, fournies avec leur nombre de
-  // semaines) : fusion pondérée exacte avec les semaines calculées depuis le 01/06.
-  let avgBase = {};
-  try { const v = JSON.parse(getSetting('avg_base') || '{}'); if (v && typeof v === 'object') avgBase = v; } catch { /* ignore */ }
-
-  const ids = new Set([...Object.keys(worked), ...Object.keys(posed), ...Object.keys(halfCp), ...Object.keys(avgBase)].map(Number));
-  const averages = {};
+  const ids = new Set([...Object.keys(worked), ...Object.keys(posed), ...Object.keys(halfCp)].map(Number));
   for (const id of ids) {
     let sum = 0; let n = 0;
     for (const wk of weeks) {
       const w = (worked[id] && worked[id][wk]) || 0;
       const nbPosed = (posed[id] && posed[id][wk]) || 0;
-      // Crédit plafonné à 5 jours × 7h par semaine (filet quand les repos ne sont
-      // pas configurés dans le profil).
-      const cp = Math.min((credit[id] && credit[id][wk]) || 0, 5);
+      const cp = Math.min((credit[id] && credit[id][wk]) || 0, 5); // plafond 5 j × 7h
       const hcp = (halfCp[id] && halfCp[id][wk]) || 0;
       if (nbPosed >= 6) continue; // semaine complète CP/École/AM → exclue
       if (w === 0 && cp === 0 && hcp === 0) continue; // semaine vide → ignorée
       sum += w + cp * 7 * 3600 + hcp;
       n += 1;
     }
+    if (n) { out.sum[id] = sum; out.n[id] = n; }
+  }
+  return out;
+}
+
+// Base historique (moyennes d'AVANT le 01/06 fournies avec leur nb de semaines).
+function readAvgBase() {
+  try { const v = JSON.parse(getSetting('avg_base') || '{}'); if (v && typeof v === 'object') return v; } catch { /* ignore */ }
+  return {};
+}
+
+app.get('/api/admin/avg-hours', requireAdmin, (req, res) => {
+  const today = businessDay(Date.now());
+  // Borne haute du compteur de demis = dernière date affichée sur le planning à
+  // l'écran (paramètre upto = dernier jour de la semaine visualisée). Au-delà =
+  // futur, jamais compté. Par défaut (absent) : aujourd'hui.
+  const upto = /^\d{4}-\d{2}-\d{2}$/.test(req.query.upto || '') ? req.query.upto : today;
+  const curMon = mondayStr(today);
+  const firstMon = mondayStr(AVG_START);
+  const lastMon = addDaysStr(curMon, -7); // dernière semaine TERMINÉE
+  if (lastMon < firstMon) return res.json({ start: AVG_START, averages: {} });
+  const lastSun = addDaysStr(lastMon, 6);
+
+  const { sum: sumMap, n: nMap } = computeWeeklySums(firstMon, lastSun);
+  const avgBase = readAvgBase();
+
+  const ids = new Set([...Object.keys(sumMap), ...Object.keys(avgBase)].map(Number));
+  const averages = {};
+  for (const id of ids) {
+    const sum = sumMap[id] || 0;
+    const n = nMap[id] || 0;
     const base = avgBase[id];
     if (base && base.weeks > 0 && Number.isFinite(base.avgH)) {
       // (moy_avant × sem_avant + heures depuis le 01/06) ÷ (sem_avant + sem_depuis)
@@ -1275,6 +1293,10 @@ app.get('/api/admin/avg-hours', requireAdmin, (req, res) => {
       averages[id] = n ? Math.round(sum / n) : null;
     }
   }
+
+  // Repos par salarié (utilisé par le compteur de demis ci-dessous).
+  const restByEmp = {};
+  for (const e of db.prepare('SELECT id, rest_days FROM employees').all()) restByEmp[e.id] = parseRestPeriods(e.rest_days);
 
   // --- Compteur de demis : du 01/06 jusqu'à la dernière date affichée du planning
   // (upto) incluse ; au-delà = futur, jamais compté. On ne compte un demi que s'il
@@ -1303,7 +1325,46 @@ app.get('/api/admin/avg-hours', requireAdmin, (req, res) => {
     }
   }
 
-  res.json({ start: AVG_START, weeks: weeks.length, averages, demis });
+  res.json({ start: AVG_START, averages, demis });
+});
+
+// --- Moyennes d'heures par période (tableau admin) --------------------------
+// P1 (01/01→31/05) = base historique fournie ; P2 (01/06→30/08) et
+// P3 (31/08→03/01/27) = calculées avec les mêmes règles que la Moy. /sem ;
+// Générale = fusion pondérée de tout l'échu (identique à la colonne du planning).
+const AVG_PERIODS = [
+  { key: 'p2', from: '2026-06-01', to: '2026-08-30' },
+  { key: 'p3', from: '2026-08-31', to: '2027-01-03' },
+];
+app.get('/api/admin/avg-periods', requireAdmin, (req, res) => {
+  const avgBase = readAvgBase();
+  const P2 = computeWeeklySums(AVG_PERIODS[0].from, AVG_PERIODS[0].to);
+  const P3 = computeWeeklySums(AVG_PERIODS[1].from, AVG_PERIODS[1].to);
+
+  const ids = new Set([...Object.keys(avgBase), ...Object.keys(P2.sum), ...Object.keys(P3.sum)].map(Number));
+  const rows = {};
+  for (const id of ids) {
+    const base = avgBase[id];
+    const bw = (base && base.weeks > 0 && Number.isFinite(base.avgH)) ? base.weeks : 0;
+    const bSum = bw ? base.avgH * 3600 * bw : 0;
+    const s2 = P2.sum[id] || 0; const n2 = P2.n[id] || 0;
+    const s3 = P3.sum[id] || 0; const n3 = P3.n[id] || 0;
+    const totW = bw + n2 + n3;
+    rows[id] = {
+      p1: bw ? Math.round(bSum / bw) : null, p1Weeks: bw,
+      p2: n2 ? Math.round(s2 / n2) : null, p2Weeks: n2,
+      p3: n3 ? Math.round(s3 / n3) : null, p3Weeks: n3,
+      general: totW ? Math.round((bSum + s2 + s3) / totW) : null, totalWeeks: totW,
+    };
+  }
+  res.json({
+    periods: {
+      p1: { from: '2026-01-01', to: '2026-05-31' },
+      p2: { from: AVG_PERIODS[0].from, to: AVG_PERIODS[0].to },
+      p3: { from: AVG_PERIODS[1].from, to: AVG_PERIODS[1].to },
+    },
+    rows,
+  });
 });
 
 app.get('/api/admin/report.csv', requireAdmin, (req, res) => {

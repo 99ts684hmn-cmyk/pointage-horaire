@@ -76,6 +76,7 @@ async function showAdmin() {
   await loadBreaks();
   await loadEstablishment();
   loadStaffCode();
+  loadAvgPeriods();
   // Période par défaut : semaine calendaire en cours (lundi → dimanche).
   const { monday, sunday } = weekBounds(new Date());
   $('rep-from').value = localISO(monday);
@@ -133,6 +134,44 @@ $('staff-code-btn').addEventListener('click', async () => {
     loadStaffCode();
   } else showMsg($('staff-code-msg'), (data && data.error) || 'Erreur');
 });
+
+// --- Tableau des moyennes d'heures par période -----------------------------
+async function loadAvgPeriods() {
+  const out = $('avg-periods-output');
+  if (!out) return;
+  const { ok, data } = await api('/api/admin/avg-periods');
+  if (!ok || !data || !data.rows) { out.innerHTML = '<div class="empty">Impossible de charger les moyennes.</div>'; return; }
+  const fr = (iso) => iso.split('-').reverse().join('/');
+  const p = data.periods;
+  const cell = (sec, weeks) => (sec == null
+    ? '<td style="text-align:right;color:var(--muted)">—</td>'
+    : `<td style="text-align:right;font-weight:600" title="${weeks} semaine(s) comptée(s)">${fmtH(sec)}</td>`);
+  // Salariés actifs, dans l'ordre du planning ; on inclut aussi ceux ayant des
+  // données mais désactivés depuis (affichés grisés en fin de liste).
+  const actives = allEmployees.filter((e) => e.active).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  const rows = [];
+  for (const e of actives) {
+    const r = data.rows[e.id];
+    rows.push(`<tr><td style="font-weight:600">${escapeHtml(e.name)}</td>`
+      + cell(r ? r.p1 : null, r ? r.p1Weeks : 0)
+      + cell(r ? r.p2 : null, r ? r.p2Weeks : 0)
+      + cell(r ? r.p3 : null, r ? r.p3Weeks : 0)
+      + (r && r.general != null
+        ? `<td style="text-align:right;font-weight:800;color:var(--gold-dark)" title="${r.totalWeeks} semaine(s) au total">${fmtH(r.general)}</td>`
+        : '<td style="text-align:right;color:var(--muted)">—</td>')
+      + '</tr>');
+  }
+  out.innerHTML = `<table>
+    <thead><tr>
+      <th>Salarié</th>
+      <th style="text-align:right">P1<br><span style="font-weight:400;font-size:.72rem">${fr(p.p1.from)} → ${fr(p.p1.to)}</span></th>
+      <th style="text-align:right">P2<br><span style="font-weight:400;font-size:.72rem">${fr(p.p2.from)} → ${fr(p.p2.to)}</span></th>
+      <th style="text-align:right">P3<br><span style="font-weight:400;font-size:.72rem">${fr(p.p3.from)} → ${fr(p.p3.to)}</span></th>
+      <th style="text-align:right">Moyenne générale</th>
+    </tr></thead>
+    <tbody>${rows.join('')}</tbody>
+  </table>`;
+}
 
 $('login-btn').addEventListener('click', login);
 $('login-password').addEventListener('keydown', (e) => { if (e.key === 'Enter') login(); });

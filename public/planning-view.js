@@ -35,6 +35,14 @@
     for (const p of (periods || [])) if (p.from <= dateStr && (!best || p.from > best.from)) best = p;
     return best ? best.days : [];
   }
+  // Date de début d'un salarié = début de sa 1re période de repos (même règle
+  // que l'admin) : un nouveau salarié n'apparaît qu'à partir de cette semaine.
+  // Sans période de repos → visible partout ('0000-01-01').
+  function empStartDate(emp) {
+    const ps = emp.restPeriods || [];
+    if (!ps.length) return '0000-01-01';
+    return ps.reduce((min, p) => (p.from < min ? p.from : min), ps[0].from);
+  }
   function svcPresence(seg) {
     const d = new Date(seg.clockIn);
     const at = (h, m) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m, 0, 0).getTime();
@@ -79,6 +87,9 @@
 
     const actives = (data.employees || [])
       .filter((e) => e.active || (e.endDate && e.endDate >= from))
+      // …et qui ont DÉBUTÉ au plus tard cette semaine (mêmes règles que l'admin) :
+      // jamais masqué s'il a déjà des heures pointées cette semaine-là.
+      .filter((e) => empStartDate(e) <= to || byId.has(e.id))
       .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
     if (!actives.length) { container.innerHTML = '<div class="empty">Aucun salarié.</div>'; return; }
 

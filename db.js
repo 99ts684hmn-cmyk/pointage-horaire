@@ -70,6 +70,46 @@ if (!empCols.some((c) => c.name === 'sort_order')) {
 if (!empCols.some((c) => c.name === 'end_date')) {
   db.exec('ALTER TABLE employees ADD COLUMN end_date TEXT');
 }
+// Date de début de contrat : le salarié n'apparaît sur les plannings qu'à partir
+// de la semaine contenant cette date. Rétro-remplie pour les profils existants
+// avec leur PREMIÈRE présence réelle dans le planning (1er pointage ou 1er statut
+// posé) ; à défaut, la 1re période de repos datée, sinon la date de création.
+if (!empCols.some((c) => c.name === 'start_date')) {
+  db.exec('ALTER TABLE employees ADD COLUMN start_date TEXT');
+  backfillStartDates();
+}
+
+function backfillStartDates() {
+  // Jour "métier" d'un horodatage (bascule à 5h, comme le reste de l'app).
+  const dayOf = (ts) => {
+    const d = new Date(ts - 5 * 60 * 60 * 1000);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  const firstEntry = db.prepare('SELECT MIN(clock_in) m FROM time_entries WHERE employee_id = ?');
+  const firstStatus = db.prepare('SELECT MIN(day) m FROM day_status WHERE employee_id = ?');
+  const upd = db.prepare('UPDATE employees SET start_date = ? WHERE id = ?');
+  for (const e of db.prepare('SELECT id, rest_days, created_at FROM employees').all()) {
+    const cands = [];
+    const te = firstEntry.get(e.id).m;
+    if (te) cands.push(dayOf(te));
+    const ds = firstStatus.get(e.id).m;
+    if (ds) cands.push(ds);
+    if (!cands.length) {
+      // Aucune donnée : 1re période de repos réellement datée (on ignore la
+      // période héritée 2000-01-01, qui ne dit rien de la date d'arrivée).
+      try {
+        const periods = JSON.parse(e.rest_days || '[]');
+        if (Array.isArray(periods)) {
+          for (const p of periods) {
+            if (p && /^\d{4}-\d{2}-\d{2}$/.test(p.from) && p.from > '2000-01-01') cands.push(p.from);
+          }
+        }
+      } catch { /* ancien format CSV : pas de date exploitable */ }
+    }
+    if (!cands.length && e.created_at) cands.push(dayOf(e.created_at));
+    if (cands.length) upd.run(cands.sort()[0], e.id);
+  }
+}
 
 // --- Hachage des secrets (PIN, mot de passe admin) ------------------------
 function hashSecret(secret) {

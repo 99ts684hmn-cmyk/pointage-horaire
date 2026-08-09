@@ -39,6 +39,7 @@
   // que l'admin) : un nouveau salarié n'apparaît qu'à partir de cette semaine.
   // Sans période de repos → visible partout ('0000-01-01').
   function empStartDate(emp) {
+    if (emp.startDate) return emp.startDate; // début de contrat (source de vérité)
     const ps = emp.restPeriods || [];
     if (!ps.length) return '0000-01-01';
     return ps.reduce((min, p) => (p.from < min ? p.from : min), ps[0].from);

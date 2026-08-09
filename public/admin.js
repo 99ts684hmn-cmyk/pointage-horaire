@@ -26,6 +26,7 @@ function localISO(d) {
 // Les salariés hérités ont une période depuis 2000-01-01 → visibles partout.
 // Sans aucune période de repos → pas de contrainte (visible partout, '0000-01-01').
 function empStartDate(emp) {
+  if (emp.startDate) return emp.startDate; // début de contrat (source de vérité)
   const ps = emp.restPeriods || [];
   if (!ps.length) return '0000-01-01';
   return ps.reduce((min, p) => (p.from < min ? p.from : min), ps[0].from);
@@ -322,12 +323,14 @@ $('add-btn').addEventListener('click', async () => {
   clearMsg($('emp-msg'));
   const name = $('new-name').value.trim();
   const category = $('new-cat').value;
+  const startDate = $('new-start').value;
   const { ok, data } = await api('/api/admin/employees', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, category }),
+    body: JSON.stringify({ name, category, startDate }),
   });
   if (ok) {
     $('new-name').value = '';
+    $('new-start').value = '';
     await loadEmployees();
     renderPlanning();
   } else showMsg($('emp-msg'), (data && data.error) || 'Erreur');
@@ -353,6 +356,11 @@ function openProfile(empId) {
     <div class="field">
       <label for="pf-name">Nom du salarié</label>
       <input type="text" id="pf-name" value="${escapeHtml(emp.name)}" autocomplete="off">
+    </div>
+    <div class="field" style="margin-top:10px">
+      <label for="pf-start">Début de contrat</label>
+      <input type="date" id="pf-start" value="${escapeHtml(emp.startDate || '')}">
+      <div class="sub" style="font-size:.78rem;margin-top:4px">Le salarié n'apparaît sur les plannings qu'à partir de la semaine contenant cette date. Laisser vide = visible sur toutes les semaines.</div>
     </div>
     <div class="field" style="margin-top:10px">
       <label>Jours de repos hebdomadaires</label>
@@ -386,9 +394,10 @@ function openProfile(empId) {
     const restDays = [...profileModal.querySelectorAll('#pf-rest .chip.active')].map((c) => Number(c.dataset.d));
     const restDaysFrom = profileModal.querySelector('#pf-from').value;
     const continuous = profileModal.querySelector('#pf-continu').checked;
+    const startDate = profileModal.querySelector('#pf-start').value;
     const { ok, data } = await api(`/api/admin/employees/${empId}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, restDays, restDaysFrom, continuous }),
+      body: JSON.stringify({ name, startDate, restDays, restDaysFrom, continuous }),
     });
     if (!ok) { const m = $('pf-msg'); m.textContent = (data && data.error) || 'Erreur'; m.className = 'msg show error'; return; }
     profileOverlay.classList.remove('show');

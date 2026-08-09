@@ -353,7 +353,7 @@ app.get('/api/planning', (req, res) => {
     return res.status(400).json({ error: 'Période invalide' });
   }
   const employees = db.prepare(
-    'SELECT id, name, category, rest_days, continuous_service, active, end_date, sort_order FROM employees'
+    'SELECT id, name, category, rest_days, continuous_service, active, end_date, start_date, sort_order FROM employees'
   ).all().map((r) => ({
     id: r.id,
     name: r.name,
@@ -362,6 +362,7 @@ app.get('/api/planning', (req, res) => {
     continuous: !!r.continuous_service,
     active: r.active,
     endDate: r.end_date || null,
+    startDate: r.start_date || null, // début de contrat : pas de planning avant
     sortOrder: r.sort_order,
   }));
   const report = buildReport({ from, to });
@@ -783,7 +784,7 @@ function restDaysOn(periods, dateStr) {
 
 app.get('/api/admin/employees', requireAdmin, (req, res) => {
   const rows = db.prepare(
-    'SELECT id, name, category, rest_days, continuous_service, sort_order, active, end_date, created_at FROM employees ORDER BY active DESC, sort_order ASC, name COLLATE NOCASE'
+    'SELECT id, name, category, rest_days, continuous_service, sort_order, active, end_date, start_date, created_at FROM employees ORDER BY active DESC, sort_order ASC, name COLLATE NOCASE'
   ).all();
   const today = localDay(Date.now());
   res.json(rows.map((r) => {
@@ -794,6 +795,7 @@ app.get('/api/admin/employees', requireAdmin, (req, res) => {
       category: r.category,
       active: r.active,
       endDate: r.end_date || null, // dernier jour dans l'entreprise (si désactivé)
+      startDate: r.start_date || null, // début de contrat : pas de planning avant
       sortOrder: r.sort_order,
       created_at: r.created_at,
       restDays: restDaysOn(periods, today), // applicables aujourd'hui (affichage profil)
@@ -821,9 +823,13 @@ app.post('/api/admin/employees', requireAdmin, (req, res) => {
   // base (au cas où le PIN serait réactivé un jour).
   const pinValue = /^\d{4}$/.test(String(pin || '')) ? String(pin) : '0000';
   const cat = CATEGORIES.includes(category) ? category : 'chef_de_rang';
+  // Début de contrat (optionnel) : le salarié n'apparaît sur les plannings qu'à
+  // partir de la semaine contenant cette date. Vide = visible immédiatement.
+  const startDate = /^\d{4}-\d{2}-\d{2}$/.test((req.body && req.body.startDate) || '')
+    ? req.body.startDate : null;
   const info = db.prepare(
-    'INSERT INTO employees (name, pin_hash, category, active, created_at) VALUES (?, ?, ?, 1, ?)'
-  ).run(String(name).trim(), hashSecret(pinValue), cat, Date.now());
+    'INSERT INTO employees (name, pin_hash, category, active, start_date, created_at) VALUES (?, ?, ?, 1, ?, ?)'
+  ).run(String(name).trim(), hashSecret(pinValue), cat, startDate, Date.now());
   res.json({ id: info.lastInsertRowid });
 });
 
@@ -838,6 +844,14 @@ app.put('/api/admin/employees/:id', requireAdmin, (req, res) => {
   }
   if (category !== undefined && CATEGORIES.includes(category)) {
     db.prepare('UPDATE employees SET category = ? WHERE id = ?').run(category, id);
+  }
+  // Début de contrat : date valide, ou vide pour retirer la contrainte.
+  if (req.body && req.body.startDate !== undefined) {
+    const sd = String(req.body.startDate || '').trim();
+    if (sd && !/^\d{4}-\d{2}-\d{2}$/.test(sd)) {
+      return res.status(400).json({ error: 'Date de début de contrat invalide' });
+    }
+    db.prepare('UPDATE employees SET start_date = ? WHERE id = ?').run(sd || null, id);
   }
   if (req.body && Array.isArray(req.body.restDays)) {
     const clean = [...new Set(req.body.restDays

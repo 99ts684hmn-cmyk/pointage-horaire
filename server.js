@@ -1241,10 +1241,14 @@ function computeWeeklySums(fromMon, toSunWanted) {
   const HALF_CP_SEC = { demi_cp_midi: 3 * 3600, demi_cp_soir: 4 * 3600 };
   for (const s of statuses) {
     const wk = mondayStr(s.day);
-    if (s.status === 'cp' || s.status === 'ecole' || s.status === 'am') {
+    if (s.status === 'cp' || s.status === 'ecole' || s.status === 'am' || s.status === 'absent') {
       if (workedDay.has(s.employee_id + '|' + s.day)) continue; // jour travaillé → pas de double compte
       posed[s.employee_id] = posed[s.employee_id] || {};
       posed[s.employee_id][wk] = (posed[s.employee_id][wk] || 0) + 1;
+      // « Absent » : 0h (absence non payée), mais le jour compte dans le test
+      // « semaine complète » — une semaine quasi entièrement absente n'est pas
+      // représentative et doit être écartée de la moyenne.
+      if (s.status === 'absent') continue;
       const wd = new Date(`${s.day}T12:00:00`).getDay();
       if (restDaysOn(restByEmp[s.employee_id] || [], s.day).includes(wd)) continue;
       credit[s.employee_id] = credit[s.employee_id] || {};

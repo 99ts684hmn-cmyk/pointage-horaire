@@ -747,7 +747,7 @@ function renderPlanning() {
       let posedCount = 0;
       for (const d of days) {
         const st = statusMap.get(emp.id + '|' + d);
-        if (st === 'cp' || st === 'ecole' || st === 'am') {
+        if (st === 'cp' || st === 'ecole' || st === 'am' || st === 'absent') {
           const dd = rep && rep.days.find((x) => x.day === d);
           if (!(dd && dd.segments.length)) posedCount++;
         }

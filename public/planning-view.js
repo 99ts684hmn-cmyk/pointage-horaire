@@ -170,7 +170,9 @@
             let midiHalf;
             if (midi.length) {
               const isFirst = Math.min(...midi.map((s) => s.clockIn)) === firstMidiT[d];
-              midiHalf = `<div class="pl-half${isFirst ? ' pl-first' : ''}">${midi.map(fmt).join('<br>')}</div>`;
+              // Arrivée à 10:00 le matin → bleu (prioritaire sur le jaune, comme l'admin).
+              const isDix = midi.some((s) => { const t = new Date(s.clockIn); return t.getHours() === 10 && t.getMinutes() === 0; });
+              midiHalf = `<div class="pl-half${isDix ? ' pl-dix' : (isFirst ? ' pl-first' : '')}">${midi.map(fmt).join('<br>')}</div>`;
               midiCount[d]++;
             } else if (demiMidi) {
               midiHalf = `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;

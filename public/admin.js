@@ -796,8 +796,10 @@ function renderPlanning() {
             let midiHalf;
             if (midi.length) {
               const isFirst = !planningNoHours && Math.min(...midi.map((s) => s.clockIn)) === firstMidiT[d];
+              // Arrivée à 10:00 le matin → bleu (prioritaire sur le jaune « 1re arrivée »).
+              const isDix = !planningNoHours && midi.some((s) => { const t = new Date(s.clockIn); return t.getHours() === 10 && t.getMinutes() === 0; });
               const body = planningNoHours ? '' : midi.map(fmt).join('<br>');
-              midiHalf = `<div class="pl-half${isFirst ? ' pl-first' : ''}">${body}</div>`;
+              midiHalf = `<div class="pl-half${isDix ? ' pl-dix' : (isFirst ? ' pl-first' : '')}">${body}</div>`;
               midiCount[d]++;
             } else if (demiMidi) {
               midiHalf = `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;

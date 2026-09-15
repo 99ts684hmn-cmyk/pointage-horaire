@@ -1719,10 +1719,10 @@ function openCellEditor(empId, day) {
       <button class="btn btn-ghost st-btn st-cp${status === 'demi_cp_soir' ? ' active' : ''}" data-st="demi_cp_soir">½ CP soir (4h)</button>
       <button class="btn btn-ghost ech-btn st-echange${(status === 'echange_midi' || status === 'echange_both') ? ' active' : ''}" data-ech="midi">Échange midi</button>
       <button class="btn btn-ghost ech-btn st-echange${(status === 'echange_soir' || status === 'echange_both') ? ' active' : ''}" data-ech="soir">Échange soir</button>
-      <button class="btn btn-ghost st-btn st-cont${status === 'continu' ? ' active' : ''}" data-st="continu">Continu</button>
+      <button class="btn btn-ghost cont-btn st-cont" type="button">🔁 Continu</button>
       ${status ? '<button class="btn btn-ghost" id="ce-clear">Effacer le statut</button>' : ''}
     </div>
-    <div class="field" style="margin-top:18px"><label>Ou ajouter des horaires (un ou deux services, ou en continu)</label></div>
+    <div class="field" style="margin-top:18px"><label>Ou ajouter des horaires (un ou deux services)</label></div>
     <div class="shift-block">
       <div class="shift-title">☀️ Service du matin / midi</div>
       <div class="field"><label for="ce-start1">Arrivée</label><input type="time" id="ce-start1"><div class="preset-chips" id="ce-arr1"></div></div>
@@ -1733,11 +1733,6 @@ function openCellEditor(empId, day) {
       <div class="field"><label for="ce-start2">Arrivée</label><input type="time" id="ce-start2"><div class="preset-chips" id="ce-arr2"></div></div>
       <div class="field" style="margin-top:8px"><label for="ce-end2">Départ</label><input type="time" id="ce-end2"></div>
     </div>
-    <div class="shift-block">
-      <div class="shift-title">🔁 Service continu <span style="font-weight:400;color:var(--muted)">(midi + soir d'un seul tenant)</span></div>
-      <div class="field"><label for="ce-start3">Arrivée</label><input type="time" id="ce-start3"><div class="preset-chips" id="ce-arr3"></div></div>
-      <div class="field" style="margin-top:8px"><label for="ce-end3">Départ</label><input type="time" id="ce-end3"><div class="preset-chips" id="ce-dep3"></div></div>
-    </div>
     <button class="btn btn-green" id="ce-add" style="width:100%">Ajouter ces horaires</button>
     <div class="msg error" id="ce-msg"></div>
     <div style="margin-top:14px"><button class="btn btn-ghost" id="ce-close">Fermer</button></div>
@@ -1745,23 +1740,14 @@ function openCellEditor(empId, day) {
 
   fillChips(cellModal.querySelector('#ce-arr1'), ARR_MORNING, cellModal.querySelector('#ce-start1'));
   fillChips(cellModal.querySelector('#ce-arr2'), ARR_EVENING, cellModal.querySelector('#ce-start2'));
-  fillChips(cellModal.querySelector('#ce-arr3'), ARR_CONT, cellModal.querySelector('#ce-start3'));
-  fillChips(cellModal.querySelector('#ce-dep3'), DEP_CONT, cellModal.querySelector('#ce-end3'));
+  cellModal.querySelector('.cont-btn').addEventListener('click', () => openContinuPicker(emp, day, dayData));
 
   cellModal.querySelector('#ce-add').addEventListener('click', async () => {
     const shifts = [
       { label: 'du matin', s: cellModal.querySelector('#ce-start1').value, e: cellModal.querySelector('#ce-end1').value },
       { label: 'du soir', s: cellModal.querySelector('#ce-start2').value, e: cellModal.querySelector('#ce-end2').value },
     ];
-    const cont = { label: 'continu', s: cellModal.querySelector('#ce-start3').value, e: cellModal.querySelector('#ce-end3').value };
     const toAdd = [];
-    if (cont.s || cont.e) {
-      // Le continu remplace midi + soir : pas de mélange (créneaux qui se chevauchent).
-      if (shifts.some((sh) => sh.s || sh.e)) { cellMsg('Le service continu remplace midi + soir : videz les services du matin et du soir, ou le continu.'); return; }
-      // Départ obligatoire : sans lui, la période ouverte serait classée « midi ».
-      if (!cont.s || !cont.e) { cellMsg("Service continu : renseignez l'arrivée ET le départ."); return; }
-      toAdd.push(cont);
-    }
     for (const sh of shifts) {
       if (!sh.s && !sh.e) continue; // service non renseigné → ignoré
       if (!sh.s) { cellMsg(`Service ${sh.label} : renseignez au moins l'arrivée.`); return; }
@@ -1814,6 +1800,48 @@ function openCellEditor(empId, day) {
 }
 
 function cellMsg(m) { const el = $('ce-msg'); if (el) { el.textContent = m; el.classList.add('show'); } }
+
+// Fenêtre « Service continu » (touche 🔁 Continu) : arrivée ET départ obligatoires,
+// avec raccourcis. Enregistre un créneau unique midi + soir → case rouge continu.
+function openContinuPicker(emp, day, dayData) {
+  const ov = document.createElement('div');
+  ov.className = 'overlay show';
+  ov.style.zIndex = '60'; // au-dessus de la fenêtre de la case
+  const dateLbl = new Date(`${day}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+  ov.innerHTML = `<div class="modal">
+    <h2>🔁 Service continu</h2>
+    <div class="sub">${escapeHtml(emp.name)} — ${escapeHtml(dateLbl)}</div>
+    <div class="field"><label for="cp-start">Arrivée *</label><input type="time" id="cp-start"><div class="preset-chips" id="cp-arr"></div></div>
+    <div class="field" style="margin-top:10px"><label for="cp-end">Départ *</label><input type="time" id="cp-end"><div class="preset-chips" id="cp-dep"></div></div>
+    <div class="msg error" id="cp-msg"></div>
+    <div class="row" style="margin-top:16px;gap:8px">
+      <button class="btn btn-ghost" id="cp-cancel" type="button">Annuler</button>
+      <button class="btn btn-green" id="cp-save" type="button">Enregistrer</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  const close = () => ov.remove();
+  const msg = (m) => { const el = ov.querySelector('#cp-msg'); el.textContent = m; el.classList.add('show'); };
+  fillChips(ov.querySelector('#cp-arr'), ARR_CONT, ov.querySelector('#cp-start'));
+  fillChips(ov.querySelector('#cp-dep'), DEP_CONT, ov.querySelector('#cp-end'));
+  ov.addEventListener('click', (e) => { if (e.target === ov) close(); });
+  ov.querySelector('#cp-cancel').addEventListener('click', close);
+  ov.querySelector('#cp-save').addEventListener('click', async () => {
+    const start = ov.querySelector('#cp-start').value;
+    const end = ov.querySelector('#cp-end').value;
+    if (!start || !end) { msg("L'arrivée ET le départ sont obligatoires."); return; }
+    // Horaires déjà saisis ce jour-là : risque de double compte → confirmation.
+    if (dayData && dayData.segments.length
+      && !confirm('Cette journée a déjà des horaires. Ajouter quand même le service continu ?')) return;
+    const { ok, data } = await api('/api/admin/entries', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employeeId: emp.id, date: day, start, end }),
+    });
+    if (!ok) { msg((data && data.error) || 'Erreur'); return; }
+    close();
+    await refreshAfterCell(emp.id, day);
+  });
+}
 
 // Bascule l'échange d'un service (midi/soir). Les deux peuvent coexister (echange_both).
 function toggleEchange(empId, day, service) {

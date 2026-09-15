@@ -142,6 +142,7 @@
         const demiCpMidi = status === 'demi_cp_midi'; const demiCpSoir = status === 'demi_cp_soir';
         const echMidi = status === 'echange_midi' || status === 'echange_both';
         const echSoir = status === 'echange_soir' || status === 'echange_both';
+        const contMark = status === 'continu'; // journée marquée « Continu » (sans heures)
         let inner; let fillCls = ''; let exchangeMark = '';
 
         if (awayStatus && !hasHours) {
@@ -152,7 +153,7 @@
           if ((awayStatus === 'cp' || awayStatus === 'ecole' || awayStatus === 'am') && !isRest && awayDays < 5 && posedCount < 6) {
             awayDays += 1; dayTotals[d] += 7 * 3600; cpBonusSec += 7 * 3600;
           }
-        } else if (isRest && !hasHours) {
+        } else if (isRest && !hasHours && !contMark) {
           inner = CROSS_SVG;
           fillCls = ' pl-rest';
         } else {
@@ -160,11 +161,16 @@
           const { cont, midi, soir } = hasHours ? classifyDay(day.segments) : { cont: [], midi: [], soir: [] };
           // Continu (rouge plein) seulement si la journée l'est VRAIMENT (mêmes
           // règles que l'admin : coupure visible ou demi/½CP => demi-cases).
+          // Statut « Continu » posé : même effet qu'un profil continu pour ce jour-là.
           const isCont = hasHours && (cont.length > 0
-            || (emp.continuous && !(midi.length && soir.length) && !demiMidi && !demiSoir && !demiCpMidi && !demiCpSoir));
+            || ((emp.continuous || contMark) && !(midi.length && soir.length) && !demiMidi && !demiSoir && !demiCpMidi && !demiCpSoir));
           let stack;
           if (isCont) {
             stack = `<div class="pl-half pl-cont">${day.segments.map(fmt).join('<br>')}</div>`;
+            midiCount[d]++; soirCount[d]++;
+          } else if (contMark && !hasHours) {
+            // Continu prévu sans heures : case rouge, présent midi ET soir, 0h.
+            stack = '<div class="pl-half pl-cont">Continu</div>';
             midiCount[d]++; soirCount[d]++;
           } else {
             let midiHalf;
@@ -212,7 +218,7 @@
           const cpSec = (demiCpMidi && !midi.length ? HALF_CP.demi_cp_midi : 0)
             + (demiCpSoir && !soir.length ? HALF_CP.demi_cp_soir : 0);
           if (cpSec) { dayTotals[d] += cpSec; cpBonusSec += cpSec; }
-          if (isRest && hasHours) exchangeMark = '<span class="pl-exchange" title="Échange">E</span>';
+          if (isRest && (hasHours || contMark)) exchangeMark = '<span class="pl-exchange" title="Échange">E</span>';
         }
         dayCells += `<td class="pl-cell${fillCls}">${exchangeMark}${inner}</td>`;
       }

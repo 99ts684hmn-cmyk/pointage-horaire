@@ -639,7 +639,7 @@ let statusMap = new Map(); // clé "empId|day" → 'cp'|'am'|'ecole'
 let extraMap = {}; // clé "YYYY-MM-DD|midi" / "…|soir" → texte libre (ligne « Extra »)
 let planningNoHours = false; // PDF « sans horaire » : on affiche PM/PS au lieu des heures, sans les totaux
 const STATUS_SHORT = { cp: 'CP', am: 'AM', ecole: 'École', absent: 'Abs', repos: 'Repos' };
-const STATUS_FULL = { cp: 'Congés payés', am: 'Arrêt maladie', ecole: 'École', absent: 'Absent', repos: 'Repos', demi_midi: 'Demi midi (présent soir)', demi_soir: 'Demi soir (présent midi)', demi_cp_midi: '½ CP midi (3h, absent midi)', demi_cp_soir: '½ CP soir (4h, absent soir)', echange_midi: 'Échange midi', echange_soir: 'Échange soir', echange_both: 'Échange midi + soir' };
+const STATUS_FULL = { cp: 'Congés payés', am: 'Arrêt maladie', ecole: 'École', absent: 'Absent', repos: 'Repos', demi_midi: 'Demi midi (présent soir)', demi_soir: 'Demi soir (présent midi)', demi_cp_midi: '½ CP midi (3h, absent midi)', demi_cp_soir: '½ CP soir (4h, absent soir)', echange_midi: 'Échange midi', echange_soir: 'Échange soir', echange_both: 'Échange midi + soir', continu: 'Continu (midi + soir)' };
 const AWAY_STATUSES = ['cp', 'am', 'absent', 'ecole'];
 // Demi-CP : la personne ne travaille pas ce service (payé comme un CP). Midi = 3h, soir = 4h.
 const HALF_CP = { demi_cp_midi: 3 * 3600, demi_cp_soir: 4 * 3600 };
@@ -762,6 +762,7 @@ function renderPlanning() {
         const demiCpMidi = status === 'demi_cp_midi'; const demiCpSoir = status === 'demi_cp_soir';
         const echMidi = status === 'echange_midi' || status === 'echange_both';
         const echSoir = status === 'echange_soir' || status === 'echange_both';
+        const contMark = status === 'continu'; // journée marquée « Continu » (sans heures)
         let inner; let fillCls = ''; let exchangeMark = '';
 
         if (awayStatus && !hasHours) {
@@ -773,7 +774,7 @@ function renderPlanning() {
           if ((awayStatus === 'cp' || awayStatus === 'ecole' || awayStatus === 'am') && !isRest && awayDays < 5 && posedCount < 6) {
             awayDays += 1; dayTotals[d] += 7 * 3600; cpBonusSec += 7 * 3600;
           }
-        } else if (isRest && !hasHours) {
+        } else if (isRest && !hasHours && !contMark) {
           inner = CROSS_SVG;
           fillCls = ' pl-rest';
         } else {
@@ -785,12 +786,17 @@ function renderPlanning() {
           // Continu (rouge plein) seulement si la journée l'est VRAIMENT : un segment
           // couvrant les deux services, ou profil « continu » SANS coupure visible
           // (midi ET soir saisis séparément) ni demi/½CP posé ce jour-là.
+          // Statut « Continu » posé : même effet qu'un profil continu pour ce jour-là.
           const isCont = hasHours && (cont.length > 0
-            || (emp.continuous && !(midi.length && soir.length) && !demiMidi && !demiSoir && !demiCpMidi && !demiCpSoir));
+            || ((emp.continuous || contMark) && !(midi.length && soir.length) && !demiMidi && !demiSoir && !demiCpMidi && !demiCpSoir));
           let stack;
           if (isCont) {
             const body = planningNoHours ? '' : day.segments.map(fmt).join('<br>');
             stack = `<div class="pl-half pl-cont">${body}</div>`;
+            midiCount[d]++; soirCount[d]++;
+          } else if (contMark && !hasHours) {
+            // Continu prévu sans heures : case rouge, présent midi ET soir, 0h.
+            stack = `<div class="pl-half pl-cont">${planningNoHours ? '' : 'Continu'}</div>`;
             midiCount[d]++; soirCount[d]++;
           } else {
             let midiHalf;
@@ -842,7 +848,7 @@ function renderPlanning() {
           const cpSec = (demiCpMidi && !midi.length ? HALF_CP.demi_cp_midi : 0)
             + (demiCpSoir && !soir.length ? HALF_CP.demi_cp_soir : 0);
           if (cpSec) { dayTotals[d] += cpSec; cpBonusSec += cpSec; }
-          if (isRest && hasHours) exchangeMark = '<span class="pl-exchange" title="Échange — travaillé un jour de repos">E</span>';
+          if (isRest && (hasHours || contMark)) exchangeMark = '<span class="pl-exchange" title="Échange — travaillé un jour de repos">E</span>';
         }
         const cls = 'pl-cell pl-click' + fillCls;
         dayCells += `<td class="${cls}" data-emp="${emp.id}" data-day="${d}">${exchangeMark}${inner}</td>`;
@@ -1713,6 +1719,7 @@ function openCellEditor(empId, day) {
       <button class="btn btn-ghost st-btn st-cp${status === 'demi_cp_soir' ? ' active' : ''}" data-st="demi_cp_soir">½ CP soir (4h)</button>
       <button class="btn btn-ghost ech-btn st-echange${(status === 'echange_midi' || status === 'echange_both') ? ' active' : ''}" data-ech="midi">Échange midi</button>
       <button class="btn btn-ghost ech-btn st-echange${(status === 'echange_soir' || status === 'echange_both') ? ' active' : ''}" data-ech="soir">Échange soir</button>
+      <button class="btn btn-ghost st-btn st-cont${status === 'continu' ? ' active' : ''}" data-st="continu">Continu</button>
       ${status ? '<button class="btn btn-ghost" id="ce-clear">Effacer le statut</button>' : ''}
     </div>
     <div class="field" style="margin-top:18px"><label>Ou ajouter des horaires (un ou deux services, ou en continu)</label></div>

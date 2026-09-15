@@ -963,7 +963,9 @@ app.delete('/api/admin/entries/:id', requireAdmin, (req, res) => {
 
 // --- Statuts de journée (CP / AM / École) ---------------------------------
 
-const DAY_STATUSES = ['cp', 'am', 'ecole', 'absent', 'repos', 'demi_midi', 'demi_soir', 'demi_cp_midi', 'demi_cp_soir', 'echange_midi', 'echange_soir', 'echange_both'];
+// « continu » : journée prévue en continu (midi + soir d'un seul tenant), sans
+// heures — case rouge, compte présent aux deux services, 0h (comme PM/PS).
+const DAY_STATUSES = ['cp', 'am', 'ecole', 'absent', 'repos', 'demi_midi', 'demi_soir', 'demi_cp_midi', 'demi_cp_soir', 'echange_midi', 'echange_soir', 'echange_both', 'continu'];
 
 app.get('/api/admin/day-statuses', requireAdmin, (req, res) => {
   const { from, to } = req.query;

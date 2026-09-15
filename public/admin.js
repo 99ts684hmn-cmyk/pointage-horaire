@@ -1622,6 +1622,9 @@ $('audit-demi-btn').addEventListener('click', openDemiAudit);
 // Les départs se saisissent manuellement (pas de raccourcis).
 const ARR_MORNING = ['09:00', '09:30', '10:00', '10:30', '11:00', '11:45'];
 const ARR_EVENING = ['17:00', '17:30', '18:00', '18:45'];
+// Service continu (midi + soir d'un seul tenant) : raccourcis d'arrivée ET de départ.
+const ARR_CONT = ['12:00', '12:30'];
+const DEP_CONT = ['22:00', '22:30', '23:00'];
 
 // Sélecteurs d'heure défilants : heures de 8h à 2h (en passant par la nuit), minutes 00/15/30/45/50.
 const HOUR_ORDER = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2];
@@ -1709,7 +1712,7 @@ function openCellEditor(empId, day) {
       <button class="btn btn-ghost ech-btn st-echange${(status === 'echange_soir' || status === 'echange_both') ? ' active' : ''}" data-ech="soir">Échange soir</button>
       ${status ? '<button class="btn btn-ghost" id="ce-clear">Effacer le statut</button>' : ''}
     </div>
-    <div class="field" style="margin-top:18px"><label>Ou ajouter des horaires (un ou deux services)</label></div>
+    <div class="field" style="margin-top:18px"><label>Ou ajouter des horaires (un ou deux services, ou en continu)</label></div>
     <div class="shift-block">
       <div class="shift-title">☀️ Service du matin / midi</div>
       <div class="field"><label for="ce-start1">Arrivée</label><input type="time" id="ce-start1"><div class="preset-chips" id="ce-arr1"></div></div>
@@ -1720,6 +1723,11 @@ function openCellEditor(empId, day) {
       <div class="field"><label for="ce-start2">Arrivée</label><input type="time" id="ce-start2"><div class="preset-chips" id="ce-arr2"></div></div>
       <div class="field" style="margin-top:8px"><label for="ce-end2">Départ</label><input type="time" id="ce-end2"></div>
     </div>
+    <div class="shift-block">
+      <div class="shift-title">🔁 Service continu <span style="font-weight:400;color:var(--muted)">(midi + soir d'un seul tenant)</span></div>
+      <div class="field"><label for="ce-start3">Arrivée</label><input type="time" id="ce-start3"><div class="preset-chips" id="ce-arr3"></div></div>
+      <div class="field" style="margin-top:8px"><label for="ce-end3">Départ</label><input type="time" id="ce-end3"><div class="preset-chips" id="ce-dep3"></div></div>
+    </div>
     <button class="btn btn-green" id="ce-add" style="width:100%">Ajouter ces horaires</button>
     <div class="msg error" id="ce-msg"></div>
     <div style="margin-top:14px"><button class="btn btn-ghost" id="ce-close">Fermer</button></div>
@@ -1727,16 +1735,26 @@ function openCellEditor(empId, day) {
 
   fillChips(cellModal.querySelector('#ce-arr1'), ARR_MORNING, cellModal.querySelector('#ce-start1'));
   fillChips(cellModal.querySelector('#ce-arr2'), ARR_EVENING, cellModal.querySelector('#ce-start2'));
+  fillChips(cellModal.querySelector('#ce-arr3'), ARR_CONT, cellModal.querySelector('#ce-start3'));
+  fillChips(cellModal.querySelector('#ce-dep3'), DEP_CONT, cellModal.querySelector('#ce-end3'));
 
   cellModal.querySelector('#ce-add').addEventListener('click', async () => {
     const shifts = [
-      { label: 'matin', s: cellModal.querySelector('#ce-start1').value, e: cellModal.querySelector('#ce-end1').value },
-      { label: 'soir', s: cellModal.querySelector('#ce-start2').value, e: cellModal.querySelector('#ce-end2').value },
+      { label: 'du matin', s: cellModal.querySelector('#ce-start1').value, e: cellModal.querySelector('#ce-end1').value },
+      { label: 'du soir', s: cellModal.querySelector('#ce-start2').value, e: cellModal.querySelector('#ce-end2').value },
     ];
+    const cont = { label: 'continu', s: cellModal.querySelector('#ce-start3').value, e: cellModal.querySelector('#ce-end3').value };
     const toAdd = [];
+    if (cont.s || cont.e) {
+      // Le continu remplace midi + soir : pas de mélange (créneaux qui se chevauchent).
+      if (shifts.some((sh) => sh.s || sh.e)) { cellMsg('Le service continu remplace midi + soir : videz les services du matin et du soir, ou le continu.'); return; }
+      // Départ obligatoire : sans lui, la période ouverte serait classée « midi ».
+      if (!cont.s || !cont.e) { cellMsg("Service continu : renseignez l'arrivée ET le départ."); return; }
+      toAdd.push(cont);
+    }
     for (const sh of shifts) {
       if (!sh.s && !sh.e) continue; // service non renseigné → ignoré
-      if (!sh.s) { cellMsg(`Service du ${sh.label} : renseignez au moins l'arrivée.`); return; }
+      if (!sh.s) { cellMsg(`Service ${sh.label} : renseignez au moins l'arrivée.`); return; }
       toAdd.push(sh); // le départ est facultatif (période laissée ouverte)
     }
     if (!toAdd.length) { cellMsg('Renseignez au moins une arrivée.'); return; }
@@ -1745,7 +1763,7 @@ function openCellEditor(empId, day) {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ employeeId: empId, date: day, start: sh.s, end: sh.e || undefined }),
       });
-      if (!ok) { cellMsg(`Service du ${sh.label} : ${(data && data.error) || 'erreur'}`); return; }
+      if (!ok) { cellMsg(`Service ${sh.label} : ${(data && data.error) || 'erreur'}`); return; }
     }
     await refreshAfterCell(empId, day);
   });

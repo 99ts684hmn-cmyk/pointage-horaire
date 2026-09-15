@@ -1709,6 +1709,8 @@ function openCellEditor(empId, day) {
     <div class="field" style="margin-top:14px"><label>Marquer la journée</label></div>
     <div class="action-buttons" style="grid-template-columns:repeat(2,1fr)">
       <button class="btn btn-ghost cont-btn st-cont" type="button" style="grid-column:1 / -1">🔁 Continu</button>
+      <button class="btn btn-ghost svc-btn st-midi" type="button" data-svc="midi">☀️ Midi</button>
+      <button class="btn btn-ghost svc-btn st-soir" type="button" data-svc="soir">🌙 Soir</button>
       <button class="btn btn-ghost st-btn st-repos${status === 'repos' ? ' active' : ''}" data-st="repos">Repos</button>
       <button class="btn btn-ghost st-btn st-cp${status === 'cp' ? ' active' : ''}" data-st="cp">Congés payés</button>
       <button class="btn btn-ghost st-btn st-am${status === 'am' ? ' active' : ''}" data-st="am">Arrêt maladie</button>
@@ -1741,6 +1743,9 @@ function openCellEditor(empId, day) {
   fillChips(cellModal.querySelector('#ce-arr1'), ARR_MORNING, cellModal.querySelector('#ce-start1'));
   fillChips(cellModal.querySelector('#ce-arr2'), ARR_EVENING, cellModal.querySelector('#ce-start2'));
   cellModal.querySelector('.cont-btn').addEventListener('click', () => openContinuPicker(emp, day, dayData));
+  cellModal.querySelectorAll('.svc-btn').forEach((b) => {
+    b.addEventListener('click', () => openServicePicker(emp, day, dayData, b.dataset.svc));
+  });
 
   cellModal.querySelector('#ce-add').addEventListener('click', async () => {
     const shifts = [
@@ -1840,6 +1845,52 @@ function openContinuPicker(emp, day, dayData) {
     if (!ok) { msg((data && data.error) || 'Erreur'); return; }
     close();
     await refreshAfterCell(emp.id, day);
+  });
+}
+
+// Fenêtre « Midi » / « Soir » : raccourcis d'arrivée habituels ; un clic sur une
+// heure ENREGISTRE directement l'arrivée (départ laissé ouvert, comme le formulaire).
+function openServicePicker(emp, day, dayData, svc) {
+  const isMidi = svc === 'midi';
+  const presets = isMidi ? ARR_MORNING : ARR_EVENING;
+  const ov = document.createElement('div');
+  ov.className = 'overlay show';
+  ov.style.zIndex = '60'; // au-dessus de la fenêtre de la case
+  const dateLbl = new Date(`${day}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+  ov.innerHTML = `<div class="modal">
+    <h2>${isMidi ? '☀️ Service du midi' : '🌙 Service du soir'}</h2>
+    <div class="sub">${escapeHtml(emp.name)} — ${escapeHtml(dateLbl)}</div>
+    <div class="field"><label>Arrivée — un clic enregistre</label>
+      <div class="preset-chips" id="sp-chips">${presets.map((t) => `<button type="button" class="chip" data-t="${t}">${t}</button>`).join('')}</div>
+    </div>
+    <div class="msg error" id="sp-msg"></div>
+    <div style="margin-top:16px"><button class="btn btn-ghost" id="sp-cancel" type="button">Annuler</button></div>
+  </div>`;
+  document.body.appendChild(ov);
+  const close = () => ov.remove();
+  const msg = (m) => { const el = ov.querySelector('#sp-msg'); el.textContent = m; el.classList.add('show'); };
+  ov.addEventListener('click', (e) => { if (e.target === ov) close(); });
+  ov.querySelector('#sp-cancel').addEventListener('click', close);
+  let busy = false; // évite un double enregistrement sur double-clic
+  ov.querySelectorAll('#sp-chips .chip').forEach((c) => {
+    c.addEventListener('click', async () => {
+      if (busy) return;
+      // Ce service a déjà un horaire ce jour-là → confirmation (risque de doublon).
+      if (dayData && dayData.segments.length) {
+        const { midi, soir, cont } = classifyDay(dayData.segments);
+        const already = cont.length || (isMidi ? midi.length : soir.length);
+        if (already && !confirm(`Le service du ${isMidi ? 'midi' : 'soir'} a déjà un horaire ce jour-là. Ajouter quand même ${c.dataset.t} ?`)) return;
+      }
+      busy = true;
+      c.classList.add('active');
+      const { ok, data } = await api('/api/admin/entries', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employeeId: emp.id, date: day, start: c.dataset.t }),
+      });
+      if (!ok) { busy = false; c.classList.remove('active'); msg((data && data.error) || 'Erreur'); return; }
+      close();
+      await refreshAfterCell(emp.id, day);
+    });
   });
 }
 

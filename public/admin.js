@@ -796,10 +796,13 @@ function renderPlanning() {
             let midiHalf;
             if (midi.length) {
               const isFirst = !planningNoHours && Math.min(...midi.map((s) => s.clockIn)) === firstMidiT[d];
-              // Arrivée à 10:00 le matin → bleu (prioritaire sur le jaune « 1re arrivée »).
-              const isDix = !planningNoHours && midi.some((s) => { const t = new Date(s.clockIn); return t.getHours() === 10 && t.getMinutes() === 0; });
+              // Arrivée à 10:00 → bleu, à 10:30 → violet (prioritaires sur le jaune « 1re arrivée »).
+              const arrAt = (h, m) => !planningNoHours && midi.some((s) => { const t = new Date(s.clockIn); return t.getHours() === h && t.getMinutes() === m; });
+              const isDix = arrAt(10, 0);
+              const isDixTrente = arrAt(10, 30);
               const body = planningNoHours ? '' : midi.map(fmt).join('<br>');
-              midiHalf = `<div class="pl-half${isDix ? ' pl-dix' : (isFirst ? ' pl-first' : '')}">${body}</div>`;
+              const midiCls = isDix ? ' pl-dix' : (isDixTrente ? ' pl-dixtrente' : (isFirst ? ' pl-first' : ''));
+              midiHalf = `<div class="pl-half${midiCls}">${body}</div>`;
               midiCount[d]++;
             } else if (demiMidi) {
               midiHalf = `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;

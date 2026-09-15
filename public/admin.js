@@ -1708,6 +1708,7 @@ function openCellEditor(empId, day) {
     ${existingHtml}
     <div class="field" style="margin-top:14px"><label>Marquer la journée</label></div>
     <div class="action-buttons" style="grid-template-columns:repeat(2,1fr)">
+      <button class="btn btn-ghost cont-btn st-cont" type="button" style="grid-column:1 / -1">🔁 Continu</button>
       <button class="btn btn-ghost st-btn st-repos${status === 'repos' ? ' active' : ''}" data-st="repos">Repos</button>
       <button class="btn btn-ghost st-btn st-cp${status === 'cp' ? ' active' : ''}" data-st="cp">Congés payés</button>
       <button class="btn btn-ghost st-btn st-am${status === 'am' ? ' active' : ''}" data-st="am">Arrêt maladie</button>
@@ -1719,7 +1720,6 @@ function openCellEditor(empId, day) {
       <button class="btn btn-ghost st-btn st-cp${status === 'demi_cp_soir' ? ' active' : ''}" data-st="demi_cp_soir">½ CP soir (4h)</button>
       <button class="btn btn-ghost ech-btn st-echange${(status === 'echange_midi' || status === 'echange_both') ? ' active' : ''}" data-ech="midi">Échange midi</button>
       <button class="btn btn-ghost ech-btn st-echange${(status === 'echange_soir' || status === 'echange_both') ? ' active' : ''}" data-ech="soir">Échange soir</button>
-      <button class="btn btn-ghost cont-btn st-cont" type="button">🔁 Continu</button>
       ${status ? '<button class="btn btn-ghost" id="ce-clear">Effacer le statut</button>' : ''}
     </div>
     <div class="field" style="margin-top:18px"><label>Ou ajouter des horaires (un ou deux services)</label></div>

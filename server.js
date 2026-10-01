@@ -325,11 +325,16 @@ function todayEntries(employeeId) {
 // Catégories de salariés (ordre hiérarchique d'affichage).
 const CATEGORIES = ['responsable', 'chef_de_rang', 'apprenti'];
 
-// Liste des employés actifs avec leur statut courant.
+// « Encore dans l'entreprise » : actif, OU sortant dont le dernier jour n'est pas
+// encore passé (départ programmé). Il garde ses écrans jusqu'à cette date : saisie
+// des horaires, arrivée groupée, et liste des valideurs de check-lists.
+const STILL_HERE = '(active = 1 OR (end_date IS NOT NULL AND end_date >= ?))';
+
+// Liste des employés encore présents, avec leur statut courant.
 app.get('/api/employees', (req, res) => {
   const employees = db.prepare(
-    'SELECT id, name, category FROM employees WHERE active = 1 ORDER BY name COLLATE NOCASE'
-  ).all();
+    `SELECT id, name, category FROM employees WHERE ${STILL_HERE} ORDER BY name COLLATE NOCASE`
+  ).all(businessDay(Date.now()));
   const result = employees.map((emp) => {
     const open = openEntryFor(emp.id);
     const entries = todayEntries(emp.id);
@@ -493,7 +498,7 @@ app.post('/api/punch', (req, res) => {
 // L'application sert surtout à SAISIR les horaires (pas de notion présent/absent).
 app.post('/api/entry', (req, res) => {
   const { employeeId, date, start, end } = req.body || {};
-  const emp = db.prepare('SELECT * FROM employees WHERE id = ? AND active = 1').get(Number(employeeId));
+  const emp = db.prepare(`SELECT * FROM employees WHERE id = ? AND ${STILL_HERE}`).get(Number(employeeId), businessDay(Date.now()));
   if (!emp) return res.status(404).json({ error: 'Employé introuvable' });
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '') || !/^\d{2}:\d{2}$/.test(start || '')) {
     return res.status(400).json({ error: "Date ou heure d'arrivée invalide" });
@@ -535,7 +540,7 @@ app.post('/api/entries/bulk', (req, res) => {
   let count = 0;
   db.transaction(() => {
     for (const id of employeeIds) {
-      const emp = db.prepare('SELECT id FROM employees WHERE id = ? AND active = 1').get(Number(id));
+      const emp = db.prepare(`SELECT id FROM employees WHERE id = ? AND ${STILL_HERE}`).get(Number(id), businessDay(Date.now()));
       if (emp) { ins.run(emp.id, inTs); count++; }
     }
   })();
@@ -1089,7 +1094,7 @@ app.put('/api/admin/day-status/range', requireAdmin, (req, res) => {
   let count = 0; let skippedEcole = 0;
   db.transaction(() => {
     for (const id of employeeIds) {
-      const emp = db.prepare('SELECT id, category FROM employees WHERE id = ? AND active = 1').get(Number(id));
+      const emp = db.prepare(`SELECT id, category FROM employees WHERE id = ? AND ${STILL_HERE}`).get(Number(id), businessDay(Date.now()));
       if (!emp) continue;
       if (status === 'ecole' && (emp.category || 'chef_de_rang') !== 'apprenti') { skippedEcole++; continue; }
       for (const d of days) { up.run(emp.id, d, status); count++; }

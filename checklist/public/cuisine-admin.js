@@ -81,7 +81,7 @@ async function toggleDay(taskId, day) {
 
 // Blocs proposés : les trois blocs de base (toujours disponibles, même vides)
 // puis ceux déjà utilisés par une check-list.
-const BASE_GROUPS = ['Ouverture', 'Fermeture', 'Ménage'];
+const BASE_GROUPS = ['Ouverture', 'Ménage', 'Fermeture'];
 function groupNames() {
   return [...new Set([...BASE_GROUPS, ...templates.map((t) => t.group).filter(Boolean)])];
 }
@@ -177,17 +177,33 @@ function render() {
     </div>` : '';
     return `<div class="card acc" data-id="${esc(tm.id)}">
       <button class="acc-head" data-toggle="${esc(tm.id)}">
-        <span class="drag cl-drag" title="Glisser pour réordonner">⠿</span>
+        <span class="drag cl-drag" title="Glisser pour réordonner ou changer de bloc">⠿</span>
         <div class="l"><span class="ic">${esc(tm.icon)}</span>
-          <div><div class="nm">${esc(tm.name)}</div><div class="mode">${tm.tasks.length} tâches • ${MODE_LABEL[tm.resetMode] || ''}${tm.group ? ` • Bloc ${esc(tm.group)}` : ''}</div></div>
+          <div><div class="nm">${esc(tm.name)}</div><div class="mode">${tm.tasks.length} tâches • ${MODE_LABEL[tm.resetMode] || ''}</div></div>
         </div>
         <span class="caret">${open ? '▲' : '▼'}</span>
       </button>${body}
     </div>`;
-  }).join('');
+  });
+
+  // Sections par bloc, dans l'ordre d'apparition des check-lists ; les blocs de
+  // base encore vides sont ajoutés à la fin (on peut y glisser une check-list).
+  // Glisser une check-list vers un autre bloc change son bloc ; glisser un bloc
+  // par sa poignée déplace toutes ses check-lists d'un coup.
+  const sections = new Map();
+  templates.forEach((tm, i) => {
+    const k = tm.group || '';
+    if (!sections.has(k)) sections.set(k, []);
+    sections.get(k).push(accsHtml[i]);
+  });
+  for (const g of BASE_GROUPS) if (!sections.has(g)) sections.set(g, []);
+  const sectionsHtml = [...sections.entries()].map(([k, cards]) => `<section class="grp-sec" data-grp="${esc(k)}">
+      <h3 class="block-title"><span class="drag grp-drag" title="Glisser pour déplacer le bloc entier">⠿</span><span>${k ? esc(k) : 'Hors bloc'}</span><span class="bcount">${cards.length ? cards.length + ' check-list' + (cards.length > 1 ? 's' : '') : 'vide — glissez une check-list ici'}</span></h3>
+      <div class="grp-list" data-grp="${esc(k)}" style="min-height:14px">${cards.join('')}</div>
+    </section>`).join('');
 
   content.innerHTML = (templates.length
-    ? `<div id="cl-list">${accsHtml}</div>`
+    ? `<div id="cl-list">${sectionsHtml}</div>`
     : '<div class="empty" style="margin-bottom:16px">Aucune check-list cuisine pour l\'instant.</div>')
     + createFormHTML();
 
@@ -231,9 +247,29 @@ function render() {
   });
   const clList = document.getElementById('cl-list');
   if (clList && window.Sortable) {
+    const domOrder = () => [...clList.querySelectorAll('.acc')].map((a) => a.dataset.id);
+    // Check-lists : réordonner dans un bloc, ou glisser vers un autre bloc.
+    clList.querySelectorAll('.grp-list').forEach((list) => {
+      window.Sortable.create(list, {
+        group: 'cl', handle: '.cl-drag', draggable: '.acc', animation: 150,
+        onEnd: async (ev) => {
+          const id = ev.item.dataset.id;
+          const newGrp = ev.to.dataset.grp || '';
+          const tm = templates.find((t) => t.id === id);
+          if (tm && (tm.group || '') !== newGrp) {
+            tm.group = newGrp || null;
+            await fetch(`api/templates/${encodeURIComponent(id)}`, {
+              method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ group: newGrp }),
+            });
+          }
+          await saveTemplateOrder(domOrder());
+        },
+      });
+    });
+    // Blocs entiers : glisser par la poignée du titre.
     window.Sortable.create(clList, {
-      handle: '.cl-drag', draggable: '.acc', animation: 150,
-      onEnd: () => saveTemplateOrder([...clList.querySelectorAll('.acc')].map((a) => a.dataset.id)),
+      handle: '.grp-drag', draggable: '.grp-sec', animation: 150,
+      onEnd: () => saveTemplateOrder(domOrder()),
     });
   }
 }

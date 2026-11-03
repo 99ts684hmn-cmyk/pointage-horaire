@@ -647,7 +647,7 @@ function ensureTemplateByType(type, build) {
 }
 
 // Version de schéma/migrations appliquée à cette base (PRAGMA user_version).
-const SCHEMA_VERSION = 18;
+const SCHEMA_VERSION = 19;
 
 function seedAndMigrate() {
   const count = db.prepare('SELECT COUNT(*) c FROM templates').get().c;
@@ -881,6 +881,16 @@ function seedAndMigrate() {
   // y sont rangées si elles n'ont pas encore de bloc.
   if (version < 18) {
     db.prepare("UPDATE templates SET grp = 'Ouverture' WHERE grp IS NULL AND category = 'cuisine' AND is_active = 1 AND (lower(name) LIKE '%matin%' OR lower(name) LIKE '%ouverture%')").run();
+  }
+  // Migration 19 : ordre des blocs cuisine = Ouverture / Ménage / Fermeture
+  // (l'ordre des blocs suit celui des check-lists ; on renumérote « ord » par
+  // bloc en gardant l'ordre interne). Modifiable ensuite par glisser-déposer.
+  if (version < 19) {
+    const rank = { Ouverture: 0, 'Ménage': 1, Fermeture: 2 };
+    const rows = db.prepare("SELECT id, grp, ord FROM templates WHERE category = 'cuisine' AND is_active = 1 ORDER BY ord ASC").all();
+    rows.sort((a, b) => ((rank[a.grp] ?? 3) - (rank[b.grp] ?? 3)) || (a.ord - b.ord));
+    const upd = db.prepare('UPDATE templates SET ord = ? WHERE id = ?');
+    rows.forEach((r, i) => upd.run(i + 1, r.id));
   }
   db.pragma('user_version = ' + SCHEMA_VERSION);
 }

@@ -95,12 +95,27 @@ function render() {
     </a>`;
   };
 
-  const todo = sessions.filter((s) => s.status !== 'TERMINE');
-  const done = sessions.filter((s) => s.status === 'TERMINE');
-  const banner = todo.length === 0 ? '<div class="alldone">✅ Tout est bouclé, bravo !</div>' : '';
-  const todoHtml = todo.length ? `<div class="grid">${todo.map(cardTodo).join('')}</div>` : '';
-  const doneHtml = done.length ? `<div class="donelist">${done.map(cardDone).join('')}</div>` : '';
-  content.innerHTML = banner + todoHtml + doneHtml;
+  // Blocs (ex. « Fermeture », « Ménage ») : les check-lists hors bloc d'abord,
+  // puis chaque bloc dans l'ordre de sa première check-list. Les titres de bloc
+  // n'apparaissent que s'il existe au moins un bloc.
+  const groups = new Map([['', []]]);
+  for (const s of sessions) {
+    const k = s.templateGroup || '';
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(s);
+  }
+  const showHeads = [...groups.keys()].some((k) => k !== '');
+  const banner = sessions.every((s) => s.status === 'TERMINE') ? '<div class="alldone">✅ Tout est bouclé, bravo !</div>' : '';
+  content.innerHTML = banner + [...groups.entries()].filter(([, list]) => list.length).map(([k, list]) => {
+    const todo = list.filter((s) => s.status !== 'TERMINE');
+    const done = list.filter((s) => s.status === 'TERMINE');
+    const head = (showHeads && k)
+      ? `<h3 class="block-title"><span>${esc(k)}</span><span class="bcount">${done.length}/${list.length} faite${done.length > 1 ? 's' : ''}</span></h3>`
+      : '';
+    const todoHtml = todo.length ? `<div class="grid">${todo.map(cardTodo).join('')}</div>` : '';
+    const doneHtml = done.length ? `<div class="donelist">${done.map(cardDone).join('')}</div>` : '';
+    return `<section class="block">${head}${todoHtml}${doneHtml}</section>`;
+  }).join('');
 }
 
 load();

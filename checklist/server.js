@@ -151,6 +151,7 @@ app.get('/api/sessions', (req, res) => {
       templateIcon: template.icon,
       resetMode: template.reset_mode,
       category: template.category || 'general',
+      templateGroup: template.grp || null, // bloc d'affichage (page cuisine)
       date: session.date,
       status: session.status,
       completedBy: session.completed_by,
@@ -250,6 +251,7 @@ app.get('/api/templates', (req, res) => {
   const templates = qActiveTemplates.all().map((t) => ({
     id: t.id, name: t.name, icon: t.icon, type: t.type, resetMode: t.reset_mode,
     category: t.category || 'general',
+    group: t.grp || null, // bloc d'affichage (page cuisine)
     tasks: qTemplateTasks.all(t.id).map((task) => ({ id: task.id, title: task.title, order: task.ord, days: task.days || null, dayOfWeek: task.day_of_week ?? null })),
   }));
   res.json(templates);
@@ -274,13 +276,14 @@ app.post('/api/templates', requireAdmin, (req, res) => {
   const icon = (b.icon || '').trim() || '📋';
   const resetMode = RESET_MODES.includes(b.resetMode) ? b.resetMode : 'AUTO_DAILY';
   const category = CATEGORIES.includes(b.category) ? b.category : 'general';
+  const group = cleanGroup(b.group);
   // Type unique (les types « seed » sont en MAJUSCULES connues ; on préfixe).
   const type = 'CUSTOM_' + uid().replace(/-/g, '').slice(0, 12).toUpperCase();
   const last = db.prepare('SELECT MAX(ord) m FROM templates WHERE category = ?').get(category);
   const id = uid();
-  db.prepare('INSERT INTO templates(id,name,type,color,icon,reset_mode,ord,is_active,category,created_at) VALUES(?,?,?,?,?,?,?,1,?,?)')
-    .run(id, name, type, null, icon, resetMode, (last.m || 0) + 1, category, nowISO());
-  res.status(201).json({ id, name, icon, resetMode, category, type, tasks: [] });
+  db.prepare('INSERT INTO templates(id,name,type,color,icon,reset_mode,ord,is_active,category,grp,created_at) VALUES(?,?,?,?,?,?,?,1,?,?,?)')
+    .run(id, name, type, null, icon, resetMode, (last.m || 0) + 1, category, group, nowISO());
+  res.status(201).json({ id, name, icon, resetMode, category, group, type, tasks: [] });
 });
 
 // DELETE /api/templates/:id — désactiver une check-list (soft delete : l'historique
@@ -290,13 +293,21 @@ app.delete('/api/templates/:id', requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-// PATCH /api/templates/:id — renommer (et/ou changer l'icône) une check-list.
+// Nom de bloc nettoyé : texte court, ou NULL (hors bloc).
+function cleanGroup(v) {
+  if (typeof v !== 'string') return null;
+  const g = v.trim().slice(0, 40);
+  return g || null;
+}
+
+// PATCH /api/templates/:id — renommer, changer l'icône et/ou le bloc d'une check-list.
 app.patch('/api/templates/:id', requireAdmin, (req, res) => {
   const b = req.body || {};
   const sets = [];
   const args = [];
   if (typeof b.name === 'string' && b.name.trim()) { sets.push('name = ?'); args.push(b.name.trim()); }
   if (typeof b.icon === 'string' && b.icon.trim()) { sets.push('icon = ?'); args.push(b.icon.trim()); }
+  if (b.group !== undefined) { sets.push('grp = ?'); args.push(cleanGroup(b.group)); } // '' → hors bloc
   if (!sets.length) return res.status(400).json({ error: 'Rien à modifier' });
   args.push(req.params.id);
   const r = db.prepare(`UPDATE templates SET ${sets.join(', ')} WHERE id = ?`).run(...args);
@@ -389,7 +400,7 @@ app.get('/api/reports', (req, res) => {
   if (scope === 'salle') where.push("COALESCE(t.category,'general') != 'cuisine'");
   else if (scope === 'cuisine') where.push("t.category = 'cuisine'");
   const sql = `
-    SELECT s.*, t.name tname, t.type ttype, t.color tcolor, t.icon ticon, t.category tcategory
+    SELECT s.*, t.name tname, t.type ttype, t.color tcolor, t.icon ticon, t.category tcategory, t.grp tgrp
     FROM sessions s JOIN templates t ON t.id = s.template_id
     ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
     ORDER BY s.date DESC, s.created_at DESC`;
@@ -401,6 +412,7 @@ app.get('/api/reports', (req, res) => {
     return {
       id: s.id, date: s.date, templateName: s.tname, templateType: s.ttype,
       templateColor: s.tcolor, templateIcon: s.ticon, category: s.tcategory || 'general', status: s.status,
+      templateGroup: s.tgrp || null,
       completedBy: s.completed_by || '-', completedAt: s.completed_at,
       totalTasks: total, doneTasks: done, progress: total > 0 ? Math.round((done / total) * 100) : 0,
     };

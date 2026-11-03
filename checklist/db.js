@@ -142,6 +142,11 @@ db.exec(`
 if (!db.prepare('PRAGMA table_info(templates)').all().some((c) => c.name === 'category')) {
   db.exec("ALTER TABLE templates ADD COLUMN category TEXT NOT NULL DEFAULT 'general'");
 }
+// Colonne « grp » : bloc d'affichage d'une check-list sur la page cuisine
+// (ex. « Fermeture », « Ménage »). NULL = hors bloc. Idempotent.
+if (!db.prepare('PRAGMA table_info(templates)').all().some((c) => c.name === 'grp')) {
+  db.exec('ALTER TABLE templates ADD COLUMN grp TEXT');
+}
 // Colonne « days » (jours d'une tâche pour le mode WEEKLY_CARRY_OVER, ex. "1,3,5").
 // Si NULL, on retombe sur day_of_week (compat. tâches hebdo salle existantes).
 if (!db.prepare('PRAGMA table_info(tasks)').all().some((c) => c.name === 'days')) {
@@ -642,7 +647,7 @@ function ensureTemplateByType(type, build) {
 }
 
 // Version de schéma/migrations appliquée à cette base (PRAGMA user_version).
-const SCHEMA_VERSION = 16;
+const SCHEMA_VERSION = 17;
 
 function seedAndMigrate() {
   const count = db.prepare('SELECT COUNT(*) c FROM templates').get().c;
@@ -862,6 +867,14 @@ function seedAndMigrate() {
       // Tâches héritées avec un jour unique (day_of_week) : converties en `days`.
       db.prepare("UPDATE tasks SET days = CAST(day_of_week AS TEXT), day_of_week = NULL WHERE template_id = ? AND is_active = 1 AND (days IS NULL OR days = '') AND day_of_week IS NOT NULL").run(t.id);
     }
+  }
+  // Migration 17 : blocs de la page cuisine — « Fermeture » (Plancha, Poste
+  // garniture, Fermeture du froid, Check fermeture) et « Ménage » (Ménage hebdo
+  // cuisine). Posé seulement sur les check-lists encore sans bloc ; modifiable
+  // ensuite dans l'admin cuisine. Idempotent (base neuve comprise).
+  if (version < 17) {
+    db.prepare("UPDATE templates SET grp = 'Fermeture' WHERE grp IS NULL AND type IN ('CUISINE_PLANCHA','CUISINE_GARNITURE','CUISINE_FERM_FROID','CUISINE_CHECK_FERMETURE')").run();
+    db.prepare("UPDATE templates SET grp = 'Ménage' WHERE grp IS NULL AND type = 'CUISINE_MENAGE_HEBDO'").run();
   }
   db.pragma('user_version = ' + SCHEMA_VERSION);
 }

@@ -79,14 +79,43 @@ async function toggleDay(taskId, day) {
   });
 }
 
+// Blocs existants (page cuisine), dans l'ordre d'apparition.
+function groupNames() {
+  return [...new Set(templates.map((t) => t.group).filter(Boolean))];
+}
+// Options du sélecteur de bloc : hors bloc, blocs existants, nouveau bloc.
+function groupOptionsHTML(current) {
+  const opts = [['', '— Hors bloc —'], ...groupNames().map((g) => [g, g]), ['__new__', '➕ Nouveau bloc…']];
+  return opts.map(([v, l]) => `<option value="${esc(v)}"${v === (current || '') ? ' selected' : ''}>${esc(l)}</option>`).join('');
+}
+// Valeur choisie dans un sélecteur de bloc ; « Nouveau bloc… » demande le nom.
+function pickGroup(sel) {
+  if (sel.value !== '__new__') return sel.value;
+  const g = (prompt('Nom du nouveau bloc (ex. Ménage) :') || '').trim();
+  if (!g) { sel.value = ''; return null; }
+  return g;
+}
+async function setTemplateGroup(id, sel) {
+  const group = pickGroup(sel);
+  if (group === null) return;
+  const tm = templates.find((t) => t.id === id);
+  if (tm) tm.group = group || null; // maj locale (rendu immédiat)
+  render();
+  await fetch(`api/templates/${encodeURIComponent(id)}`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ group }),
+  });
+}
+
 async function createTemplate() {
   const name = document.getElementById('new-cl-name').value.trim();
   if (!name) return;
   const icon = document.getElementById('new-cl-icon').value.trim() || '📋';
   const resetMode = document.getElementById('new-cl-reset').value;
+  const group = pickGroup(document.getElementById('new-cl-grp'));
+  if (group === null) return;
   const r = await fetch('api/templates', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, icon, resetMode, category: CATEGORY }),
+    body: JSON.stringify({ name, icon, resetMode, category: CATEGORY, group }),
   });
   const created = await r.json();
   await fetchData();
@@ -116,6 +145,9 @@ function createFormHTML() {
       <select id="new-cl-reset" style="border:1.5px solid var(--border);border-radius:9px;padding:10px;font-size:.85rem;font-family:inherit;color:var(--dark)">
         ${RESET_OPTS.map((o) => `<option value="${o[0]}">${o[1]}</option>`).join('')}
       </select>
+      <select id="new-cl-grp" title="Bloc d'affichage" style="border:1.5px solid var(--border);border-radius:9px;padding:10px;font-size:.85rem;font-family:inherit;color:var(--dark)">
+        ${groupOptionsHTML('')}
+      </select>
       <button class="btn btn-red" id="new-cl-create">Créer</button>
     </div>
   </div>`;
@@ -132,6 +164,10 @@ function render() {
     + (tm.resetMode === 'WEEKLY_CARRY_OVER' ? dayPillsHTML(task) : '') + '</div>').join('')}
       </div>
       <div class="addrow"><input type="text" placeholder="Nouvelle tâche…" data-add-input="${esc(tm.id)}"><button class="btn btn-red" data-add-task="${esc(tm.id)}">+ Ajouter</button></div>
+      <div style="margin-top:12px;display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--muted)">
+        <span style="font-weight:700">Bloc :</span>
+        <select data-grp-tmpl="${esc(tm.id)}" style="border:1.5px solid var(--border);border-radius:9px;padding:8px 10px;font-size:.85rem;font-family:inherit;color:var(--dark)">${groupOptionsHTML(tm.group)}</select>
+      </div>
       <div style="margin-top:12px;display:flex;justify-content:space-between;gap:8px">
         <button style="background:none;border:0;color:var(--muted);font-weight:700;font-size:.82rem;cursor:pointer;font-family:inherit" data-rename-tmpl="${esc(tm.id)}" data-name="${esc(tm.name)}">✏️ Renommer</button>
         <button class="del" data-del-tmpl="${esc(tm.id)}" data-del-name="${esc(tm.name)}">🗑 Supprimer cette check-list</button>
@@ -141,7 +177,7 @@ function render() {
       <button class="acc-head" data-toggle="${esc(tm.id)}">
         <span class="drag cl-drag" title="Glisser pour réordonner">⠿</span>
         <div class="l"><span class="ic">${esc(tm.icon)}</span>
-          <div><div class="nm">${esc(tm.name)}</div><div class="mode">${tm.tasks.length} tâches • ${MODE_LABEL[tm.resetMode] || ''}</div></div>
+          <div><div class="nm">${esc(tm.name)}</div><div class="mode">${tm.tasks.length} tâches • ${MODE_LABEL[tm.resetMode] || ''}${tm.group ? ` • Bloc ${esc(tm.group)}` : ''}</div></div>
         </div>
         <span class="caret">${open ? '▲' : '▼'}</span>
       </button>${body}
@@ -158,6 +194,7 @@ function render() {
   content.querySelectorAll('[data-del-tmpl]').forEach((b) => b.addEventListener('click', () => deleteTemplate(b.dataset.delTmpl, b.dataset.delName)));
   content.querySelectorAll('[data-rename-tmpl]').forEach((b) => b.addEventListener('click', () => renameTemplate(b.dataset.renameTmpl, b.dataset.name)));
   content.querySelectorAll('[data-dtask]').forEach((b) => b.addEventListener('click', () => toggleDay(b.dataset.dtask, parseInt(b.dataset.day, 10))));
+  content.querySelectorAll('[data-grp-tmpl]').forEach((sel) => sel.addEventListener('change', () => setTemplateGroup(sel.dataset.grpTmpl, sel)));
 
   content.querySelectorAll('[data-toggle]').forEach((b) => b.addEventListener('click', () => {
     expanded = expanded === b.dataset.toggle ? null : b.dataset.toggle; render();

@@ -958,7 +958,9 @@ function seedAndMigrate() {
     const already = t && db.prepare('SELECT COUNT(*) c FROM tasks WHERE template_id = ? AND is_active = 1 AND title = ?')
       .get(t.id, CUISINE_MENAGE_HEBDO_TASKS[0].title).c;
     if (t && !already) {
-      db.prepare("UPDATE templates SET name = 'Ménage du jour' WHERE id = ?").run(t.id);
+      // is_active = 1 : la liste avait pu être supprimée (masquée) dans l'admin ;
+      // elle revient avec le nouveau plan, dans le bloc « Ménage ».
+      db.prepare("UPDATE templates SET name = 'Ménage du jour', is_active = 1, grp = COALESCE(grp, 'Ménage') WHERE id = ?").run(t.id);
       db.prepare('UPDATE tasks SET is_active = 0 WHERE template_id = ? AND is_active = 1').run(t.id);
       CUISINE_MENAGE_HEBDO_TASKS.forEach((task, i) => insertTask(t.id, task.title, i + 1, null, task.days, task.weeks));
     }

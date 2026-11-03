@@ -576,17 +576,69 @@ const CUISINE_FERM_FROID_TASKS = [
 // affiche les tâches programmées CE jour (cases colorées) + le report des tâches
 // non faites les jours précédents. days = jours programmés ("1"=lundi … "7"=dim).
 // Estimation depuis la photo (cases colorées) — à AJUSTER dans l'éditeur cuisine.
+// « Ménage du jour » (plan de nettoyage du 03/11/2026) : jours 1=lun…7=dim ;
+// `weeks` = occurrences dans le mois (ex. '1,3' = 1er et 3e jour choisi du mois).
+// Tâches non faites reportées au lendemain (mode WEEKLY_CARRY_OVER).
 const CUISINE_MENAGE_HEBDO_TASKS = [
-  { title: 'Intérieur hotte', days: '1' },
-  { title: 'Ranger CF viande', days: '1,2,3,5,6' },
-  { title: 'Chambre froide du bas', days: '1,3,5,6' },
-  { title: 'Légumerie et sol', days: '1,3,5' },
-  { title: 'Chambre froide du haut', days: '3,5,7' },
-  { title: 'Local poubelle', days: '1,4' },
-  { title: 'Poussière moteur des tours', days: '5' },
-  { title: 'Grilles de hottes', days: '1,2,3,4,5,6,7' },
-  { title: 'Coffre de la hotte', days: '6' },
-  { title: 'Moteur de la chambre froide', days: '1' },
+  { title: "Légumerie — Frigo légumes à fond", days: '3' },
+  { title: "Légumerie — Ranger le frigo légumes", days: '3' },
+  { title: "Légumerie — Bac oignons + étagère (nettoyage)", days: '3' },
+  { title: "Légumerie — Étagère agrumes", days: '3' },
+  { title: "Légumerie — Sol + égout", days: '1,3,5' },
+  { title: "CF bas — Fifo + DLC", days: '1,3,5' },
+  { title: "CF bas — Sol + plinthe", days: '1,3,5' },
+  { title: "CF bas — Mur", days: '1,3,5' },
+  { title: "CF bas — Étagère / ventilateur / moteur", days: '1', weeks: '2,4' },
+  { title: "CF haut — Vérif DLC", days: '1,3,5' },
+  { title: "CF haut — Sol + égouts", days: '1' },
+  { title: "CF haut — Étagère à fond", days: '5', weeks: '1,3' },
+  { title: "CF haut — Échelle", days: '5', weeks: '2,4' },
+  { title: "Vestiaire — Sol", days: '1,2,3,4,5,6,7' },
+  { title: "Vestiaire — Toilette", days: '1,2,3,4,5,6,7' },
+  { title: "Vestiaire — Papier (ouverture et fermeture)", days: '1,2,3,4,5,6,7' },
+  { title: "Vestiaire — Toilette + lavabo", days: '2,6' },
+  { title: "Vestiaire — Ranger", days: '4' },
+  { title: "Vestiaire — Douche", days: '4' },
+  { title: "Vestiaire — Plinthe", days: '6' },
+  { title: "Cagibi — Nettoyer les poubelles cuisine", days: '1,2,3,4,5,6,7' },
+  { title: "Cagibi — Mur", days: '5' },
+  { title: "Cagibi — Plinthe", days: '5' },
+  { title: "Cagibi — Cellule intérieur / extérieur", days: '2', weeks: '1,3' },
+  { title: "Cagibi — Congélateur à glace intérieur / extérieur", days: '2', weeks: '2,4' },
+  { title: "Cagibi — Ranger épices + nettoyer étagère", days: '3', weeks: '1,3' },
+  { title: "Cagibi — Couteaux + porte-couteaux", days: '3', weeks: '2,4' },
+  { title: "Économat — Sol", days: '1,2,3,4,5,6,7' },
+  { title: "Économat — Ranger étagère", days: '7' },
+  { title: "Économat — Nettoyer étagère", days: '3', weeks: '2,4' },
+  { title: "Économat — Congélateur droit à dégivrer", days: '3', weeks: '1,3' },
+  { title: "Économat — Congélateur gauche à dégivrer", days: '4', weeks: '1,3' },
+  { title: "Économat — Plinthe", days: '5', weeks: '1,3' },
+  { title: "Économat — Sous-videuse et trancheuse", days: '1', weeks: '2' },
+  { title: "Cuisine — Papier (tous les jours + service)", days: '1,2,3,4,5,6,7' },
+  { title: "Cuisine — Porte four chaud", days: '1,2,3,4,5,6,7' },
+  { title: "Cuisine — Désinfecter poignées et interrupteurs (plusieurs fois par jour)", days: '1,2,3,4,5,6,7' },
+  { title: "Cuisine — Grille hotte", days: '1,3,5' },
+  { title: "Cuisine — Friteuse froid + chaud", days: '1,3,5,6' },
+  { title: "Cuisine — Intérieur + porte du four chaud", days: '3' },
+  { title: "Cuisine — Plan de travail micro + casseroles", days: '2,5' },
+  { title: "Cuisine — Filtre plonge à air", days: '2' },
+  { title: "Cuisine — Sous assiettes", days: '2,6' },
+  { title: "Cuisine — Nettoyage plonge à fond", days: '2,5' },
+  { title: "Cuisine — Plinthe à fond", days: '2,4,6' },
+  { title: "Cuisine — Brûleurs fourneau", days: '6' },
+  { title: "Cuisine — Sous piano à fond", days: '6' },
+  { title: "Cuisine — Pieds plan de travail", days: '1', weeks: '2,4' },
+  { title: "Cuisine — Plaque coupe-feu sous piano", days: '4', weeks: '1,3' },
+  { title: "Cuisine — Mur derrière micro-onde", days: '4', weeks: '3' },
+  { title: "Cuisine — Bac bol garniture", days: '6', weeks: '2' },
+  { title: "Plonge — Produits entretien + conso", days: '4' },
+  { title: "Plonge — Hachoir viande à fond (et après chaque utilisation)", days: '4,6' },
+  { title: "Plonge — Plinthe (fermeture)", days: '4' },
+  { title: "Plonge — Armoire couteaux", days: '5' },
+  { title: "Plonge — Nettoyer étagère produits", days: '2', weeks: '1,3' },
+  { title: "Plonge — Nettoyer étagère à fond", days: '2', weeks: '2,4' },
+  { title: "Plonge — Ranger consommables", days: '5', weeks: '1,3' },
+  { title: "Plonge — Ranger emporte-pièces", days: '5', weeks: '2,4' },
 ];
 
 const CUISINE_CHECK_FERMETURE_TASKS = [
@@ -640,9 +692,9 @@ function insertTemplate(t) {
     .run(id, t.name, t.type, t.color, t.icon, t.resetMode, t.order, t.category || 'general', nowISO());
   return id;
 }
-function insertTask(templateId, title, order, dayOfWeek, days) {
-  db.prepare('INSERT INTO tasks(id,template_id,title,ord,is_active,day_of_week,days,created_at) VALUES(?,?,?,?,1,?,?,?)')
-    .run(uid(), templateId, title, order, dayOfWeek ?? null, days ?? null, nowISO());
+function insertTask(templateId, title, order, dayOfWeek, days, weeks) {
+  db.prepare('INSERT INTO tasks(id,template_id,title,ord,is_active,day_of_week,days,weeks,created_at) VALUES(?,?,?,?,1,?,?,?,?)')
+    .run(uid(), templateId, title, order, dayOfWeek ?? null, days ?? null, weeks ?? null, nowISO());
 }
 
 function ensureTemplateByType(type, build) {
@@ -652,7 +704,7 @@ function ensureTemplateByType(type, build) {
 }
 
 // Version de schéma/migrations appliquée à cette base (PRAGMA user_version).
-const SCHEMA_VERSION = 19;
+const SCHEMA_VERSION = 20;
 
 function seedAndMigrate() {
   const count = db.prepare('SELECT COUNT(*) c FROM templates').get().c;
@@ -716,7 +768,7 @@ function seedAndMigrate() {
   ensureTemplateByType('CUISINE_GARNITURE', () => { const id = insertTemplate({ name: 'Poste garniture', type: 'CUISINE_GARNITURE', color: 'bg-green-600', icon: '🥗', resetMode: 'AUTO_DAILY', order: 2, category: 'cuisine' }); CUISINE_GARNITURE_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
   ensureTemplateByType('CUISINE_FERM_FROID', () => { const id = insertTemplate({ name: 'Fermeture du froid', type: 'CUISINE_FERM_FROID', color: 'bg-sky-600', icon: '❄️', resetMode: 'AUTO_DAILY', order: 3, category: 'cuisine' }); CUISINE_FERM_FROID_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
   ensureTemplateByType('CUISINE_CHECK_FERMETURE', () => { const id = insertTemplate({ name: 'Check fermeture', type: 'CUISINE_CHECK_FERMETURE', color: 'bg-sky-600', icon: '🌙', resetMode: 'AUTO_DAILY', order: 4, category: 'cuisine' }); CUISINE_CHECK_FERMETURE_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
-  ensureTemplateByType('CUISINE_MENAGE_HEBDO', () => { const id = insertTemplate({ name: 'Ménage hebdo cuisine', type: 'CUISINE_MENAGE_HEBDO', color: 'bg-teal-500', icon: '🧽', resetMode: 'WEEKLY_CARRY_OVER', order: 5, category: 'cuisine' }); CUISINE_MENAGE_HEBDO_TASKS.forEach((t, i) => insertTask(id, t.title, i + 1, null, t.days)); });
+  ensureTemplateByType('CUISINE_MENAGE_HEBDO', () => { const id = insertTemplate({ name: 'Ménage du jour', type: 'CUISINE_MENAGE_HEBDO', color: 'bg-teal-500', icon: '🧽', resetMode: 'WEEKLY_CARRY_OVER', order: 5, category: 'cuisine' }); CUISINE_MENAGE_HEBDO_TASKS.forEach((t, i) => insertTask(id, t.title, i + 1, null, t.days, t.weeks)); });
   // Check-lists « Responsable cuisine » (catégorie resp_cuisine), créées vides :
   // les tâches sont à ajouter via l'admin responsable cuisine.
   ensureTemplateByType('RESP_MENAGE', () => insertTemplate({ name: 'Ménage', type: 'RESP_MENAGE', color: 'bg-teal-500', icon: '🧽', resetMode: 'AUTO_DAILY', order: 1, category: 'resp_cuisine' }));
@@ -896,6 +948,20 @@ function seedAndMigrate() {
     rows.sort((a, b) => ((rank[a.grp] ?? 3) - (rank[b.grp] ?? 3)) || (a.ord - b.ord));
     const upd = db.prepare('UPDATE templates SET ord = ? WHERE id = ?');
     rows.forEach((r, i) => upd.run(i + 1, r.id));
+  }
+  // Migration 20 : « Ménage hebdo cuisine » devient « Ménage du jour » avec le
+  // plan de nettoyage du 03/11/2026. Les anciennes tâches sont désactivées
+  // (historique conservé), les nouvelles insérées avec jours + occurrences.
+  // Idempotent : ne refait rien si la 1re tâche du plan est déjà active.
+  if (version < 20 && !freshDb) {
+    const t = db.prepare("SELECT id FROM templates WHERE type = 'CUISINE_MENAGE_HEBDO'").get();
+    const already = t && db.prepare('SELECT COUNT(*) c FROM tasks WHERE template_id = ? AND is_active = 1 AND title = ?')
+      .get(t.id, CUISINE_MENAGE_HEBDO_TASKS[0].title).c;
+    if (t && !already) {
+      db.prepare("UPDATE templates SET name = 'Ménage du jour' WHERE id = ?").run(t.id);
+      db.prepare('UPDATE tasks SET is_active = 0 WHERE template_id = ? AND is_active = 1').run(t.id);
+      CUISINE_MENAGE_HEBDO_TASKS.forEach((task, i) => insertTask(t.id, task.title, i + 1, null, task.days, task.weeks));
+    }
   }
   db.pragma('user_version = ' + SCHEMA_VERSION);
 }

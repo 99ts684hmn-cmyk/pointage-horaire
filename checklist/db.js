@@ -152,6 +152,11 @@ if (!db.prepare('PRAGMA table_info(templates)').all().some((c) => c.name === 'gr
 if (!db.prepare('PRAGMA table_info(tasks)').all().some((c) => c.name === 'days')) {
   db.exec('ALTER TABLE tasks ADD COLUMN days TEXT');
 }
+// Colonne « weeks » : occurrences dans le mois (ex. "1,3" = 1er et 3e jour de
+// semaine choisi du mois → bi-mensuelle ; "3" = mensuelle). NULL = chaque semaine.
+if (!db.prepare('PRAGMA table_info(tasks)').all().some((c) => c.name === 'weeks')) {
+  db.exec('ALTER TABLE tasks ADD COLUMN weeks TEXT');
+}
 // Colonne « pinned » des cases de menu : 1 = case épinglée → affichée dans le
 // bandeau aperçu (cuisine + managers salle). Par défaut 0 (non affichée).
 if (!db.prepare('PRAGMA table_info(menu_cells)').all().some((c) => c.name === 'pinned')) {

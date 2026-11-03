@@ -55,14 +55,80 @@ const RESET_OPTS = [
 ];
 const DAYS_SHORT = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
+const ALL_DAYS = '1,2,3,4,5,6,7';
+const WEEKS_LBL = ['1er', '2e', '3e', '4e'];
+const FREQ_OPTS = [['daily', 'Quotidienne'], ['weekly', 'Hebdomadaire'], ['bi', 'Bi-mensuelle'], ['monthly', 'Mensuelle']];
+const splitNums = (s) => (s || '').split(',').map((n) => parseInt(n, 10)).filter(Boolean);
+
+// Fréquence déduite de `days` (jours de semaine) et `weeks` (occurrences dans
+// le mois) : quotidienne = 7 jours ; bi-mensuelle = 2 occurrences ; mensuelle = 1.
+function taskFreq(task) {
+  const w = splitNums(task.weeks);
+  if (w.length >= 2) return 'bi';
+  if (w.length === 1) return 'monthly';
+  return splitNums(task.days).length === 7 ? 'daily' : 'weekly';
+}
+
+// Ligne de programmation d'une tâche : fréquence, puis jours (sauf quotidienne),
+// puis occurrences dans le mois (bi-mensuelle / mensuelle).
 function dayPillsHTML(task) {
-  const set = new Set((task.days || '').split(',').map((n) => parseInt(n, 10)));
-  const pills = DAYS_SHORT.map((lbl, i) => {
-    const day = i + 1;
-    const on = set.has(day);
-    return `<button class="daypill${on ? ' on' : ''}" data-dtask="${esc(task.id)}" data-day="${day}">${lbl}</button>`;
-  }).join('');
-  return `<div class="dayrow"><span class="daylbl">Jours :</span>${pills}</div>`;
+  const freq = taskFreq(task);
+  const sel = `<select class="freqsel" data-ftask="${esc(task.id)}">${FREQ_OPTS.map(([v, l]) => `<option value="${v}"${v === freq ? ' selected' : ''}>${l}</option>`).join('')}</select>`;
+  let pills = '';
+  if (freq !== 'daily') {
+    const set = new Set(splitNums(task.days));
+    pills += `<span class="daylbl">Jours :</span>` + DAYS_SHORT.map((lbl, i) => {
+      const day = i + 1;
+      return `<button class="daypill${set.has(day) ? ' on' : ''}" data-dtask="${esc(task.id)}" data-day="${day}">${lbl}</button>`;
+    }).join('');
+  }
+  if (freq === 'bi' || freq === 'monthly') {
+    const set = new Set(splitNums(task.weeks));
+    pills += `<span class="daylbl" style="margin-left:6px">du mois :</span>` + WEEKS_LBL.map((lbl, i) => {
+      const w = i + 1;
+      return `<button class="daypill wkpill${set.has(w) ? ' on' : ''}" data-wtask="${esc(task.id)}" data-week="${w}">${lbl}</button>`;
+    }).join('');
+  }
+  return `<div class="dayrow">${sel}${pills}</div>`;
+}
+
+function findTask(taskId) {
+  for (const tm of templates) { const t = tm.tasks.find((x) => x.id === taskId); if (t) return t; }
+  return null;
+}
+async function patchTask(taskId, body) {
+  await fetch(`api/tasks/${encodeURIComponent(taskId)}`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  });
+}
+
+// Changement de fréquence : on pose des valeurs de départ cohérentes, que
+// l'utilisateur affine ensuite avec les pastilles.
+async function setFreq(taskId, freq) {
+  const task = findTask(taskId);
+  if (!task) return;
+  const w = splitNums(task.weeks);
+  const body = {};
+  if (freq === 'daily') { body.days = ALL_DAYS; body.weeks = ''; }
+  else if (freq === 'weekly') { body.weeks = ''; if (splitNums(task.days).length === 7) body.days = '1'; }
+  else if (freq === 'bi') { body.weeks = w.length === 2 ? w.join(',') : '1,3'; if (splitNums(task.days).length !== 1) body.days = '1'; }
+  else if (freq === 'monthly') { body.weeks = w.length ? String(w[0]) : '1'; if (splitNums(task.days).length !== 1) body.days = '1'; }
+  if (body.days !== undefined) task.days = body.days || null;
+  if (body.weeks !== undefined) task.weeks = body.weeks || null;
+  render();
+  await patchTask(taskId, body);
+}
+
+async function toggleWeek(taskId, week) {
+  const task = findTask(taskId);
+  if (!task) return;
+  const set = new Set(splitNums(task.weeks));
+  if (set.has(week)) set.delete(week); else set.add(week);
+  if (!set.size) return; // au moins une occurrence (sinon la tâche ne tomberait jamais)
+  const weeks = [...set].sort((a, b) => a - b).join(',');
+  task.weeks = weeks;
+  render();
+  await patchTask(taskId, { weeks });
 }
 
 async function toggleDay(taskId, day) {
@@ -212,6 +278,8 @@ function render() {
   content.querySelectorAll('[data-del-tmpl]').forEach((b) => b.addEventListener('click', () => deleteTemplate(b.dataset.delTmpl, b.dataset.delName)));
   content.querySelectorAll('[data-rename-tmpl]').forEach((b) => b.addEventListener('click', () => renameTemplate(b.dataset.renameTmpl, b.dataset.name)));
   content.querySelectorAll('[data-dtask]').forEach((b) => b.addEventListener('click', () => toggleDay(b.dataset.dtask, parseInt(b.dataset.day, 10))));
+  content.querySelectorAll('[data-wtask]').forEach((b) => b.addEventListener('click', () => toggleWeek(b.dataset.wtask, parseInt(b.dataset.week, 10))));
+  content.querySelectorAll('[data-ftask]').forEach((sel) => sel.addEventListener('change', () => setFreq(sel.dataset.ftask, sel.value)));
   content.querySelectorAll('[data-grp-tmpl]').forEach((sel) => sel.addEventListener('change', () => setTemplateGroup(sel.dataset.grpTmpl, sel)));
 
   content.querySelectorAll('[data-toggle]').forEach((b) => b.addEventListener('click', () => {

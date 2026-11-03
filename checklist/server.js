@@ -81,9 +81,15 @@ function ensureCompletions(sessionId, templateId) {
 
 // Une tâche est programmée ce jour (dow 1-7) si son champ `days` (ex. "1,3,5")
 // le contient ; sinon on retombe sur day_of_week (compat. hebdo salle).
-function taskRunsOn(t, dow) {
-  if (t.days) return t.days.split(',').map((n) => parseInt(n, 10)).includes(dow);
-  return t.day_of_week === dow;
+// Si `weeks` est renseigné (ex. "1,3"), il faut EN PLUS que ce soit la 1re ou
+// 3e occurrence de ce jour de semaine dans le mois (ex. « 3e jeudi » = le jeudi
+// tombant entre le 15 et le 21). NULL = chaque semaine.
+function taskRunsOn(t, dow, date) {
+  const onDay = t.days ? t.days.split(',').map((n) => parseInt(n, 10)).includes(dow) : t.day_of_week === dow;
+  if (!onDay) return false;
+  if (!t.weeks || !date) return true;
+  const occurrence = Math.ceil(parseInt(date.slice(8, 10), 10) / 7); // 1..5
+  return t.weeks.split(',').map((n) => parseInt(n, 10)).includes(occurrence);
 }
 
 function createSession(template, date, todayDow) {
@@ -91,7 +97,7 @@ function createSession(template, date, todayDow) {
   let taskData = [];
 
   if (template.reset_mode === 'WEEKLY_CARRY_OVER') {
-    const todayTasks = tasks.filter((t) => taskRunsOn(t, todayDow));
+    const todayTasks = tasks.filter((t) => taskRunsOn(t, todayDow, date));
     const included = new Set(todayTasks.map((t) => t.id));
     const carried = [];
     const prevDate = getPreviousDate(date);
@@ -184,9 +190,13 @@ app.get('/api/sessions/:id', (req, res) => {
     tasks = comps.map((c) => {
       const task = byId.get(c.task_id);
       if (!task) return null;
+      // Jour affiché sur une tâche reportée = jour d'origine du report (sinon,
+      // avec des tâches multi-jours, l'étiquette « Reporté » restait vide).
+      const dayLabel = c.original_date ? DAY_NAMES[getDayOfWeek(c.original_date)]
+        : (task.day_of_week ? DAY_NAMES[task.day_of_week] : null);
       return {
         id: task.id, title: task.title, order: task.ord, dayOfWeek: task.day_of_week,
-        dayLabel: task.day_of_week ? DAY_NAMES[task.day_of_week] : null,
+        dayLabel,
         isDone: !!c.is_done, doneAt: c.done_at || null, completionId: c.id,
         originalDate: c.original_date || null, isCarriedOver: !!c.original_date,
       };
@@ -252,7 +262,7 @@ app.get('/api/templates', (req, res) => {
     id: t.id, name: t.name, icon: t.icon, type: t.type, resetMode: t.reset_mode,
     category: t.category || 'general',
     group: t.grp || null, // bloc d'affichage (page cuisine)
-    tasks: qTemplateTasks.all(t.id).map((task) => ({ id: task.id, title: task.title, order: task.ord, days: task.days || null, dayOfWeek: task.day_of_week ?? null })),
+    tasks: qTemplateTasks.all(t.id).map((task) => ({ id: task.id, title: task.title, order: task.ord, days: task.days || null, weeks: task.weeks || null, dayOfWeek: task.day_of_week ?? null })),
   }));
   res.json(templates);
 });
@@ -358,6 +368,12 @@ app.patch('/api/tasks/:id', requireAdmin, (req, res) => {
     // On efface aussi l'ancien champ day_of_week (jour unique hérité) : sinon il
     // referait surface quand `days` est vidé (tous les jours décochés).
     db.prepare('UPDATE tasks SET days = ?, day_of_week = NULL WHERE id = ?').run(uniq || null, req.params.id);
+  }
+  if (typeof b.weeks === 'string') {
+    // Occurrences dans le mois "1,3" (1-5 uniques, triées). Vide = chaque semaine.
+    const weeks = b.weeks.split(',').map((n) => parseInt(n, 10)).filter((n) => n >= 1 && n <= 5);
+    const uniq = [...new Set(weeks)].sort((a, c) => a - c).join(',');
+    db.prepare('UPDATE tasks SET weeks = ? WHERE id = ?').run(uniq || null, req.params.id);
   }
   if (typeof b.title === 'string') {
     const title = b.title.trim();

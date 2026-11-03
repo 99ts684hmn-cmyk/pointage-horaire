@@ -133,6 +133,7 @@ async function renderMenageBox() {
   } catch (e) { box.hidden = true; return; }
   const todo = tasks.filter((t) => !t.isDone);
   box.href = `session.html?id=${encodeURIComponent(s.id)}&from=${FROM}`;
+  if (!tasks.length) { box.hidden = true; return; } // liste vide ≠ terminée
   if (!todo.length) {
     box.className = 'menage-box done';
     box.innerHTML = `<div class="mh"><span>🧽 ${esc(s.templateName)}</span><span class="mc">✅ terminé</span></div>`;

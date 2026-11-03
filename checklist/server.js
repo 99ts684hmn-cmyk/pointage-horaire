@@ -79,6 +79,17 @@ function ensureCompletions(sessionId, templateId) {
   tx();
 }
 
+// Équivalent pour WEEKLY_CARRY_OVER : complète une session déjà créée avec les
+// tâches PROGRAMMÉES ce jour-là qui n'y figurent pas encore (tâche ajoutée ou
+// remplacée dans l'admin après la création de la session du jour). Les reportées
+// ne sont pas touchées.
+function ensureWeeklyCompletions(sessionId, templateId, date) {
+  const dow = getDayOfWeek(date);
+  const due = qTemplateTasks.all(templateId).filter((t) => taskRunsOn(t, dow, date));
+  const tx = db.transaction(() => { for (const t of due) insCompletionIgnore.run(uid(), sessionId, t.id); });
+  tx();
+}
+
 // Une tâche est programmée ce jour (dow 1-7) si son champ `days` (ex. "1,3,5")
 // le contient ; sinon on retombe sur day_of_week (compat. hebdo salle).
 // Si `weeks` est renseigné (ex. "1,3"), il faut EN PLUS que ce soit la 1re ou
@@ -144,6 +155,7 @@ app.get('/api/sessions', (req, res) => {
     let session = qSessionByTmplDate.get(template.id, sessDate);
     if (!session) session = createSession(template, sessDate, getDayOfWeek(sessDate));
     if (template.reset_mode !== 'WEEKLY_CARRY_OVER') ensureCompletions(session.id, template.id);
+    else ensureWeeklyCompletions(session.id, template.id, sessDate);
     const comps = qActiveCompletions.all(session.id);
     const totalTasks = comps.length;
     const doneTasks = comps.filter((c) => c.is_done).length;
@@ -180,6 +192,7 @@ app.get('/api/sessions/:id', (req, res) => {
   if (!session) return res.status(404).json({ error: 'Session introuvable' });
   const template = db.prepare('SELECT * FROM templates WHERE id = ?').get(session.template_id);
   if (template.reset_mode !== 'WEEKLY_CARRY_OVER') ensureCompletions(session.id, template.id);
+  else ensureWeeklyCompletions(session.id, template.id, session.date);
   const tmplTasks = qTemplateTasks.all(session.template_id);
   const byId = new Map(tmplTasks.map((t) => [t.id, t]));
   const comps = qCompletions.all(session.id);

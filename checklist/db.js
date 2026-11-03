@@ -704,7 +704,7 @@ function ensureTemplateByType(type, build) {
 }
 
 // Version de schéma/migrations appliquée à cette base (PRAGMA user_version).
-const SCHEMA_VERSION = 20;
+const SCHEMA_VERSION = 21;
 
 function seedAndMigrate() {
   const count = db.prepare('SELECT COUNT(*) c FROM templates').get().c;
@@ -964,6 +964,12 @@ function seedAndMigrate() {
       db.prepare('UPDATE tasks SET is_active = 0 WHERE template_id = ? AND is_active = 1').run(t.id);
       CUISINE_MENAGE_HEBDO_TASKS.forEach((task, i) => insertTask(t.id, task.title, i + 1, null, task.days, task.weeks));
     }
+  }
+  // Migration 21 : en prod, la migration 20 s'est jouée alors que la liste avait
+  // été supprimée (masquée) dans l'admin → elle est restée invisible. On la
+  // réaffiche, sous son nouveau nom et dans le bloc Ménage. Idempotent.
+  if (version < 21) {
+    db.prepare("UPDATE templates SET is_active = 1, name = 'Ménage du jour', grp = COALESCE(grp, 'Ménage') WHERE type = 'CUISINE_MENAGE_HEBDO'").run();
   }
   db.pragma('user_version = ' + SCHEMA_VERSION);
 }

@@ -647,7 +647,7 @@ function ensureTemplateByType(type, build) {
 }
 
 // Version de schéma/migrations appliquée à cette base (PRAGMA user_version).
-const SCHEMA_VERSION = 17;
+const SCHEMA_VERSION = 18;
 
 function seedAndMigrate() {
   const count = db.prepare('SELECT COUNT(*) c FROM templates').get().c;
@@ -875,6 +875,12 @@ function seedAndMigrate() {
   if (version < 17) {
     db.prepare("UPDATE templates SET grp = 'Fermeture' WHERE grp IS NULL AND type IN ('CUISINE_PLANCHA','CUISINE_GARNITURE','CUISINE_FERM_FROID','CUISINE_CHECK_FERMETURE')").run();
     db.prepare("UPDATE templates SET grp = 'Ménage' WHERE grp IS NULL AND type = 'CUISINE_MENAGE_HEBDO'").run();
+  }
+  // Migration 18 : bloc « Ouverture » — les check-lists cuisine créées à la main
+  // dont le nom évoque le matin ou l'ouverture (ex. « Check liste du matin »)
+  // y sont rangées si elles n'ont pas encore de bloc.
+  if (version < 18) {
+    db.prepare("UPDATE templates SET grp = 'Ouverture' WHERE grp IS NULL AND category = 'cuisine' AND is_active = 1 AND (lower(name) LIKE '%matin%' OR lower(name) LIKE '%ouverture%')").run();
   }
   db.pragma('user_version = ' + SCHEMA_VERSION);
 }

@@ -79,9 +79,11 @@ async function toggleDay(taskId, day) {
   });
 }
 
-// Blocs existants (page cuisine), dans l'ordre d'apparition.
+// Blocs proposés : les trois blocs de base (toujours disponibles, même vides)
+// puis ceux déjà utilisés par une check-list.
+const BASE_GROUPS = ['Ouverture', 'Fermeture', 'Ménage'];
 function groupNames() {
-  return [...new Set(templates.map((t) => t.group).filter(Boolean))];
+  return [...new Set([...BASE_GROUPS, ...templates.map((t) => t.group).filter(Boolean)])];
 }
 // Options du sélecteur de bloc : hors bloc, blocs existants, nouveau bloc.
 function groupOptionsHTML(current) {

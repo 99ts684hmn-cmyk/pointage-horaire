@@ -43,6 +43,11 @@
     .gform input, .gform textarea { width: 100%; border: 1.5px solid var(--border); border-radius: 9px;
       padding: 9px 11px; font-size: .9rem; font-family: inherit; color: var(--dark); }
     .gform textarea { resize: vertical; min-height: 54px; }
+    /* Bloc « Ajouter un groupe » (date + bouton). */
+    .g-addbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: #fff; border: 2px solid var(--gold);
+      border-radius: 12px; padding: 10px 14px; margin: 0 0 12px; }
+    .g-addbar .g-addlbl { font-weight: 800; color: var(--gold-dark); font-size: .9rem; }
+    .g-addbar input[type=date] { border: 1.5px solid var(--border); border-radius: 9px; padding: 8px 10px; font-family: inherit; font-size: .95rem; color: var(--dark); background: #fff; }
   </style>
 </head>
 <body>
@@ -77,6 +82,6 @@
   </div>
 
   <script>window.MENU_PAGE = 'groupes';</script>
-  <script src="cuisine-menus.js?v=15"></script>
+  <script src="cuisine-menus.js?v=16"></script>
 </body>
 </html>

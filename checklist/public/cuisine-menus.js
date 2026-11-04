@@ -131,8 +131,16 @@ function boardsHTML() {
   const menuSemaine = `<section class="board"><h2>📋 Menu — cette semaine <span class="wk">${weekRange(data.semaineMonday)}</span></h2>${menuTable(data.semaineMonday)}</section>`;
   const menuPro = `<section class="board"><h2>📋 Menu — semaine prochaine <span class="wk">${weekRange(data.semaineProMonday)}</span></h2>${menuTable(data.semaineProMonday)}</section>`;
   const menuSuiv = `<section class="board"><h2>📋 Menu — semaine suivante <span class="wk">${weekRange(data.semaineSuivMonday)}</span></h2>${menuTable(data.semaineSuivMonday)}</section>`;
+  // Bloc « Ajouter un groupe » : on choisit la date, puis le formulaire habituel
+  // s'ouvre pour ce jour-là (même si la date est hors de la semaine affichée).
+  const addBar = `<div class="g-addbar">
+        <span class="g-addlbl">➕ Ajouter un groupe</span>
+        <input type="date" id="g-newdate" value="${esc(data.today || '')}" min="${esc(data.today || '')}">
+        <button class="btn btn-red" id="g-newbtn">Ajouter</button>
+      </div>`;
   const groupes = `<section class="board groupes">
       <h2>👥 Groupes</h2>
+      ${addBar}
       <div class="g-nav">
         <button class="btn btn-grey" id="g-prev">‹ Semaine précédente</button>
         <span class="g-range">${dayHead(data.groupes[0])} → ${dayHead(data.groupes[6])}</span>
@@ -180,6 +188,14 @@ function render() {
   content.querySelectorAll('.pin-chk').forEach((c) => c.addEventListener('change', () => savePin(c)));
   content.querySelectorAll('.g-item').forEach((b) => b.addEventListener('click', () => openGroup(b.dataset.date, parseInt(b.dataset.index, 10))));
   content.querySelectorAll('.g-add').forEach((b) => b.addEventListener('click', () => openGroup(b.dataset.date, null)));
+  const newBtn = document.getElementById('g-newbtn');
+  if (newBtn) {
+    newBtn.addEventListener('click', () => {
+      const d = (document.getElementById('g-newdate').value || '').trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) { alert('Choisissez une date.'); return; }
+      openGroup(d, null);
+    });
+  }
   const prev = document.getElementById('g-prev'); if (prev) prev.addEventListener('click', () => reloadGroupes(addDaysIso(data.groupStart, -7)));
   const next = document.getElementById('g-next'); if (next) next.addEventListener('click', () => reloadGroupes(addDaysIso(data.groupStart, 7)));
 }
@@ -289,6 +305,9 @@ async function saveGroup(mode) {
   try {
     await fetch('api/menus/cell', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date, slot: 'groupe', value }) });
   } catch (e) { /* gardé localement */ }
+  // Groupe ajouté sur une date hors de la semaine affichée (bloc « Ajouter un
+  // groupe ») : on déplace la fenêtre sur cette date pour le voir apparaître.
+  if (Array.isArray(data.groupes) && !data.groupes.includes(date)) reloadGroupes(date);
 }
 
 ov.addEventListener('click', (e) => { if (e.target === ov) closeGroup(); });

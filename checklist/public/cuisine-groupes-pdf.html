@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bœuf & Cow — Groupes à venir (30 jours)</title>
+  <style>
+    :root { --dark: #1f2120; --gold: #c59d5f; --gold-dark: #8a6b32; --muted: #5a5550; --red: #bf272d; --border: #ded8cd; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Hanken Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--dark); background: #fff; padding: 18px 20px 40px; }
+    .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+    .bar a, .bar button { font: inherit; font-weight: 800; font-size: .9rem; border: 0; border-radius: 10px; padding: 10px 16px; cursor: pointer; text-decoration: none; }
+    .bar button { background: var(--red); color: #fff; }
+    .bar a { background: #eee7db; color: var(--dark); }
+    h1 { font-size: 1.25rem; margin: 0 0 2px; text-transform: uppercase; letter-spacing: .04em; }
+    .sub { color: var(--muted); font-size: .9rem; margin: 0 0 18px; }
+    .day { break-inside: avoid; margin: 0 0 14px; border: 1.5px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .day h2 { margin: 0; padding: 7px 12px; background: #f3f0ea; font-size: .95rem; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1.5px solid var(--border); }
+    .day h2 .n { float: right; color: var(--gold-dark); font-weight: 700; text-transform: none; letter-spacing: 0; }
+    .g { padding: 8px 12px; border-top: 1px solid #ece7de; }
+    .g:first-of-type { border-top: 0; }
+    .g .t { font-weight: 800; font-size: 1rem; }
+    .g .t .pers { color: var(--gold-dark); font-weight: 700; margin-left: 8px; }
+    .g .t .prix { color: var(--muted); font-weight: 600; margin-left: 8px; }
+    .g .l { font-size: .9rem; margin-top: 2px; line-height: 1.35; white-space: pre-line; }
+    .g .l b { color: var(--muted); font-weight: 700; }
+    .g.annule { opacity: .55; }
+    .g.annule .t::before { content: "ANNULÉ — "; color: var(--red); }
+    .empty { color: var(--muted); padding: 20px 0; }
+    .total { margin-top: 10px; color: var(--muted); font-size: .85rem; }
+    @media print {
+      body { padding: 0; }
+      .bar { display: none; }
+      .day { page-break-inside: avoid; }
+      @page { size: A4 portrait; margin: 12mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <button id="print" type="button">🖨️ Imprimer / Enregistrer en PDF</button>
+    <a href="cuisine-groupes.html">← Retour aux groupes</a>
+  </div>
+  <h1>👥 Groupes à venir</h1>
+  <p class="sub" id="sub">Chargement…</p>
+  <div id="content"></div>
+
+  <script>
+    'use strict';
+    const DAYS = 30;
+    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const JOURS = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+    const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+    function longDate(iso) {
+      const d = new Date(iso + 'T12:00:00');
+      return `${JOURS[d.getDay()]} ${d.getDate()} ${MOIS[d.getMonth()]}`;
+    }
+    function shortDate(iso) { const d = new Date(iso + 'T12:00:00'); return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`; }
+    function parseGroups(raw) {
+      if (!raw) return [];
+      try { const o = JSON.parse(raw); if (Array.isArray(o)) return o.filter((x) => x && typeof x === 'object'); if (o && typeof o === 'object') return [o]; }
+      catch (e) { return [{ nom: String(raw) }]; }
+      return [];
+    }
+    const LINES = [['menu', 'Menu'], ['allergies', '⚠️ Allergies'], ['boissons', '🥤 Boissons'], ['gratuite', '🎁 Gratuité'], ['guide', '🧭 Guide'], ['infos', 'ℹ️ Infos']];
+    function groupHTML(g) {
+      const head = `<div class="t">${esc(g.nom || '(sans nom)')}${g.pers ? `<span class="pers">${esc(g.pers)} pers</span>` : ''}${g.prix ? `<span class="prix">${esc(g.prix)}/pers</span>` : ''}</div>`;
+      const lines = LINES.filter(([k]) => g[k] && String(g[k]).trim()).map(([k, l]) => `<div class="l"><b>${l} :</b> ${esc(g[k])}</div>`).join('');
+      return `<div class="g${g.annule ? ' annule' : ''}">${head}${lines}</div>`;
+    }
+    (async () => {
+      const content = document.getElementById('content');
+      try {
+        const d = await fetch(`api/menus?groupDays=${DAYS}`).then((r) => r.json());
+        const dates = d.groupes || [];
+        document.getElementById('sub').textContent = `Du ${shortDate(dates[0])} au ${shortDate(dates[dates.length - 1])} — édité le ${shortDate(d.today)}`;
+        let total = 0;
+        const blocks = dates.map((date) => {
+          const arr = parseGroups(d.cells[date] && d.cells[date].groupe);
+          if (!arr.length) return '';
+          total += arr.filter((g) => !g.annule).length;
+          const pers = arr.filter((g) => !g.annule).reduce((s, g) => s + (parseInt(g.pers, 10) || 0), 0);
+          return `<section class="day"><h2>${longDate(date)}<span class="n">${arr.length} groupe${arr.length > 1 ? 's' : ''}${pers ? ` · ${pers} pers` : ''}</span></h2>${arr.map(groupHTML).join('')}</section>`;
+        }).join('');
+        content.innerHTML = blocks || '<div class="empty">Aucun groupe sur les 30 prochains jours.</div>';
+        if (blocks) content.insertAdjacentHTML('beforeend', `<div class="total">${total} groupe${total > 1 ? 's' : ''} sur ${DAYS} jours (hors annulés).</div>`);
+      } catch (e) {
+        content.innerHTML = '<div class="empty">Impossible de charger les groupes.</div>';
+      }
+      document.getElementById('print').addEventListener('click', () => window.print());
+      // Ouvert avec ?print=1 (bouton de la page Groupes) : on lance l'impression dès le rendu.
+      if (new URLSearchParams(location.search).get('print') === '1') setTimeout(() => window.print(), 400);
+    })();
+  </script>
+</body>
+</html>

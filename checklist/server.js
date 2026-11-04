@@ -563,9 +563,10 @@ app.get('/api/menus', (req, res) => {
   // navigable côté client (semaine précédente / suivante).
   let gStart = String(req.query.groupStart || '').trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(gStart)) gStart = today;
-  // Largeur de la fenêtre : 7 jours par défaut, jusqu'à 28 (page Groupes = 21).
+  // Largeur de la fenêtre : 7 jours par défaut, jusqu'à 31 (page Groupes = 21,
+  // PDF des groupes = 30).
   let gDays = parseInt(req.query.groupDays, 10);
-  if (!(gDays >= 7 && gDays <= 28)) gDays = 7;
+  if (!(gDays >= 7 && gDays <= 31)) gDays = 7;
   const groupes = Array.from({ length: gDays }, (_, i) => addDays(gStart, i));
   const dates = [...new Set([m1, m2, m3, ...groupes])];
   const rows = dates.length

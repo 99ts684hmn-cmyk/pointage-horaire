@@ -185,6 +185,7 @@ function boardsHTML() {
         <button class="btn btn-grey" id="g-prev">‹ Semaine précédente</button>
         <span class="g-range">${dayHead(data.groupes[0])} → ${dayHead(last)}</span>
         <button class="btn btn-grey" id="g-next">Semaine suivante ›</button>
+        ${PAGE === 'groupes' ? '<a class="btn btn-grey" href="cuisine-groupes-pdf.html?print=1" target="_blank" rel="noopener" title="Tous les groupes des 30 prochains jours, prêts à imprimer">📄 PDF 30 jours</a>' : ''}
       </div>
       ${tables}
     </section>`;

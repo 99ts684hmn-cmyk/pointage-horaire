@@ -169,6 +169,7 @@ function boardsHTML() {
         <button class="btn btn-grey" id="gs-clear" type="button">Effacer</button>
         <div id="gs-results" class="gs-results">${searchResultsHTML()}</div>
       </div>`;
+  if (PAGE === 'groupes') return groupsCalendarHTML();
   // Tableaux par semaine (7 jours chacun) ; sur la page Groupes : 3 semaines.
   const weeks = [];
   for (let i = 0; i < data.groupes.length; i += 7) weeks.push(data.groupes.slice(i, i + 7));
@@ -193,6 +194,60 @@ function boardsHTML() {
   if (PAGE === 'groupes') return groupes;
   return menuSemaine + groupes + menuPro;
 }
+
+// --- Page Groupes : vue « calendrier » (3 semaines) ---------------------------
+// Pastilles colorées selon la taille du groupe : ≤ 20 vert, 21-40 or, > 40 rouge.
+let gSearchOpen = false;
+function chipSize(g) {
+  const n = parseInt(String(g.pers || '').replace(/[^\d]/g, ''), 10);
+  if (isNaN(n)) return 'na';
+  return n <= 20 ? 's' : n <= 40 ? 'm' : 'l';
+}
+function chipHTML(g, date, i) {
+  const pers = g.pers ? `<span class="cp">${esc(g.pers)}</span>` : '';
+  return `<button type="button" class="chip-g sz-${chipSize(g)}${g.annule ? ' annule' : ''}" data-date="${date}" data-index="${i}" title="${esc(g.nom || '')}${g.pers ? ' · ' + esc(g.pers) + ' pers' : ''}${g.annule ? ' (annulé)' : ''}">${esc(g.nom || '(groupe)')}${pers}</button>`;
+}
+function groupsCalendarHTML() {
+  const today = data.today || '';
+  const searchActive = gSearch.nom.trim() || gSearch.date || gSearch.pers;
+  const tools = `<div class="g-tools">
+      <div class="g-tool g-tool-add"><span class="g-tool-lbl">➕ Ajouter</span><input type="date" id="g-newdate" value="${esc(today)}" min="${esc(today)}"><button class="btn btn-red" id="g-newbtn">OK</button></div>
+      <button type="button" class="g-tool g-tool-btn${(gSearchOpen || searchActive) ? ' on' : ''}" id="gs-toggle">🔍 Rechercher</button>
+      <a class="g-tool g-tool-btn" href="cuisine-groupes-pdf.html?print=1" target="_blank" rel="noopener" title="Tous les groupes des 30 prochains jours, prêts à imprimer">📄 PDF 30 jours</a>
+    </div>
+    <div class="g-search${(gSearchOpen || searchActive) ? '' : ' hid'}">
+      <input type="text" id="gs-nom" placeholder="Nom du groupe…" value="${esc(gSearch.nom)}">
+      <input type="date" id="gs-date" value="${esc(gSearch.date)}">
+      <select id="gs-pers">${PERS_RANGES.map(([v, l]) => `<option value="${v}"${v === gSearch.pers ? ' selected' : ''}>${l}</option>`).join('')}</select>
+      <button class="btn btn-grey" id="gs-clear" type="button">Effacer</button>
+      <div id="gs-results" class="gs-results">${searchResultsHTML()}</div>
+    </div>`;
+  const weeks = [];
+  for (let i = 0; i < data.groupes.length; i += 7) weeks.push(data.groupes.slice(i, i + 7));
+  const titles = ['Cette semaine', 'Semaine prochaine', 'Dans 2 semaines'];
+  const calendar = weeks.map((w, wi) => {
+    const days = w.map((d, di) => {
+      const arr = parseGroups(data.cells[d] && data.cells[d].groupe);
+      const chips = arr.map((g, i) => chipHTML(g, d, i)).join('');
+      const dow = new Date(d + 'T12:00:00').getDay();
+      const cls = 'gcal-day' + ((dow === 0 || dow === 6) ? ' we' : '') + (d === today ? ' today' : '') + (d < today ? ' past' : '');
+      return `<div class="${cls}" data-date="${d}">
+          <div class="gcal-dh"><span class="dn">${DAY_SHORT[di]}</span><span class="dd">${d.slice(8, 10)}/${d.slice(5, 7)}</span></div>
+          <div class="gcal-chips">${chips}</div>
+          <button type="button" class="gcal-add" data-date="${d}" title="Ajouter un groupe le ${dayHead(d)}">+</button>
+        </div>`;
+    }).join('');
+    const nav = wi === 0
+      ? `<span class="g-navbtns"><button class="btn btn-grey" id="g-prev" title="Semaine précédente">‹</button><button class="btn btn-grey" id="g-next" title="Semaine suivante">›</button></span>`
+      : '';
+    return `<div class="g-week">
+        <div class="g-week-head"><span class="g-week-title">${titles[wi] || ''} <span class="wk">${dayHead(w[0])} → ${dayHead(w[w.length - 1])}</span></span>${nav}</div>
+        <div class="gcal-grid">${days}</div>
+      </div>`;
+  }).join('');
+  return `<section class="board groupes gcal">${tools}${calendar}</section>`;
+}
+const DAY_SHORT = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
 // --- Recherche de groupes ---
 const PERS_RANGES = [
@@ -300,6 +355,11 @@ function render() {
   content.querySelectorAll('.g-item').forEach((b) => b.addEventListener('click', () => openGroup(b.dataset.date, parseInt(b.dataset.index, 10))));
   content.querySelectorAll('.g-add').forEach((b) => b.addEventListener('click', () => openGroup(b.dataset.date, null)));
   bindSearch();
+  // Vue calendrier (page Groupes) : pastilles, « + » par jour, bouton Rechercher.
+  content.querySelectorAll('.chip-g').forEach((b) => b.addEventListener('click', () => openGroup(b.dataset.date, parseInt(b.dataset.index, 10))));
+  content.querySelectorAll('.gcal-add').forEach((b) => b.addEventListener('click', () => openGroup(b.dataset.date, null)));
+  const gsToggle = document.getElementById('gs-toggle');
+  if (gsToggle) gsToggle.addEventListener('click', () => { gSearchOpen = !gSearchOpen; render(); if (gSearchOpen) { const n = document.getElementById('gs-nom'); if (n) n.focus(); } });
   const newBtn = document.getElementById('g-newbtn');
   if (newBtn) {
     newBtn.addEventListener('click', () => {

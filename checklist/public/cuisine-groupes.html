@@ -6,52 +6,30 @@
   <title>Bœuf & Cow — Groupes</title>
   <link rel="stylesheet" href="styles.css?v=26">
   <style>
-    .viewbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 8px; }
-    .vb { padding: 8px 14px; border-radius: 9px; border: 0; font-weight: 800; font-size: .85rem; cursor: pointer;
-      font-family: inherit; background: var(--dark); color: rgba(255,248,240,.6); }
-    .vb.active { background: var(--gold); color: #1f2120; }
-    table.veleda td.ro { padding: 8px 10px; font-size: .9rem; color: #1f2120; vertical-align: top; }
-    .ro-empty { color: #c9c2b5; }
-    .board { margin: 24px 0; }
-    .board h2 { font-size: 1.05rem; font-weight: 900; color: var(--dark); margin: 0 0 10px;
-      text-transform: uppercase; letter-spacing: .04em; }
+    /* Boutons de vue (Tableaux / Récap) : clairs, l'actif en or. */
+    .viewbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 10px; }
+    .vb { padding: 8px 14px; border-radius: 9px; border: 1.5px solid var(--border); font-weight: 800; font-size: .85rem; cursor: pointer;
+      font-family: inherit; background: #fff; color: var(--muted); }
+    .vb.active { background: var(--gold); border-color: var(--gold); color: #1f2120; }
+    .board { margin: 18px 0; }
+    .board h2 { font-size: 1.05rem; font-weight: 900; color: var(--dark); margin: 0 0 10px; text-transform: uppercase; letter-spacing: .04em; }
     .board h2 .wk { color: var(--gold); font-weight: 600; font-size: .85rem; text-transform: none; letter-spacing: 0; margin-left: 8px; }
-    .veleda-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 12px; }
-    table.veleda { border-collapse: collapse; width: 100%; background: #fff;
-      border: 3px solid #1f2120; border-radius: 12px; overflow: hidden; }
-    .board.groupes table.veleda { min-width: 760px; }
-    table.veleda th, table.veleda td { border: 1px solid #ded8cd; padding: 0; vertical-align: top; }
-    table.veleda thead th { background: #f3f0ea; color: #1f2120; font-weight: 800; font-size: .8rem;
-      padding: 9px 6px; text-align: center; border-bottom: 2px solid #1f2120; }
-    .saved-flash { animation: savedflash .8s ease; }
-    @keyframes savedflash { 0% { background: #e7f5ec; } 100% { background: transparent; } }
-    .g-list { display: flex; flex-direction: column; gap: 6px; padding: 8px; min-height: 92px; }
-    .g-item { display: block; width: 100%; text-align: left; border: 1px solid #e3ddd2; background: #fff;
-      border-radius: 8px; padding: 7px 9px; cursor: pointer; font-family: inherit; color: #1f2120; }
-    .g-item:hover { border-color: var(--gold); }
-    .g-add { display: block; width: 100%; border: 1px dashed #cbc4b6; background: transparent; border-radius: 8px;
-      padding: 7px; cursor: pointer; font-family: inherit; color: #8a847c; font-weight: 700; font-size: .8rem; }
-    .g-add:hover { color: #1f2120; border-color: var(--gold); }
-    .g-sum { font-size: .88rem; margin-bottom: 3px; }
-    .g-line { font-size: .76rem; color: #5a5550; line-height: 1.35; }
-    .g-item.annule { border-color: #eebcbc; background: #fdf3f3; }
-    .g-item.annule .g-sum, .g-item.annule .g-line { text-decoration: line-through; color: #9e1f24; }
-    .g-annule-badge { display: inline-block; color: #bf272d; font-weight: 800; font-size: .72rem; letter-spacing: .05em; margin-bottom: 4px; }
-    .g-nav { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 0 10px; }
-    .g-nav .g-range { font-weight: 800; color: var(--dark); font-size: .9rem; }
-    .gform label { display: block; font-size: .75rem; color: var(--muted); font-weight: 700; margin: 10px 0 3px; }
-    .gform input, .gform textarea { width: 100%; border: 1.5px solid var(--border); border-radius: 9px;
-      padding: 9px 11px; font-size: .9rem; font-family: inherit; color: var(--dark); }
-    .gform textarea { resize: vertical; min-height: 54px; }
-    /* Bloc « Ajouter un groupe » (date + bouton). */
-    .g-addbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: #fff; border: 2px solid var(--gold);
-      border-radius: 12px; padding: 10px 14px; margin: 0 0 12px; }
-    .g-addbar .g-addlbl { font-weight: 800; color: var(--gold-dark); font-size: .9rem; }
-    .g-addbar input[type=date] { border: 1.5px solid var(--border); border-radius: 9px; padding: 8px 10px; font-family: inherit; font-size: .95rem; color: var(--dark); background: #fff; }
-    /* Bloc « Rechercher un groupe » + résultats. */
-    .g-search { border-color: var(--border); }
-    .g-search input[type=text], .g-search select { border: 1.5px solid var(--border); border-radius: 9px; padding: 8px 10px; font-family: inherit; font-size: .95rem; color: var(--dark); background: #fff; }
-    .g-search input[type=text] { flex: 1; min-width: 140px; }
+
+    /* --- Barre d'outils : Ajouter (date + OK) · Rechercher · PDF --- */
+    .g-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: stretch; margin: 0 0 10px; }
+    .g-tool { display: inline-flex; align-items: center; gap: 8px; background: #fff; border: 1.5px solid var(--border); border-radius: 12px; padding: 6px 10px; }
+    .g-tool-lbl { font-weight: 800; font-size: .88rem; color: var(--gold-dark); white-space: nowrap; }
+    .g-tool input[type=date] { border: 1.5px solid var(--border); border-radius: 9px; padding: 7px 8px; font-family: inherit; font-size: .9rem; color: var(--dark); background: #fff; }
+    .g-tool .btn { padding: 8px 12px; border-radius: 9px; }
+    .g-tool-btn { font: inherit; font-weight: 800; font-size: .88rem; color: var(--dark); cursor: pointer; text-decoration: none; }
+    .g-tool-btn.on { background: #fbf3e3; border-color: var(--gold); }
+    .g-tool-btn:hover { border-color: var(--gold); }
+
+    /* --- Recherche (repliée par défaut) --- */
+    .g-search { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; background: #fff; border: 1.5px solid var(--gold); border-radius: 12px; padding: 10px 12px; margin: 0 0 12px; }
+    .g-search.hid { display: none; }
+    .g-search input[type=text], .g-search input[type=date], .g-search select { border: 1.5px solid var(--border); border-radius: 9px; padding: 8px 10px; font-family: inherit; font-size: .92rem; color: var(--dark); background: #fff; }
+    .g-search input[type=text] { flex: 1; min-width: 150px; }
     .gs-results { flex-basis: 100%; display: flex; flex-direction: column; gap: 6px; }
     .gs-results:empty { display: none; }
     .gs-hit { display: flex; gap: 12px; align-items: center; width: 100%; text-align: left; background: #faf7f1; border: 1.5px solid var(--border); border-radius: 10px; padding: 8px 12px; font: inherit; font-size: .92rem; color: var(--dark); cursor: pointer; }
@@ -59,10 +37,67 @@
     .gs-hit.annule { opacity: .6; }
     .gs-hit .gs-date { color: var(--gold-dark); font-weight: 800; white-space: nowrap; min-width: 86px; }
     .gs-empty { color: var(--muted); font-size: .85rem; padding: 4px 2px; }
-    /* Vue 3 semaines : un tableau par semaine, avec son titre. */
-    .g-week { margin: 0 0 16px; }
-    .g-week-title { font-weight: 900; color: var(--dark); font-size: .9rem; text-transform: uppercase; letter-spacing: .04em; margin: 0 0 6px; }
-    .g-week-title .wk { color: var(--gold); font-weight: 600; font-size: .85rem; text-transform: none; letter-spacing: 0; margin-left: 8px; }
+
+    /* --- Semaines --- */
+    .g-week { margin: 0 0 18px; }
+    .g-week-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 6px; }
+    .g-week-title { font-weight: 900; color: var(--dark); font-size: .9rem; text-transform: uppercase; letter-spacing: .04em; }
+    .g-week-title .wk { color: var(--gold-dark); font-weight: 600; font-size: .82rem; text-transform: none; letter-spacing: 0; margin-left: 8px; }
+    .g-navbtns { display: inline-flex; gap: 6px; }
+    .g-navbtns .btn { padding: 4px 12px; font-size: 1rem; border-radius: 9px; line-height: 1.2; }
+
+    /* --- Calendrier : 7 colonnes (écran large) --- */
+    .gcal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+    .gcal-day { position: relative; background: #fff; border: 1.5px solid #e8e2d9; border-radius: 12px; padding: 8px 8px 30px; min-height: 96px; }
+    .gcal-day.we { background: #faf7f1; }
+    .gcal-day.past { opacity: .55; }
+    .gcal-day.today { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(197,157,95,.35); }
+    .gcal-dh { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+    .gcal-dh .dn { font-weight: 800; font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+    .gcal-dh .dd { font-weight: 800; font-size: .82rem; color: var(--dark); }
+    .gcal-day.today .gcal-dh .dd { color: var(--gold-dark); }
+    .gcal-chips { display: flex; flex-direction: column; gap: 4px; }
+    .gcal-add { position: absolute; left: 8px; right: 8px; bottom: 6px; height: 20px; border: 1px dashed #d8d1c4; border-radius: 7px;
+      background: transparent; color: #b3ab9d; font: inherit; font-weight: 800; font-size: .85rem; line-height: 1; cursor: pointer; }
+    .gcal-add:hover { color: var(--dark); border-color: var(--gold); }
+
+    /* --- Pastilles de groupe (couleur selon la taille) --- */
+    .chip-g { display: flex; justify-content: space-between; align-items: center; gap: 6px; width: 100%; text-align: left;
+      border: 1.5px solid transparent; border-radius: 8px; padding: 5px 8px; font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer; line-height: 1.25; }
+    .chip-g .cp { flex: 0 0 auto; font-size: .74rem; font-weight: 800; opacity: .85; }
+    .chip-g .cp::after { content: " p"; font-weight: 600; opacity: .8; }
+    .chip-g.sz-s { background: #e3f3e8; color: #166534; border-color: #cfe9d8; }
+    .chip-g.sz-m { background: #f7ecd6; color: #8a6b32; border-color: #ecdcb8; }
+    .chip-g.sz-l { background: #f9dede; color: #9e1f24; border-color: #f0c6c6; }
+    .chip-g.sz-na { background: #ede9e2; color: var(--dark); border-color: #e0d9cd; }
+    .chip-g.annule { background: #eeeeee; color: #8a847c; text-decoration: line-through; border-color: #e2e2e2; }
+    .chip-g:hover { filter: brightness(.96); }
+
+    /* --- Téléphone : liste verticale, une ligne par jour --- */
+    @media (max-width: 680px) {
+      .gcal-grid { display: flex; flex-direction: column; gap: 6px; }
+      .gcal-day { display: flex; align-items: flex-start; gap: 10px; min-height: 0; padding: 8px 10px; }
+      .gcal-dh { flex: 0 0 56px; flex-direction: column; align-items: flex-start; margin: 0; gap: 0; }
+      .gcal-chips { flex: 1; flex-direction: row; flex-wrap: wrap; gap: 6px; }
+      .chip-g { width: auto; }
+      .gcal-add { position: static; flex: 0 0 30px; height: 30px; width: 30px; border-radius: 50%; }
+      .g-tool-add { flex: 1 1 100%; }
+      .g-tool-add input[type=date] { flex: 1; }
+    }
+
+    /* --- Formulaire d'un groupe (fenêtre) --- */
+    .gform label { display: block; font-size: .75rem; color: var(--muted); font-weight: 700; margin: 10px 0 3px; }
+    .gform input, .gform textarea { width: 100%; border: 1.5px solid var(--border); border-radius: 9px; padding: 9px 11px; font-size: .9rem; font-family: inherit; color: var(--dark); }
+    .gform textarea { resize: vertical; min-height: 54px; }
+
+    /* --- Récapitulatif (vue « Récap groupes ») --- */
+    .g-list { display: flex; flex-direction: column; gap: 6px; padding: 8px; }
+    .g-item { display: block; width: 100%; text-align: left; border: 1px solid #e3ddd2; background: #fff; border-radius: 8px; padding: 7px 9px; font-family: inherit; color: #1f2120; }
+    .g-sum { font-size: .88rem; margin-bottom: 3px; }
+    .g-line { font-size: .76rem; color: #5a5550; line-height: 1.35; }
+    .g-item.annule { border-color: #eebcbc; background: #fdf3f3; }
+    .g-item.annule .g-sum, .g-item.annule .g-line { text-decoration: line-through; color: #9e1f24; }
+    .g-annule-badge { display: inline-block; color: #bf272d; font-weight: 800; font-size: .72rem; letter-spacing: .05em; margin-bottom: 4px; }
   </style>
 </head>
 <body>
@@ -87,7 +122,7 @@
   <main class="wrap">
     <div>
       <h1 class="page-title">Groupes</h1>
-      <p class="page-sub">Les groupes à venir, jour par jour. Cliquez une case pour ajouter ou modifier.</p>
+      <p class="page-sub">Les 3 prochaines semaines. Touchez un groupe pour le modifier, « + » pour en ajouter.</p>
     </div>
     <div id="content"><div class="loading pulse">Chargement…</div></div>
   </main>
@@ -97,6 +132,6 @@
   </div>
 
   <script>window.MENU_PAGE = 'groupes';</script>
-  <script src="cuisine-menus.js?v=19"></script>
+  <script src="cuisine-menus.js?v=20"></script>
 </body>
 </html>

@@ -59,6 +59,10 @@
     .gs-hit.annule { opacity: .6; }
     .gs-hit .gs-date { color: var(--gold-dark); font-weight: 800; white-space: nowrap; min-width: 86px; }
     .gs-empty { color: var(--muted); font-size: .85rem; padding: 4px 2px; }
+    /* Vue 3 semaines : un tableau par semaine, avec son titre. */
+    .g-week { margin: 0 0 16px; }
+    .g-week-title { font-weight: 900; color: var(--dark); font-size: .9rem; text-transform: uppercase; letter-spacing: .04em; margin: 0 0 6px; }
+    .g-week-title .wk { color: var(--gold); font-weight: 600; font-size: .85rem; text-transform: none; letter-spacing: 0; margin-left: 8px; }
   </style>
 </head>
 <body>
@@ -93,6 +97,6 @@
   </div>
 
   <script>window.MENU_PAGE = 'groupes';</script>
-  <script src="cuisine-menus.js?v=17"></script>
+  <script src="cuisine-menus.js?v=18"></script>
 </body>
 </html>

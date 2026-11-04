@@ -43,9 +43,30 @@ let recap = null; // données des récapitulatifs (chargées à la demande)
 // Page : 'menus' (menus seuls), 'groupes' (groupes seuls) ou 'all' (les deux).
 const PAGE = window.MENU_PAGE || 'all';
 
+// Page Groupes : vue sur 3 semaines (lundi → dimanche), à partir de la semaine
+// en cours ; ailleurs, fenêtre de 7 jours à partir d'aujourd'hui.
+const GROUP_DAYS = PAGE === 'groupes' ? 21 : 7;
+function mondayOfIso(iso) {
+  const d = new Date(iso + 'T12:00:00');
+  const dow = d.getDay() === 0 ? 7 : d.getDay();
+  d.setDate(d.getDate() - (dow - 1));
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function menusUrl(start) {
+  const q = [];
+  if (start) q.push('groupStart=' + encodeURIComponent(start));
+  if (GROUP_DAYS !== 7) q.push('groupDays=' + GROUP_DAYS);
+  return 'api/menus' + (q.length ? '?' + q.join('&') : '');
+}
+
 async function load() {
-  try { data = await fetch('api/menus').then((r) => r.json()); }
-  catch (e) { content.innerHTML = '<div class="empty">Impossible de charger les menus.</div>'; return; }
+  try {
+    data = await fetch(menusUrl()).then((r) => r.json());
+    // Page Groupes : on recale la fenêtre sur le lundi de la semaine en cours.
+    if (PAGE === 'groupes' && data.today && data.groupStart !== mondayOfIso(data.today)) {
+      data = await fetch(menusUrl(mondayOfIso(data.today))).then((r) => r.json());
+    }
+  } catch (e) { content.innerHTML = '<div class="empty">Impossible de charger les menus.</div>'; return; }
   if (!data.cells) data.cells = {};
   render();
 }
@@ -148,16 +169,24 @@ function boardsHTML() {
         <button class="btn btn-grey" id="gs-clear" type="button">Effacer</button>
         <div id="gs-results" class="gs-results">${searchResultsHTML()}</div>
       </div>`;
+  // Tableaux par semaine (7 jours chacun) ; sur la page Groupes : 3 semaines.
+  const weeks = [];
+  for (let i = 0; i < data.groupes.length; i += 7) weeks.push(data.groupes.slice(i, i + 7));
+  const last = data.groupes[data.groupes.length - 1];
+  const tables = weeks.map((w, i) => `<div class="g-week">
+        ${weeks.length > 1 ? `<div class="g-week-title">${i === 0 ? 'Cette semaine' : i === 1 ? 'Semaine prochaine' : 'Dans 2 semaines'} <span class="wk">${dayHead(w[0])} → ${dayHead(w[w.length - 1])}</span></div>` : ''}
+        ${groupTable(w)}
+      </div>`).join('');
   const groupes = `<section class="board groupes">
       <h2>👥 Groupes</h2>
       ${addBar}
       ${searchBar}
       <div class="g-nav">
         <button class="btn btn-grey" id="g-prev">‹ Semaine précédente</button>
-        <span class="g-range">${dayHead(data.groupes[0])} → ${dayHead(data.groupes[6])}</span>
+        <span class="g-range">${dayHead(data.groupes[0])} → ${dayHead(last)}</span>
         <button class="btn btn-grey" id="g-next">Semaine suivante ›</button>
       </div>
-      ${groupTable(data.groupes)}
+      ${tables}
     </section>`;
   if (PAGE === 'menus') return menuSemaine + menuPro + menuSuiv;
   if (PAGE === 'groupes') return groupes;
@@ -295,8 +324,9 @@ async function fetchRecap() {
 }
 
 async function reloadGroupes(start) {
+  if (PAGE === 'groupes') start = mondayOfIso(start); // semaines entières lundi → dimanche
   try {
-    data = await fetch('api/menus?groupStart=' + encodeURIComponent(start)).then((r) => r.json());
+    data = await fetch(menusUrl(start)).then((r) => r.json());
     if (!data.cells) data.cells = {};
     render();
   } catch (e) { /* on garde l'affichage courant */ }

@@ -563,7 +563,10 @@ app.get('/api/menus', (req, res) => {
   // navigable côté client (semaine précédente / suivante).
   let gStart = String(req.query.groupStart || '').trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(gStart)) gStart = today;
-  const groupes = Array.from({ length: 7 }, (_, i) => addDays(gStart, i));
+  // Largeur de la fenêtre : 7 jours par défaut, jusqu'à 28 (page Groupes = 21).
+  let gDays = parseInt(req.query.groupDays, 10);
+  if (!(gDays >= 7 && gDays <= 28)) gDays = 7;
+  const groupes = Array.from({ length: gDays }, (_, i) => addDays(gStart, i));
   const dates = [...new Set([m1, m2, m3, ...groupes])];
   const rows = dates.length
     ? db.prepare(`SELECT date, slot, value, pinned FROM menu_cells WHERE date IN (${dates.map(() => '?').join(',')})`).all(...dates)

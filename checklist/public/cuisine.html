@@ -12,9 +12,17 @@
     .menage-box .mh { display: flex; justify-content: space-between; align-items: center; font-size: .82rem;
       font-weight: 900; text-transform: uppercase; letter-spacing: .08em; color: var(--gold-dark); margin-bottom: 8px; }
     .menage-box .mh .mc { font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--muted); font-size: .78rem; }
-    .menage-box ol { margin: 0; padding-left: 22px; font-size: .95rem; font-weight: 600; line-height: 1.45; }
-    .menage-box li.carried { color: #9e1f24; }
-    .menage-box .more { margin-top: 6px; font-size: .8rem; color: var(--muted); }
+    /* Tâches cochables directement dans le cartouche. */
+    .menage-box .mt { display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 0;
+      border: 0; background: none; text-align: left; font: inherit; font-size: .95rem; font-weight: 600;
+      color: var(--dark); cursor: pointer; border-top: 1px solid #f1ece4; }
+    .menage-box .mt:first-of-type { border-top: 0; }
+    .menage-box .mt .cb { flex: 0 0 26px; width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--border);
+      display: inline-flex; align-items: center; justify-content: center; color: #fff; font-size: .9rem; }
+    .menage-box .mt.busy { opacity: .5; pointer-events: none; }
+    .menage-box .mt.carried { color: #9e1f24; }
+    .menage-box .mt small { color: var(--muted); font-weight: 500; }
+    .menage-box .more { margin-top: 8px; font-size: .82rem; color: var(--gold-dark); font-weight: 700; text-decoration: none; display: inline-block; }
     .menage-box.done { border-color: var(--green); }
     .menage-box.done .mh { color: var(--green); }
   </style>
@@ -50,11 +58,11 @@
     </div>
     <!-- Cartouche « Ménage du jour » : les 3 prochaines tâches de ménage à faire,
          mis à jour automatiquement (toutes les 15 s et au retour sur la page). -->
-    <a class="menage-box" id="menage-box" hidden></a>
+    <div class="menage-box" id="menage-box" hidden></div>
 
     <div id="content"><div class="loading pulse">Chargement…</div></div>
   </main>
 
-  <script src="cuisine.js?v=19"></script>
+  <script src="cuisine.js?v=20"></script>
 </body>
 </html>

@@ -132,18 +132,35 @@ async function renderMenageBox() {
     tasks = Array.isArray(d.tasks) ? d.tasks : [];
   } catch (e) { box.hidden = true; return; }
   const todo = tasks.filter((t) => !t.isDone);
-  box.href = `session.html?id=${encodeURIComponent(s.id)}&from=${FROM}`;
+  const link = `session.html?id=${encodeURIComponent(s.id)}&from=${FROM}`;
   if (!tasks.length) { box.hidden = true; return; } // liste vide ≠ terminée
   if (!todo.length) {
     box.className = 'menage-box done';
-    box.innerHTML = `<div class="mh"><span>🧽 ${esc(s.templateName)}</span><span class="mc">✅ terminé</span></div>`;
+    // Tout est coché : la finalisation (nom + animation) se fait sur la liste.
+    box.innerHTML = `<div class="mh"><span>🧽 ${esc(s.templateName)}</span><span class="mc">✅ tout est fait</span></div>
+      ${s.status === 'TERMINE' ? '' : `<a class="more" href="${link}">Finaliser la liste →</a>`}`;
   } else {
     const first = todo.slice(0, 3);
     const rest = todo.length - first.length;
     box.className = 'menage-box';
     box.innerHTML = `<div class="mh"><span>🧽 ${esc(s.templateName)} — à faire</span><span class="mc">${tasks.length - todo.length}/${tasks.length} faites</span></div>
-      <ol>${first.map((t) => `<li${t.isCarriedOver ? ' class="carried"' : ''}>${esc(t.title)}${t.isCarriedOver ? ' <small>↩ reporté</small>' : ''}</li>`).join('')}</ol>
-      ${rest > 0 ? `<div class="more">+ ${rest} autre${rest > 1 ? 's' : ''} tâche${rest > 1 ? 's' : ''} → ouvrir la liste</div>` : ''}`;
+      ${first.map((t) => `<button type="button" class="mt${t.isCarriedOver ? ' carried' : ''}" data-task="${esc(t.id)}" title="Marquer comme faite"><span class="cb"></span><span>${esc(t.title)}${t.isCarriedOver ? ' <small>↩ reporté</small>' : ''}</span></button>`).join('')}
+      <a class="more" href="${link}">${rest > 0 ? `+ ${rest} autre${rest > 1 ? 's' : ''} tâche${rest > 1 ? 's' : ''} → ouvrir la liste` : 'Ouvrir la liste →'}</a>`;
+    // Un appui coche la tâche (même action que sur la page de la liste), puis
+    // le cartouche se recharge : la tâche suivante prend la place.
+    box.querySelectorAll('.mt').forEach((b) => b.addEventListener('click', async () => {
+      b.classList.add('busy');
+      b.querySelector('.cb').textContent = '✓';
+      b.querySelector('.cb').style.background = 'var(--green)';
+      b.querySelector('.cb').style.borderColor = 'var(--green)';
+      try {
+        await fetch(`api/sessions/${encodeURIComponent(s.id)}`, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'toggle_task', taskId: b.dataset.task, isDone: true }),
+        });
+      } catch (e) { /* le rechargement ci-dessous remettra l'état réel */ }
+      load();
+    }));
   }
   box.hidden = false;
 }

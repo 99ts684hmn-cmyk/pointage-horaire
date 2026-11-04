@@ -119,7 +119,7 @@ function render() {
   renderMenageBox();
 }
 
-// Cartouche « Ménage du jour » : les 3 premières tâches de ménage restantes,
+// Cartouche « Ménage du jour » : les 5 premières tâches de ménage restantes,
 // dans l'ordre de la check-list (les reportées en rouge). Cliquer ouvre la liste.
 async function renderMenageBox() {
   const box = document.getElementById('menage-box');
@@ -140,7 +140,7 @@ async function renderMenageBox() {
     box.innerHTML = `<div class="mh"><span>🧽 ${esc(s.templateName)}</span><span class="mc">✅ tout est fait</span></div>
       ${s.status === 'TERMINE' ? '' : `<a class="more" href="${link}">Finaliser la liste →</a>`}`;
   } else {
-    const first = todo.slice(0, 3);
+    const first = todo.slice(0, 5);
     const rest = todo.length - first.length;
     box.className = 'menage-box';
     box.innerHTML = `<div class="mh"><span>🧽 ${esc(s.templateName)} — à faire</span><span class="mc">${tasks.length - todo.length}/${tasks.length} faites</span></div>

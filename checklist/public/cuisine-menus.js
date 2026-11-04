@@ -138,9 +138,20 @@ function boardsHTML() {
         <input type="date" id="g-newdate" value="${esc(data.today || '')}" min="${esc(data.today || '')}">
         <button class="btn btn-red" id="g-newbtn">Ajouter</button>
       </div>`;
+  // Bloc « Rechercher un groupe » : par nom, date et/ou tranche de convives,
+  // dans TOUS les groupes enregistrés (passés et à venir).
+  const searchBar = `<div class="g-addbar g-search">
+        <span class="g-addlbl">🔍 Rechercher un groupe</span>
+        <input type="text" id="gs-nom" placeholder="Nom…" value="${esc(gSearch.nom)}">
+        <input type="date" id="gs-date" value="${esc(gSearch.date)}">
+        <select id="gs-pers">${PERS_RANGES.map(([v, l]) => `<option value="${v}"${v === gSearch.pers ? ' selected' : ''}>${l}</option>`).join('')}</select>
+        <button class="btn btn-grey" id="gs-clear" type="button">Effacer</button>
+        <div id="gs-results" class="gs-results">${searchResultsHTML()}</div>
+      </div>`;
   const groupes = `<section class="board groupes">
       <h2>👥 Groupes</h2>
       ${addBar}
+      ${searchBar}
       <div class="g-nav">
         <button class="btn btn-grey" id="g-prev">‹ Semaine précédente</button>
         <span class="g-range">${dayHead(data.groupes[0])} → ${dayHead(data.groupes[6])}</span>
@@ -151,6 +162,76 @@ function boardsHTML() {
   if (PAGE === 'menus') return menuSemaine + menuPro + menuSuiv;
   if (PAGE === 'groupes') return groupes;
   return menuSemaine + groupes + menuPro;
+}
+
+// --- Recherche de groupes ---
+const PERS_RANGES = [
+  ['', 'Convives : tous'],
+  ['15-20', '15 à 20 convives'],
+  ['20-30', '20 à 30 convives'],
+  ['30-40', '30 à 40 convives'],
+  ['40+', '40 convives ou plus'],
+];
+const gSearch = { nom: '', date: '', pers: '' };
+let gSearchHits = null; // null = pas de recherche en cours
+
+function persInRange(pers, range) {
+  const n = parseInt(String(pers || '').replace(/[^\d]/g, ''), 10);
+  if (!range) return true;
+  if (isNaN(n)) return false;
+  if (range === '40+') return n >= 40;
+  const [lo, hi] = range.split('-').map(Number);
+  return n >= lo && n <= hi;
+}
+
+async function runSearch() {
+  const active = gSearch.nom.trim() || gSearch.date || gSearch.pers;
+  if (!active) { gSearchHits = null; renderSearchResults(); return; }
+  if (!recap) { try { recap = await fetch('api/menus/recap').then((r) => r.json()); } catch (e) { recap = { menus: [], groupes: [] }; } }
+  const q = gSearch.nom.trim().toLowerCase();
+  const hits = [];
+  for (const e of recap.groupes) {
+    if (gSearch.date && e.date !== gSearch.date) continue;
+    parseGroups(e.value).forEach((g, i) => {
+      if (q && !String(g.nom || '').toLowerCase().includes(q)) return;
+      if (!persInRange(g.pers, gSearch.pers)) return;
+      hits.push({ date: e.date, index: i, g });
+    });
+  }
+  hits.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.index - b.index)); // plus récents d'abord
+  gSearchHits = hits.slice(0, 50);
+  renderSearchResults();
+}
+
+function searchResultsHTML() {
+  if (gSearchHits === null) return '';
+  if (!gSearchHits.length) return '<div class="gs-empty">Aucun groupe trouvé.</div>';
+  return gSearchHits.map((h) => `<button type="button" class="gs-hit${h.g.annule ? ' annule' : ''}" data-date="${h.date}" data-index="${h.index}">
+      <span class="gs-date">${dayHead(h.date)}</span>
+      <span class="gs-txt"><strong>${esc(h.g.nom || '(sans nom)')}</strong>${h.g.pers ? ` · ${esc(h.g.pers)} pers` : ''}${h.g.annule ? ' · <em>annulé</em>' : ''}</span>
+    </button>`).join('') + (gSearchHits.length >= 50 ? '<div class="gs-empty">Affinez la recherche (50 premiers résultats).</div>' : '');
+}
+
+function renderSearchResults() {
+  const box = document.getElementById('gs-results');
+  if (!box) return;
+  box.innerHTML = searchResultsHTML();
+  box.querySelectorAll('.gs-hit').forEach((b) => b.addEventListener('click', async () => {
+    // On charge la semaine de ce groupe (pour avoir sa case), puis on l'ouvre.
+    await reloadGroupes(b.dataset.date);
+    openGroup(b.dataset.date, parseInt(b.dataset.index, 10));
+  }));
+}
+
+function bindSearch() {
+  const nom = document.getElementById('gs-nom'); const date = document.getElementById('gs-date');
+  const pers = document.getElementById('gs-pers'); const clear = document.getElementById('gs-clear');
+  if (!nom) return;
+  nom.addEventListener('input', () => { gSearch.nom = nom.value; runSearch(); });
+  date.addEventListener('change', () => { gSearch.date = date.value; runSearch(); });
+  pers.addEventListener('change', () => { gSearch.pers = pers.value; runSearch(); });
+  clear.addEventListener('click', () => { gSearch.nom = ''; gSearch.date = ''; gSearch.pers = ''; nom.value = ''; date.value = ''; pers.value = ''; runSearch(); });
+  renderSearchResults();
 }
 
 function recapMenusHTML() {
@@ -188,6 +269,7 @@ function render() {
   content.querySelectorAll('.pin-chk').forEach((c) => c.addEventListener('change', () => savePin(c)));
   content.querySelectorAll('.g-item').forEach((b) => b.addEventListener('click', () => openGroup(b.dataset.date, parseInt(b.dataset.index, 10))));
   content.querySelectorAll('.g-add').forEach((b) => b.addEventListener('click', () => openGroup(b.dataset.date, null)));
+  bindSearch();
   const newBtn = document.getElementById('g-newbtn');
   if (newBtn) {
     newBtn.addEventListener('click', () => {
@@ -305,6 +387,8 @@ async function saveGroup(mode) {
   try {
     await fetch('api/menus/cell', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date, slot: 'groupe', value }) });
   } catch (e) { /* gardé localement */ }
+  recap = null; // la recherche relira les groupes à jour
+  if (gSearchHits !== null) runSearch();
   // Groupe ajouté sur une date hors de la semaine affichée (bloc « Ajouter un
   // groupe ») : on déplace la fenêtre sur cette date pour le voir apparaître.
   if (Array.isArray(data.groupes) && !data.groupes.includes(date)) reloadGroupes(date);

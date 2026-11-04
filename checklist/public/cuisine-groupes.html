@@ -48,6 +48,17 @@
       border-radius: 12px; padding: 10px 14px; margin: 0 0 12px; }
     .g-addbar .g-addlbl { font-weight: 800; color: var(--gold-dark); font-size: .9rem; }
     .g-addbar input[type=date] { border: 1.5px solid var(--border); border-radius: 9px; padding: 8px 10px; font-family: inherit; font-size: .95rem; color: var(--dark); background: #fff; }
+    /* Bloc « Rechercher un groupe » + résultats. */
+    .g-search { border-color: var(--border); }
+    .g-search input[type=text], .g-search select { border: 1.5px solid var(--border); border-radius: 9px; padding: 8px 10px; font-family: inherit; font-size: .95rem; color: var(--dark); background: #fff; }
+    .g-search input[type=text] { flex: 1; min-width: 140px; }
+    .gs-results { flex-basis: 100%; display: flex; flex-direction: column; gap: 6px; }
+    .gs-results:empty { display: none; }
+    .gs-hit { display: flex; gap: 12px; align-items: center; width: 100%; text-align: left; background: #faf7f1; border: 1.5px solid var(--border); border-radius: 10px; padding: 8px 12px; font: inherit; font-size: .92rem; color: var(--dark); cursor: pointer; }
+    .gs-hit:hover { border-color: var(--gold); }
+    .gs-hit.annule { opacity: .6; }
+    .gs-hit .gs-date { color: var(--gold-dark); font-weight: 800; white-space: nowrap; min-width: 86px; }
+    .gs-empty { color: var(--muted); font-size: .85rem; padding: 4px 2px; }
   </style>
 </head>
 <body>
@@ -82,6 +93,6 @@
   </div>
 
   <script>window.MENU_PAGE = 'groupes';</script>
-  <script src="cuisine-menus.js?v=16"></script>
+  <script src="cuisine-menus.js?v=17"></script>
 </body>
 </html>

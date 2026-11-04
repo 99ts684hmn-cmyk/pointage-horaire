@@ -93,6 +93,14 @@
     .bday-next .line .dt{color:var(--muted);white-space:nowrap}
     .bday-next .soon{color:var(--gold-dark);font-weight:700}
     .bday-card + .bday-card{margin-top:12px}
+    /* Bloc anniversaires en haut, compact : titre + une ligne de noms. */
+    .bday-top{margin:0 0 18px}
+    .bday-top .bday-card{padding:10px 14px;border-radius:14px}
+    .bday-top .bday-title{margin-bottom:4px}
+    .bday-inline{display:flex;flex-wrap:wrap;gap:2px 14px;font-size:.9rem;line-height:1.4}
+    .bday-inline .nm{font-weight:700;color:var(--dark)}
+    .bday-inline .dt{color:var(--muted)}
+    .bday-top .bday-msg{font-size:.98rem}
     .jm-msg{font-size:1.02rem;font-weight:700;color:var(--dark)}
     .jm-card{border-left:4px solid var(--gold)}
   </style>
@@ -105,6 +113,9 @@
       <p>Espace de gestion du restaurant</p>
     </div>
   </div>
+
+  <!-- Anniversaires (compact, 2 lignes) juste sous le bandeau -->
+  <section class="bday bday-top" id="bday" hidden></section>
 
   <main class="grid">
     <a class="tile salle" href="/salle.html">
@@ -145,7 +156,8 @@
     </a>
   </main>
 
-  <section class="bday" id="bday" hidden></section>
+  <!-- Journée mondiale du jour (reste en bas) -->
+  <section class="bday" id="jm" hidden></section>
 
   <div class="foot"><a href="pointage.html">Administration</a> · Bœuf &amp; Cow</div>
 
@@ -153,6 +165,7 @@
     // --- Anniversaires du personnel -------------------------------------
     (function () {
       var MOIS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+      var MOIS_ABR = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
       var MSG = [
         'Joyeux anniversaire {NOM} ! 🎂 Toute l’équipe te souhaite une superbe journée 🥳',
         'Bon anniversaire {NOM} ! 🎉 Profite bien de ta journée 🎈',
@@ -160,6 +173,7 @@
         'Bon anniversaire {NOM} ! 🎁 L’équipe Bœuf & Cow pense à toi aujourd’hui ❤️'
       ];
       var box = document.getElementById('bday');
+      var jmBox = document.getElementById('jm');
 
       Promise.all([
         fetch('anniversaires.json?v=13').then(function (r) { return r.json(); }).catch(function () { return []; }),
@@ -174,10 +188,11 @@
 
         // Journée mondiale du jour
         var jour = jm[m + '-' + j];
-        if (jour) {
-          html += '<div class="bday-card jm-card">'
+        if (jour && jmBox) {
+          jmBox.innerHTML = '<div class="bday-card jm-card">'
                 + '<div class="bday-title">📅 Aujourd’hui, c’est aussi…</div>'
                 + '<div class="jm-msg">' + jour + '</div></div>';
+          jmBox.hidden = false;
         }
 
         var aujourdhui = list.filter(function (p) { return p.jour === j && p.mois === m; });
@@ -202,15 +217,16 @@
                 + '<div class="bday-msg">' + tpl + '</div></div>';
         }
         if (avenir.length) {
-          var lignes = avenir.map(function (p) {
+          // Une seule ligne : « Inaya · 26 nov (22 j)   Kum · 13 déc (39 j) … »
+          var items = avenir.map(function (p) {
             var dd = joursAvant(p);
             var quand = dd === 1 ? '<span class="soon">demain</span>'
-                      : p.jour + ' ' + MOIS[p.mois - 1] + ' (dans ' + dd + ' j)';
-            return '<div class="line"><span class="nm">' + (p.prenom || p.nom) + '</span><span class="dt">' + quand + '</span></div>';
+                      : p.jour + ' ' + MOIS_ABR[p.mois - 1] + ' (' + dd + ' j)';
+            return '<span><span class="nm">' + (p.prenom || p.nom) + '</span> <span class="dt">· ' + quand + '</span></span>';
           }).join('');
           html += '<div class="bday-card">'
                 + '<div class="bday-title">🎂 Prochains anniversaires</div>'
-                + '<div class="bday-next">' + lignes + '</div></div>';
+                + '<div class="bday-inline">' + items + '</div></div>';
         }
         if (html) { box.innerHTML = html; box.hidden = false; }
       }).catch(function () { /* silencieux : pas d'anniv affiché si erreur */ });

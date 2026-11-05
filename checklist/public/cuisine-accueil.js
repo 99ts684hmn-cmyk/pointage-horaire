@@ -70,7 +70,7 @@ async function load() {
   document.getElementById('ap-groupes').innerHTML = grp.length
     ? grp.map((g) => {
       const w = whenInfo(g.date);
-      return `<div class="ap-line"><span class="ap-d">${dayHead(g.date)} <span class="ap-when${w.soon ? ' soon' : ''}">${w.txt}</span></span><span class="ap-n">${esc(g.nom)}${g.pers ? ` · ${esc(g.pers)} pers` : ''}</span></div>`;
+      return `<div class="ap-line"><span class="ap-d">${dayHead(g.date)} <span class="ap-when${w.soon ? ' soon' : ''}">${w.txt}</span></span><span class="ap-n">${g.heure ? `🕒 ${esc(String(g.heure).replace(':', 'h'))} · ` : ''}${esc(g.nom)}${g.pers ? ` · ${esc(g.pers)} pers` : ''}</span></div>`;
     }).join('')
     : '<div class="ap-empty">Aucun groupe à venir</div>';
 

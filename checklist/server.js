@@ -618,7 +618,7 @@ app.get('/api/menus/apercu', (req, res) => {
     try { const o = JSON.parse(r.value); arr = Array.isArray(o) ? o : (o && typeof o === 'object' ? [o] : []); }
     catch (e) { arr = [{ nom: r.value }]; }
     for (const g of arr) {
-      if (g && !g.annule && (g.nom || '').trim()) groupes.push({ date: r.date, nom: g.nom, pers: g.pers || '' });
+      if (g && !g.annule && (g.nom || '').trim()) groupes.push({ date: r.date, nom: g.nom, pers: g.pers || '', heure: g.heure || '' });
       if (groupes.length >= 3) break;
     }
     if (groupes.length >= 3) break;

@@ -64,6 +64,8 @@
     /* --- Pastilles de groupe (couleur selon la taille) --- */
     .chip-g { display: flex; justify-content: space-between; align-items: center; gap: 6px; width: 100%; text-align: left;
       border: 1.5px solid transparent; border-radius: 8px; padding: 5px 8px; font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer; line-height: 1.25; }
+    .chip-g .cn { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .chip-g .ch { font-weight: 800; opacity: .9; margin-right: 5px; }
     .chip-g .cp { flex: 0 0 auto; font-size: .74rem; font-weight: 800; opacity: .85; }
     .chip-g .cp::after { content: " p"; font-weight: 600; opacity: .8; }
     .chip-g.sz-s { background: #e3f3e8; color: #166534; border-color: #cfe9d8; }
@@ -140,7 +142,7 @@
   </div>
 
   <script>window.MENU_PAGE = 'groupes';</script>
-  <script src="cuisine-menus.js?v=23"></script>
+  <script src="cuisine-menus.js?v=24"></script>
   <script src="/tabbar.js?v=4"></script>
 </body>
 </html>

@@ -25,9 +25,12 @@ const MENU_COLS = [['debut', 'Début de semaine'], ['fin', 'Fin de semaine']];
 const GROUP_FIELDS = [
   ['nom', 'Nom du groupe', 'text'],
   ['pers', 'Nombre de personnes', 'number'],
+  ['heure', "Heure d'arrivée", 'time'],
   ['menu', 'Menu', 'textarea'],
   ['infos', 'Infos', 'textarea'],
 ];
+// « 12:30 » → « 12h30 » pour l'affichage.
+const fmtHeure = (h) => (h ? String(h).replace(':', 'h') : '');
 
 const content = document.getElementById('content');
 const ov = document.getElementById('ov');
@@ -97,6 +100,7 @@ function groupFilled(g) { return Object.keys(g).some((k) => k !== 'annule' && g[
 
 function groupSummary(g) {
   const top = [];
+  if (g.heure) top.push(`🕒 ${esc(fmtHeure(g.heure))}`);
   if (g.nom) top.push(`<strong>${esc(g.nom)}</strong>`);
   if (g.pers) top.push(`${esc(g.pers)} pers`);
   if (g.prix) top.push(`${esc(g.prix)}/pers`);
@@ -114,6 +118,7 @@ function groupSummary(g) {
 // Résumé compact pour les cases du tableau : nom · pers · prix + allergies.
 function groupSummaryCompact(g) {
   const top = [];
+  if (g.heure) top.push(`🕒 ${esc(fmtHeure(g.heure))}`);
   if (g.nom) top.push(`<strong>${esc(g.nom)}</strong>`);
   if (g.pers) top.push(`${esc(g.pers)} pers`);
   if (g.prix) top.push(`${esc(g.prix)}/pers`);
@@ -203,7 +208,8 @@ function chipSize(g) {
 }
 function chipHTML(g, date, i) {
   const pers = g.pers ? `<span class="cp">${esc(g.pers)}</span>` : '';
-  return `<button type="button" class="chip-g sz-${chipSize(g)}${g.annule ? ' annule' : ''}" data-date="${date}" data-index="${i}" title="${esc(g.nom || '')}${g.pers ? ' · ' + esc(g.pers) + ' pers' : ''}${g.annule ? ' (annulé)' : ''}">${esc(g.nom || '(groupe)')}${pers}</button>`;
+  const heure = g.heure ? `<span class="ch">${esc(fmtHeure(g.heure))}</span>` : '';
+  return `<button type="button" class="chip-g sz-${chipSize(g)}${g.annule ? ' annule' : ''}" data-date="${date}" data-index="${i}" title="${g.heure ? esc(fmtHeure(g.heure)) + ' · ' : ''}${esc(g.nom || '')}${g.pers ? ' · ' + esc(g.pers) + ' pers' : ''}${g.annule ? ' (annulé)' : ''}"><span class="cn">${heure}${esc(g.nom || '(groupe)')}</span>${pers}</button>`;
 }
 function groupsCalendarHTML() {
   const today = data.today || '';
@@ -291,7 +297,7 @@ function searchResultsHTML() {
   if (!gSearchHits.length) return '<div class="gs-empty">Aucun groupe trouvé.</div>';
   return gSearchHits.map((h) => `<button type="button" class="gs-hit${h.g.annule ? ' annule' : ''}" data-date="${h.date}" data-index="${h.index}">
       <span class="gs-date">${dayHead(h.date)}</span>
-      <span class="gs-txt"><strong>${esc(h.g.nom || '(sans nom)')}</strong>${h.g.pers ? ` · ${esc(h.g.pers)} pers` : ''}${h.g.annule ? ' · <em>annulé</em>' : ''}</span>
+      <span class="gs-txt">${h.g.heure ? `🕒 ${esc(fmtHeure(h.g.heure))} · ` : ''}<strong>${esc(h.g.nom || '(sans nom)')}</strong>${h.g.pers ? ` · ${esc(h.g.pers)} pers` : ''}${h.g.annule ? ' · <em>annulé</em>' : ''}</span>
     </button>`).join('') + (gSearchHits.length >= 50 ? '<div class="gs-empty">Affinez la recherche (50 premiers résultats).</div>' : '');
 }
 
@@ -423,6 +429,7 @@ async function savePin(c) {
 // renseignés, anciens compris) ; « Modifier » bascule sur le formulaire.
 // Nouveau groupe : formulaire directement.
 const GROUP_VIEW = [
+  ['heure', '🕒 Heure', (v) => esc(fmtHeure(v))],
   ['pers', '👥 Personnes', (v) => `${esc(v)} pers`], ['prix', '💶 Prix', (v) => `${esc(v)}/pers`],
   ['menu', '🍽️ Menu'], ['allergies', '⚠️ Allergies'], ['boissons', '🥤 Boissons'],
   ['gratuite', '🎁 Gratuité'], ['guide', '🧭 Guide'], ['infos', 'ℹ️ Infos'],

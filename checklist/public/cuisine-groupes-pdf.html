@@ -12,7 +12,10 @@
     .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
     .bar a, .bar button { font: inherit; font-weight: 800; font-size: .9rem; border: 0; border-radius: 10px; padding: 10px 16px; cursor: pointer; text-decoration: none; }
     .bar button { background: var(--red); color: #fff; }
+    .bar button.secondary { background: #eee7db; color: var(--dark); }
     .bar a { background: #eee7db; color: var(--dark); }
+    .hint { color: var(--muted); font-size: .85rem; margin: -6px 0 14px; }
+    @media print { .hint { display: none; } }
     h1 { font-size: 1.25rem; margin: 0 0 2px; text-transform: uppercase; letter-spacing: .04em; }
     .sub { color: var(--muted); font-size: .9rem; margin: 0 0 18px; }
     .day { break-inside: avoid; margin: 0 0 14px; border: 1.5px solid var(--border); border-radius: 10px; overflow: hidden; }
@@ -37,12 +40,15 @@
       @page { size: A4 portrait; margin: 12mm; }
     }
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
   <div class="bar">
-    <button id="print" type="button">🖨️ Imprimer / Enregistrer en PDF</button>
+    <button id="share" type="button">📤 Enregistrer / Partager le PDF</button>
+    <button id="print" type="button" class="secondary">🖨️ Imprimer</button>
     <a href="cuisine-groupes.html">← Retour aux groupes</a>
   </div>
+  <p class="hint" id="hint" hidden></p>
   <h1>👥 Groupes à venir</h1>
   <p class="sub" id="sub">Chargement…</p>
   <div id="content"></div>
@@ -87,13 +93,75 @@
         }).join('');
         content.innerHTML = blocks || '<div class="empty">Aucun groupe sur les 30 prochains jours.</div>';
         if (blocks) content.insertAdjacentHTML('beforeend', `<div class="total">${total} groupe${total > 1 ? 's' : ''} sur ${DAYS} jours (hors annulés).</div>`);
+        window.__groupsData = { dates, cells: d.cells || {}, today: d.today }; // pour le PDF généré
       } catch (e) {
         content.innerHTML = '<div class="empty">Impossible de charger les groupes.</div>';
       }
       document.getElementById('print').addEventListener('click', () => window.print());
-      // Ouvert avec ?print=1 (bouton de la page Groupes) : on lance l'impression dès le rendu.
-      if (new URLSearchParams(location.search).get('print') === '1') setTimeout(() => window.print(), 400);
+      // Sur ordinateur, ouvert avec ?print=1 : impression directe. Sur téléphone/tablette
+      // (tactile), Safari bloque l'impression automatique → on passe par le PDF partagé.
+      const touch = matchMedia('(pointer: coarse)').matches;
+      if (!touch && new URLSearchParams(location.search).get('print') === '1') setTimeout(() => window.print(), 400);
+      if (touch) { const h = document.getElementById('hint'); h.textContent = 'Sur iPhone / iPad : « Enregistrer / Partager le PDF » ouvre la feuille de partage (Fichiers, AirDrop, Mail, Imprimer…).'; h.hidden = false; }
     })();
+
+    // --- PDF généré dans la page (jsPDF) : fonctionne sur iPhone, même en app « écran d'accueil ».
+    function buildPdf() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+      const d = window.__groupsData || { dates: [], cells: {} };
+      const W = 210, M = 14, maxW = W - 2 * M;
+      let y = 18;
+      const clean = (s) => String(s == null ? '' : s).replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '').trim();
+      const line = (txt, size, style, color, indent) => {
+        doc.setFont('helvetica', style || 'normal'); doc.setFontSize(size); doc.setTextColor(...(color || [31, 33, 32]));
+        const rows = doc.splitTextToSize(clean(txt), maxW - (indent || 0));
+        for (const r of rows) { if (y > 282) { doc.addPage(); y = 18; } doc.text(r, M + (indent || 0), y); y += size * 0.42 + 1.2; }
+      };
+      line('Boeuf & Cow — Groupes à venir', 16, 'bold');
+      if (d.dates.length) line(`Du ${shortDate(d.dates[0])} au ${shortDate(d.dates[d.dates.length - 1])} — édité le ${shortDate(d.today)}`, 10, 'normal', [90, 85, 80]);
+      y += 3;
+      let total = 0;
+      for (const date of d.dates) {
+        const arr = parseGroups(d.cells[date] && d.cells[date].groupe);
+        if (!arr.length) continue;
+        const pers = arr.filter((g) => !g.annule).reduce((s, g) => s + (parseInt(g.pers, 10) || 0), 0);
+        if (y > 265) { doc.addPage(); y = 18; }
+        y += 2;
+        doc.setFillColor(243, 240, 234); doc.rect(M, y - 4.5, maxW, 7, 'F');
+        line(`${longDate(date).toUpperCase()}   —   ${arr.length} groupe${arr.length > 1 ? 's' : ''}${pers ? ` · ${pers} pers` : ''}`, 10, 'bold', [138, 107, 50]);
+        y += 1;
+        for (const g of arr) {
+          total += g.annule ? 0 : 1;
+          const head = `${g.heure ? String(g.heure).replace(':', 'h') + '  ' : ''}${g.nom || '(sans nom)'}${g.pers ? `   ${g.pers} pers` : ''}${g.annule ? '   (ANNULÉ)' : ''}`;
+          line(head, 11, 'bold', g.annule ? [150, 150, 150] : [31, 33, 32], 2);
+          if (g.menu && String(g.menu).trim()) line('Menu : ' + g.menu, 9.5, 'normal', [60, 56, 52], 6);
+          y += 1.5;
+        }
+      }
+      y += 2; line(`${total} groupe${total > 1 ? 's' : ''} sur ${DAYS} jours (hors annulés).`, 9, 'italic', [90, 85, 80]);
+      return doc;
+    }
+    document.getElementById('share').addEventListener('click', async () => {
+      const btn = document.getElementById('share');
+      try {
+        btn.disabled = true; btn.textContent = '⏳ Préparation…';
+        const doc = buildPdf();
+        const name = `groupes-30-jours-${(window.__groupsData && window.__groupsData.today) || ''}.pdf`;
+        const blob = doc.output('blob');
+        const file = new File([blob], name, { type: 'application/pdf' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: 'Groupes à venir' });
+        } else {
+          // Pas de feuille de partage : ouverture / téléchargement du PDF.
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 60000);
+        }
+      } catch (e) {
+        if (!/abort/i.test(String(e && e.name))) alert('Impossible de générer le PDF : ' + (e && e.message ? e.message : e));
+      } finally { btn.disabled = false; btn.textContent = '📤 Enregistrer / Partager le PDF'; }
+    });
   </script>
 </body>
 </html>

@@ -98,6 +98,12 @@
     .g-item.annule { border-color: #eebcbc; background: #fdf3f3; }
     .g-item.annule .g-sum, .g-item.annule .g-line { text-decoration: line-through; color: #9e1f24; }
     .g-annule-badge { display: inline-block; color: #bf272d; font-weight: 800; font-size: .72rem; letter-spacing: .05em; margin-bottom: 4px; }
+    /* Fiche d'un groupe en lecture (toutes les infos). */
+    .modal .sub { color: var(--muted); font-size: .9rem; margin: 2px 0 12px; }
+    .gview { display: flex; flex-direction: column; gap: 8px; margin: 0 0 14px; }
+    .gv-line { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; background: #faf7f1; border: 1px solid var(--border); border-radius: 10px; }
+    .gv-lbl { flex: 0 0 110px; font-weight: 800; font-size: .8rem; color: var(--gold-dark); }
+    .gv-val { flex: 1; font-size: .95rem; color: var(--dark); white-space: pre-line; line-height: 1.4; }
   </style>
 </head>
 <body>
@@ -132,7 +138,7 @@
   </div>
 
   <script>window.MENU_PAGE = 'groupes';</script>
-  <script src="cuisine-menus.js?v=21"></script>
+  <script src="cuisine-menus.js?v=22"></script>
   <script src="/tabbar.js?v=3"></script>
 </body>
 </html>

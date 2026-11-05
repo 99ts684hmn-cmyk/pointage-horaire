@@ -418,12 +418,42 @@ async function savePin(c) {
   } catch (e) { /* gardé localement */ }
 }
 
-// --- Groupes : formulaire (ajout ou édition) ---
-function openGroup(date, index) {
+// --- Groupes : fenêtre ---
+// Groupe existant : d'abord la fiche complète en lecture (tous les champs
+// renseignés, anciens compris) ; « Modifier » bascule sur le formulaire.
+// Nouveau groupe : formulaire directement.
+const GROUP_VIEW = [
+  ['pers', '👥 Personnes', (v) => `${esc(v)} pers`], ['prix', '💶 Prix', (v) => `${esc(v)}/pers`],
+  ['menu', '🍽️ Menu'], ['allergies', '⚠️ Allergies'], ['boissons', '🥤 Boissons'],
+  ['gratuite', '🎁 Gratuité'], ['guide', '🧭 Guide'], ['infos', 'ℹ️ Infos'],
+];
+function openGroup(date, index, edit) {
   gDate = date;
   gIndex = (index == null || isNaN(index)) ? null : index;
   const arr = parseGroups(data.cells[date] && data.cells[date].groupe);
   const g = gIndex != null ? (arr[gIndex] || {}) : {};
+  if (gIndex != null && !edit) {
+    const lines = GROUP_VIEW.filter(([k]) => g[k] && String(g[k]).trim())
+      .map(([k, label, fmt]) => `<div class="gv-line"><span class="gv-lbl">${label}</span><span class="gv-val">${fmt ? fmt(g[k]) : esc(g[k])}</span></div>`).join('');
+    modal.innerHTML = `
+      <h2>${g.annule ? '<span class="g-annule-badge">ANNULÉ</span> ' : ''}${esc(g.nom || '(groupe)')}</h2>
+      <div class="sub">${dayHead(date)}</div>
+      <div class="gview">${lines || '<div class="gv-line"><span class="gv-val" style="color:var(--muted)">Aucune information complémentaire.</span></div>'}</div>
+      <div class="actions" style="flex-wrap:wrap">
+        <button class="btn btn-grey" id="g-close">Fermer</button>
+        ${g.annule ? '<button class="btn btn-grey" id="g-react">Réactiver</button>' : '<button class="btn btn-grey" id="g-annuler">🚫 Annuler le groupe</button>'}
+        <button class="btn btn-grey" id="g-del">Supprimer</button>
+        <button class="btn btn-red" id="g-edit">✏️ Modifier</button>
+      </div>`;
+    const byId = (id) => modal.querySelector('#' + id);
+    byId('g-close').addEventListener('click', closeGroup);
+    byId('g-edit').addEventListener('click', () => openGroup(date, gIndex, true));
+    if (byId('g-annuler')) byId('g-annuler').addEventListener('click', () => saveGroup('annuler'));
+    if (byId('g-react')) byId('g-react').addEventListener('click', () => saveGroup('reactiver'));
+    byId('g-del').addEventListener('click', () => saveGroup('delete'));
+    ov.classList.add('show');
+    return;
+  }
   modal.innerHTML = `
     <h2>${gIndex != null ? 'Groupe' : 'Nouveau groupe'} — ${dayHead(date)}</h2>
     <div class="gform">
@@ -433,15 +463,13 @@ function openGroup(date, index) {
     </div>
     <div class="actions" style="flex-wrap:wrap">
       ${gIndex != null
-    ? (g.annule
-      ? '<button class="btn btn-grey" id="g-react">Réactiver le groupe</button>'
-      : '<button class="btn btn-grey" id="g-annuler">🚫 Annuler le groupe</button>')
-        + '<button class="btn btn-grey" id="g-del">Supprimer</button>'
+    ? '<button class="btn btn-grey" id="g-back">← Retour</button>'
     : '<button class="btn btn-grey" id="g-cancel">Annuler</button>'}
       <button class="btn btn-red" id="g-save">Enregistrer</button>
     </div>`;
   const byId = (id) => modal.querySelector('#' + id);
   if (byId('g-cancel')) byId('g-cancel').addEventListener('click', closeGroup);
+  if (byId('g-back')) byId('g-back').addEventListener('click', () => openGroup(date, gIndex, false));
   byId('g-save').addEventListener('click', () => saveGroup('save'));
   if (byId('g-annuler')) byId('g-annuler').addEventListener('click', () => saveGroup('annuler'));
   if (byId('g-react')) byId('g-react').addEventListener('click', () => saveGroup('reactiver'));

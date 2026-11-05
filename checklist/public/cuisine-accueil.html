@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Bœuf & Cow — Cuisine</title>
   <link rel="stylesheet" href="styles.css?v=27">
+  <style>
+    /* Telephone : les blocs deja presents dans la barre du bas sont masques. */
+    @media (max-width: 680px) { .tiles .tile.inbar { display: none; } }
+  </style>
 </head>
 <body>
   <header class="nav">
@@ -40,25 +44,25 @@
       <p class="page-sub">Choisissez une rubrique.</p>
     </div>
     <div class="tiles" style="margin-top:22px">
-      <a class="tile" href="cuisine.html">
+      <a class="tile inbar" href="cuisine.html">
         <span class="accent"></span>
         <span class="ic">✅</span>
         <span class="ttl">Check-list cuisine</span>
         <span class="sub">Plancha, poste garniture, fermeture du froid…</span>
       </a>
-      <a class="tile" href="cuisine-commandes-accueil.html">
+      <a class="tile inbar" href="cuisine-commandes-accueil.html">
         <span class="accent"></span>
         <span class="ic">📦</span>
         <span class="ttl">Commandes</span>
         <span class="sub">Tableau des commandes &amp; PPP</span>
       </a>
-      <a class="tile" href="cuisine-groupes.html">
+      <a class="tile inbar" href="cuisine-groupes.html">
         <span class="accent"></span>
         <span class="ic">👥</span>
         <span class="ttl">Groupes</span>
         <span class="sub">Groupes à venir, jour par jour</span>
       </a>
-      <a class="tile" href="cuisine-menudujour.html">
+      <a class="tile inbar" href="cuisine-menudujour.html">
         <span class="accent"></span>
         <span class="ic">📋</span>
         <span class="ttl">Menu de la semaine</span>

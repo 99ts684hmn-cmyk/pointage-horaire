@@ -64,9 +64,10 @@
       catch (e) { return [{ nom: String(raw) }]; }
       return [];
     }
-    const LINES = [['menu', 'Menu'], ['allergies', '⚠️ Allergies'], ['boissons', '🥤 Boissons'], ['gratuite', '🎁 Gratuité'], ['guide', '🧭 Guide'], ['infos', 'ℹ️ Infos']];
+    // PDF volontairement sobre : nom, personnes, heure et menu uniquement.
+    const LINES = [['menu', 'Menu']];
     function groupHTML(g) {
-      const head = `<div class="t">${g.heure ? `<span class="heure">🕒 ${esc(String(g.heure).replace(':', 'h'))}</span> ` : ''}${esc(g.nom || '(sans nom)')}${g.pers ? `<span class="pers">${esc(g.pers)} pers</span>` : ''}${g.prix ? `<span class="prix">${esc(g.prix)}/pers</span>` : ''}</div>`;
+      const head = `<div class="t">${g.heure ? `<span class="heure">🕒 ${esc(String(g.heure).replace(':', 'h'))}</span> ` : ''}${esc(g.nom || '(sans nom)')}${g.pers ? `<span class="pers">${esc(g.pers)} pers</span>` : ''}</div>`;
       const lines = LINES.filter(([k]) => g[k] && String(g[k]).trim()).map(([k, l]) => `<div class="l"><b>${l} :</b> ${esc(g[k])}</div>`).join('');
       return `<div class="g${g.annule ? ' annule' : ''}">${head}${lines}</div>`;
     }

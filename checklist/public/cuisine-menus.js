@@ -20,15 +20,12 @@ function weekRange(monday) { return `${dm(monday)} → ${dm(addDaysIso(monday, 6
 const MENU_ROWS = [['entree', 'Entrée'], ['pj', 'PJ'], ['dessert', 'Dessert']];
 const MENU_COLS = [['debut', 'Début de semaine'], ['fin', 'Fin de semaine']];
 // Groupes : champs du formulaire (clé → libellé + type).
+// Fiche simplifiée : 4 champs. Les anciens champs (allergies, boissons, prix,
+// gratuité, guide) restent conservés et affichés sur les groupes qui en ont.
 const GROUP_FIELDS = [
   ['nom', 'Nom du groupe', 'text'],
   ['pers', 'Nombre de personnes', 'number'],
   ['menu', 'Menu', 'textarea'],
-  ['allergies', 'Allergies', 'text'],
-  ['boissons', 'Boissons', 'text'],
-  ['prix', 'Prix par personne', 'text'],
-  ['gratuite', 'Gratuité', 'text'],
-  ['guide', 'Guide', 'text'],
   ['infos', 'Infos', 'textarea'],
 ];
 
@@ -95,7 +92,8 @@ function parseGroups(raw) {
   } catch (e) { return [{ nom: String(raw) }]; }
   return [];
 }
-function groupFilled(g) { return GROUP_FIELDS.some(([k]) => g[k] && String(g[k]).trim()); }
+// Un groupe « rempli » = au moins un champ renseigné (anciens champs compris).
+function groupFilled(g) { return Object.keys(g).some((k) => k !== 'annule' && g[k] && String(g[k]).trim()); }
 
 function groupSummary(g) {
   const top = [];
@@ -460,7 +458,7 @@ async function saveGroup(mode) {
   if (mode === 'delete') {
     if (gIndex != null) arr.splice(gIndex, 1);
   } else {
-    const g = {};
+    const g = { ...prev }; // on garde les anciens champs non présents dans la fiche
     GROUP_FIELDS.forEach(([k]) => { const el = modal.querySelector('#g-' + k); g[k] = el ? el.value.trim() : ''; });
     // annule : forcé selon le bouton, sinon on conserve l'état précédent.
     g.annule = mode === 'annuler' ? true : mode === 'reactiver' ? false : !!prev.annule;

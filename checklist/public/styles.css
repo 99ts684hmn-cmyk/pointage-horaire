@@ -305,5 +305,7 @@ table.rep tr.rowlink:hover { background: #faf7f2; }
 .menage-box .mt.carried { color: #9e1f24; }
 .menage-box .mt small { color: var(--muted); font-weight: 500; }
 .menage-box .more { margin-top: 8px; font-size: .82rem; color: var(--gold-dark); font-weight: 700; text-decoration: none; display: inline-block; }
+.menage-box .mh .more { margin-top: 0; white-space: nowrap; letter-spacing: 0; text-transform: none; }
+.menage-box .mh > span .mc { margin-left: 6px; }
 .menage-box.done { border-color: var(--green); }
 .menage-box.done .mh { color: var(--green); }

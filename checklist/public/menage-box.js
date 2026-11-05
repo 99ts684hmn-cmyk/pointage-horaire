@@ -41,9 +41,9 @@
       const first = todo.slice(0, box.lines);
       const rest = todo.length - first.length;
       el.className = 'menage-box';
-      el.innerHTML = `<div class="mh"><span>${box.icon} ${esc(s.templateName)} — à faire</span><span class="mc">${tasks.length - todo.length}/${tasks.length} faites</span></div>
-        ${first.map((t) => `<button type="button" class="mt${t.isCarriedOver ? ' carried' : ''}" data-task="${esc(t.id)}" title="Marquer comme faite"><span class="cb"></span><span>${esc(t.title)}${t.isCarriedOver ? ' <small>↩ reporté</small>' : ''}</span></button>`).join('')}
-        <a class="more" href="${link}">${rest > 0 ? `+ ${rest} autre${rest > 1 ? 's' : ''} tâche${rest > 1 ? 's' : ''} → ouvrir la liste` : 'Ouvrir la liste →'}</a>`;
+      // En-tête compact : titre + compteur à gauche, lien « + N autres → » à droite.
+      el.innerHTML = `<div class="mh"><span>${box.icon} ${esc(s.templateName)} <span class="mc">${tasks.length - todo.length}/${tasks.length}</span></span><a class="more" href="${link}" title="Ouvrir la liste complète">${rest > 0 ? `+ ${rest} autre${rest > 1 ? 's' : ''} →` : 'Ouvrir →'}</a></div>
+        ${first.map((t) => `<button type="button" class="mt${t.isCarriedOver ? ' carried' : ''}" data-task="${esc(t.id)}" title="Marquer comme faite"><span class="cb"></span><span>${esc(t.title)}${t.isCarriedOver ? ' <small>↩ reporté</small>' : ''}</span></button>`).join('')}`;
       // Un appui coche la tâche (même action que sur la page de la liste), puis
       // le cartouche se recharge : la tâche suivante prend la place.
       el.querySelectorAll('.mt').forEach((b) => b.addEventListener('click', async () => {

@@ -42,6 +42,9 @@
     .tile .ttl{font-size:1.12rem;font-weight:700}
     .tile .sub{font-size:.85rem;color:var(--muted);line-height:1.35}
     .tile .accent{position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--primary)}
+    .tile.gold .accent{background:var(--gold)}
+    .badge{display:inline-flex;align-items:center;gap:5px;font-size:.72rem;font-weight:700;letter-spacing:.06em;
+      text-transform:uppercase;color:var(--gold-dark);background:#f6efe2;border-radius:999px;padding:3px 9px;width:max-content}
   </style>
 </head>
 <body>
@@ -63,6 +66,29 @@
       <span class="ic">✅</span>
       <span class="ttl">Check-list Salle</span>
       <span class="sub">Ouverture, fermeture, manager &amp; bar</span>
+    </a>
+
+    <!-- Blocs managers (anciennement dans « Managers Salle ») -->
+    <a class="tile gold" href="/checklist/index.html?tab=manager">
+      <span class="accent"></span>
+      <span class="ic">👔</span>
+      <span class="ttl">Check-lists managers</span>
+      <span class="sub">Check Manager Matin, Hebdo &amp; Brief</span>
+    </a>
+
+    <a class="tile gold" href="/checklist/rapports.html?scope=salle">
+      <span class="accent"></span>
+      <span class="ic">📊</span>
+      <span class="ttl">Rapports check-list salle</span>
+      <span class="sub">Historique des check-lists de la salle</span>
+    </a>
+
+    <a class="tile gold" href="/admin.html">
+      <span class="accent"></span>
+      <span class="ic">⚙️</span>
+      <span class="badge">🔒 Protégé</span>
+      <span class="ttl">Administration pointage &amp; planning</span>
+      <span class="sub">Planning, employés, pauses, sécurité</span>
     </a>
   </main>
 </body>

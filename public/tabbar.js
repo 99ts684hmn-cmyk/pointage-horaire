@@ -1,23 +1,47 @@
 'use strict';
 
 // Barre d'onglets fixe en bas d'écran, sur TÉLÉPHONE uniquement (≤ 680 px),
-// présente sur toutes les pages du site. Cinq entrées : Accueil, Pointage,
-// Check-lists (salle ou cuisine selon la page d'où l'on vient), Cuisine, Groupes.
+// présente sur toutes les pages du site. Son contenu dépend de la SECTION :
+//   accueil  → Accueil · Salle · Cuisine · Charlène
+//   salle    → Accueil · Pointage · Check-lists · Managers · Admin
+//   cuisine  → Accueil · Check-lists · Commandes · Groupes · Menu
 // L'onglet actif est déduit de l'adresse de la page.
 (function () {
   const path = location.pathname;
-  // Contexte cuisine : pages /checklist/cuisine-*, /checklist/resp-*, /cuisine/…
+  const q = location.search;
+  const is = (...pages) => pages.includes(path);
   const cuisineCtx = /\/cuisine\/|\/checklist\/(cuisine|resp)/.test(path)
-    || (path === '/checklist/session.html' && /from=(cuisine|resp)/.test(location.search))
+    || (path === '/checklist/session.html' && /from=(cuisine|resp)/.test(q))
+    || (path === '/checklist/rapports.html' && /scope=cuisine/.test(q))
     || path === '/responsable-cuisine.html';
-  const TABS = [
-    { key: 'home', icon: '🏠', label: 'Accueil', href: '/', active: (p) => p === '/' || p === '/index.html' || p === '/charlene.html' },
-    { key: 'pointage', icon: '🕒', label: 'Pointage', href: '/pointage.html', active: (p) => p === '/pointage.html' || p === '/salle.html' || p === '/admin.html' || p === '/manager-salle.html' },
-    { key: 'check', icon: '✅', label: 'Check-lists', href: cuisineCtx ? '/checklist/cuisine.html' : '/checklist/',
-      active: (p) => p === '/checklist/' || p === '/checklist/index.html' || p === '/checklist/cuisine.html' || p === '/checklist/resp-cuisine.html' || p === '/checklist/session.html' || /\/checklist\/(admin|rapports|cuisine-admin|resp-cuisine-admin)\.html/.test(p) },
-    { key: 'cuisine', icon: '🍳', label: 'Cuisine', href: '/checklist/cuisine-accueil.html', active: (p) => p === '/checklist/cuisine-accueil.html' || p === '/responsable-cuisine.html' || p.startsWith('/cuisine/') || /\/checklist\/cuisine-(commandes|ppp|menudujour|admin-accueil)/.test(p) },
-    { key: 'groupes', icon: '👥', label: 'Groupes', href: '/checklist/cuisine-groupes.html', active: (p) => p === '/checklist/cuisine-groupes.html' },
-  ];
+  const salleCtx = !cuisineCtx && (is('/salle.html', '/pointage.html', '/admin.html', '/manager-salle.html')
+    || path.startsWith('/checklist/'));
+  const section = cuisineCtx ? 'cuisine' : salleCtx ? 'salle' : 'accueil';
+
+  const HOME = { icon: '🏠', label: 'Accueil', href: '/', active: (p) => p === '/' || p === '/index.html' };
+  const SETS = {
+    accueil: [
+      HOME,
+      { icon: '🛎️', label: 'Salle', href: '/salle.html', active: () => false },
+      { icon: '🧑‍🍳', label: 'Cuisine', href: '/checklist/cuisine-accueil.html', active: () => false },
+      { icon: '👸', label: 'Charlène', href: '/charlene.html', active: (p) => p === '/charlene.html' },
+    ],
+    salle: [
+      HOME,
+      { icon: '🕒', label: 'Pointage', href: '/pointage.html', active: (p) => p === '/pointage.html' || p === '/salle.html' },
+      { icon: '✅', label: 'Check-lists', href: '/checklist/', active: (p) => is('/checklist/', '/checklist/index.html', '/checklist/session.html') && !/tab=manager/.test(q) },
+      { icon: '👔', label: 'Managers', href: '/checklist/index.html?tab=manager', active: (p) => (p === '/checklist/index.html' && /tab=manager/.test(q)) || p === '/manager-salle.html' || p === '/checklist/rapports.html' },
+      { icon: '⚙️', label: 'Admin', href: '/admin.html', active: (p) => p === '/admin.html' || p === '/checklist/admin.html' },
+    ],
+    cuisine: [
+      HOME,
+      { icon: '✅', label: 'Check-lists', href: '/checklist/cuisine.html', active: (p) => is('/checklist/cuisine.html', '/checklist/resp-cuisine.html', '/checklist/session.html', '/checklist/cuisine-accueil.html') },
+      { icon: '📦', label: 'Commandes', href: '/checklist/cuisine-commandes-accueil.html', active: (p) => /\/checklist\/cuisine-(commandes|ppp)/.test(p) },
+      { icon: '👥', label: 'Groupes', href: '/checklist/cuisine-groupes.html', active: (p) => p === '/checklist/cuisine-groupes.html' },
+      { icon: '📋', label: 'Menu', href: '/checklist/cuisine-menudujour.html', active: (p) => p === '/checklist/cuisine-menudujour.html' },
+    ],
+  };
+  const TABS = SETS[section];
 
   const css = `
     .tabbar { display: none; }

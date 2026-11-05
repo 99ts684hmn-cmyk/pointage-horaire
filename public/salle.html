@@ -43,6 +43,11 @@
     .tile .sub{font-size:.85rem;color:var(--muted);line-height:1.35}
     .tile .accent{position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--primary)}
     .tile.gold .accent{background:var(--gold)}
+    .boxes{width:100%;max-width:720px;margin:0 0 18px}
+    .boxes-title{font-size:.8rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+    .boxes-title:empty{display:none}
+    /* Téléphone : la barre du bas remplace les blocs. */
+    @media (max-width:680px){ .grid{display:none} }
     .badge{display:inline-flex;align-items:center;gap:5px;font-size:.72rem;font-weight:700;letter-spacing:.06em;
       text-transform:uppercase;color:var(--gold-dark);background:#f6efe2;border-radius:999px;padding:3px 9px;width:max-content}
   </style>
@@ -52,6 +57,13 @@
     <a class="back" href="/">← Accueil</a>
     <h1>Salle</h1>
   </div>
+
+  <!-- Cartouches des check-lists du moment (selon l'heure) ; sur téléphone, ils
+       remplacent les blocs (la barre du bas assure la navigation). -->
+  <section class="boxes" id="boxes">
+    <div class="boxes-title" id="boxes-title"></div>
+    <div id="boxes-host"></div>
+  </section>
 
   <main class="grid">
     <a class="tile" href="/pointage.html">
@@ -91,6 +103,31 @@
       <span class="sub">Planning, employés, pauses, sécurité</span>
     </a>
   </main>
+  <script>
+    // Cartouches selon l'heure (check-lists salle) :
+    //   08:00–12:30  Ouverture midi (RDC, Étage)                       4 lignes
+    //   12:31–16:00  Fermeture midi, Toilettes midi, Ménage pdt service 4 lignes
+    //   16:01–17:59  Tâches hebdo salle                                  8 lignes
+    //   18:00–20:30  Ouverture soir (RDC, Étage)                         4 lignes
+    //   20:31–07:59  Fermeture soir (RDC, Étage, Bar RDC, Bar Étage), Toilettes soir
+    window.CL_API_BASE = '/checklist/';
+    window.CL_FROM = 'salle';
+    window.CL_CATEGORY = 'general';
+    window.CL_BOX_CSS = true;
+    window.CL_BOXES = function () {
+      var d = new Date(); var t = d.getHours() * 60 + d.getMinutes();
+      var T = function (type, icon, lines) { return { id: 'box-' + type, icon: icon, lines: lines, pick: function (all) { return all.find(function (x) { return x.templateType === type; }); } }; };
+      var title, list;
+      if (t >= 8 * 60 && t <= 12 * 60 + 30) { title = '☀️ Ouverture midi'; list = [T('OUV_MIDI', '☀️', 4), T('OUV_MIDI_HAUT', '☀️', 4)]; }
+      else if (t > 12 * 60 + 30 && t <= 16 * 60) { title = '🌤️ Après le service du midi'; list = [T('FERM_MIDI', '🌤️', 4), T('FERM_MIDI_HAUT', '🌤️', 4), T('TOILETTES_MIDI', '🚻', 4), T('MENAGE_HEBDO', '🧽', 4)]; }
+      else if (t > 16 * 60 && t < 18 * 60) { title = '📅 Tâches hebdo'; list = [T('HEBDOMADAIRE', '📅', 8)]; }
+      else if (t >= 18 * 60 && t <= 20 * 60 + 30) { title = '🌙 Ouverture soir'; list = [T('OUV_SOIR', '🌙', 4), T('OUV_SOIR_HAUT', '🌙', 4)]; }
+      else { title = '🌙 Fermeture soir'; list = [T('FERM_SOIR', '🌙', 4), T('FERM_SOIR_HAUT', '🌙', 4), T('BAR_FERM_SOIR_BAS', '🍸', 4), T('BAR_FERM_SOIR_HAUT', '🍸', 4), T('TOILETTES_SOIR', '🚻', 4)]; }
+      var el = document.getElementById('boxes-title'); if (el) el.textContent = title;
+      return list;
+    };
+  </script>
+  <script src="/checklist/menage-box.js?v=4"></script>
   <script src="/tabbar.js?v=2"></script>
 </body>
 </html>

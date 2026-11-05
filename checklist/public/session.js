@@ -28,6 +28,10 @@ if (from === 'cuisine') {
   const back = document.getElementById('back-link');
   const scope = params.get('scope');
   if (back) back.href = 'rapports.html' + (scope ? `?scope=${encodeURIComponent(scope)}` : '');
+} else if (from === 'salle') {
+  // Ouverte depuis un cartouche de la page Salle : retour vers cette page.
+  const back = document.getElementById('back-link');
+  if (back) back.href = '/salle.html';
 }
 const content = document.getElementById('content');
 const overlay = document.getElementById('overlay');

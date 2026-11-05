@@ -440,17 +440,18 @@ function openGroup(date, index, edit) {
       <div class="sub">${dayHead(date)}</div>
       <div class="gview">${lines || '<div class="gv-line"><span class="gv-val" style="color:var(--muted)">Aucune information complémentaire.</span></div>'}</div>
       <div class="actions" style="flex-wrap:wrap">
-        <button class="btn btn-grey" id="g-close">Fermer</button>
-        ${g.annule ? '<button class="btn btn-grey" id="g-react">Réactiver</button>' : '<button class="btn btn-grey" id="g-annuler">🚫 Annuler le groupe</button>'}
+        <button class="btn btn-green" id="g-close">Fermer</button>
+        <button class="btn btn-blue" id="g-edit">✏️ Modifier</button>
+        ${g.annule ? '<button class="btn btn-grey" id="g-react">Réactiver</button>' : '<button class="btn btn-red" id="g-annuler">🚫 Annuler le groupe</button>'}
         <button class="btn btn-grey" id="g-del">Supprimer</button>
-        <button class="btn btn-red" id="g-edit">✏️ Modifier</button>
       </div>`;
     const byId = (id) => modal.querySelector('#' + id);
     byId('g-close').addEventListener('click', closeGroup);
     byId('g-edit').addEventListener('click', () => openGroup(date, gIndex, true));
     if (byId('g-annuler')) byId('g-annuler').addEventListener('click', () => saveGroup('annuler'));
     if (byId('g-react')) byId('g-react').addEventListener('click', () => saveGroup('reactiver'));
-    byId('g-del').addEventListener('click', () => saveGroup('delete'));
+    // Supprimer efface définitivement (≠ annuler, qui garde une trace barrée).
+    byId('g-del').addEventListener('click', () => { if (confirm('Supprimer définitivement ce groupe ?\n(Pour garder une trace, préférez « Annuler le groupe ».)')) saveGroup('delete'); });
     ov.classList.add('show');
     return;
   }

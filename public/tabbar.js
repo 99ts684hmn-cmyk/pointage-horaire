@@ -28,14 +28,16 @@
     ],
     salle: [
       HOME,
-      { icon: '🕒', label: 'Pointage', href: '/pointage.html', active: (p) => p === '/pointage.html' || p === '/salle.html' },
+      { icon: '🛎️', label: 'Salle', href: '/salle.html', active: (p) => p === '/salle.html' },
+      { icon: '🕒', label: 'Pointage', href: '/pointage.html', active: (p) => p === '/pointage.html' },
       { icon: '✅', label: 'Check-lists', href: '/checklist/', active: (p) => is('/checklist/', '/checklist/index.html', '/checklist/session.html') && !/tab=manager/.test(q) },
       { icon: '👔', label: 'Managers', href: '/checklist/index.html?tab=manager', active: (p) => (p === '/checklist/index.html' && /tab=manager/.test(q)) || p === '/manager-salle.html' || p === '/checklist/rapports.html' },
       { icon: '⚙️', label: 'Admin', href: '/admin.html', active: (p) => p === '/admin.html' || p === '/checklist/admin.html' },
     ],
     cuisine: [
       HOME,
-      { icon: '✅', label: 'Check-lists', href: '/checklist/cuisine.html', active: (p) => is('/checklist/cuisine.html', '/checklist/resp-cuisine.html', '/checklist/session.html', '/checklist/cuisine-accueil.html') },
+      { icon: '🧑‍🍳', label: 'Cuisine', href: '/checklist/cuisine-accueil.html', active: (p) => p === '/checklist/cuisine-accueil.html' || p === '/responsable-cuisine.html' },
+      { icon: '✅', label: 'Check-lists', href: '/checklist/cuisine.html', active: (p) => is('/checklist/cuisine.html', '/checklist/resp-cuisine.html', '/checklist/session.html') },
       { icon: '📦', label: 'Commandes', href: '/checklist/cuisine-commandes-accueil.html', active: (p) => /\/checklist\/cuisine-(commandes|ppp)/.test(p) },
       { icon: '👥', label: 'Groupes', href: '/checklist/cuisine-groupes.html', active: (p) => p === '/checklist/cuisine-groupes.html' },
       { icon: '📋', label: 'Menu', href: '/checklist/cuisine-menudujour.html', active: (p) => p === '/checklist/cuisine-menudujour.html' },
@@ -51,9 +53,9 @@
         background: rgba(255,255,255,.96); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
         border-top: 1px solid #e3ddd2; box-shadow: 0 -4px 16px rgba(31,33,32,.08);
         padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); }
-      .tabbar a { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; text-decoration: none;
-        color: #6f6961; font-family: inherit; font-size: .68rem; font-weight: 700; padding: 4px 2px; border-radius: 10px; }
-      .tabbar a .ti { font-size: 1.35rem; line-height: 1; }
+      .tabbar a { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; text-decoration: none;
+        color: #6f6961; font-family: inherit; font-size: .62rem; font-weight: 700; padding: 4px 1px; border-radius: 10px; white-space: nowrap; }
+      .tabbar a .ti { font-size: 1.3rem; line-height: 1; }
       .tabbar a.on { color: #8a6b32; background: #f6efe2; }
       /* Les toasts remontent au-dessus de la barre. */
       .toast { bottom: calc(80px + env(safe-area-inset-bottom)) !important; }

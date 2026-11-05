@@ -2,7 +2,7 @@
 
 // Barre d'onglets fixe en bas d'écran, sur TÉLÉPHONE uniquement (≤ 680 px),
 // présente sur toutes les pages du site. Son contenu dépend de la SECTION :
-//   accueil  → Accueil · Salle · Cuisine · Charlène
+//   accueil  → Accueil · Pointage · Salle · Cuisine · Charlène
 //   salle    → Accueil · Pointage · Check-lists · Managers · Admin
 //   cuisine  → Accueil · Check-lists · Commandes · Groupes · Menu
 // L'onglet actif est déduit de l'adresse de la page.
@@ -22,6 +22,7 @@
   const SETS = {
     accueil: [
       HOME,
+      { icon: '🕒', label: 'Pointage', href: '/pointage.html', active: () => false },
       { icon: '🛎️', label: 'Salle', href: '/salle.html', active: () => false },
       { icon: '🧑‍🍳', label: 'Cuisine', href: '/checklist/cuisine-accueil.html', active: () => false },
       { icon: '👸', label: 'Charlène', href: '/charlene.html', active: (p) => p === '/charlene.html' },

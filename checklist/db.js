@@ -134,6 +134,17 @@ db.exec(`
     ord        INTEGER NOT NULL DEFAULT 0,
     updated_at TEXT NOT NULL
   );
+  -- Coûts matière (viandes maturées) : calculs enregistrés depuis la calculette.
+  CREATE TABLE IF NOT EXISTS cost_records (
+    id           TEXT PRIMARY KEY,
+    date         TEXT NOT NULL,   -- jour du calcul (AAAA-MM-JJ, heure de Paris)
+    created_at   TEXT NOT NULL,
+    produit      TEXT,
+    etiquette_kg REAL NOT NULL,
+    reel_kg      REAL NOT NULL,
+    prix_kg      REAL,
+    portion_g    REAL
+  );
 `);
 
 // Migration de schéma : ajoute la colonne « category » sur les bases déjà

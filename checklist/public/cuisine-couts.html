@@ -28,7 +28,23 @@
     .line b { color: var(--dark); }
     .line.cost { background: #fbf3e3; border: 1.5px solid var(--gold); }
     .warn { color: #9e1f24; font-weight: 700; font-size: .9rem; margin-top: 8px; }
-    .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+    .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+    .actions .btn[disabled] { opacity: .45; cursor: not-allowed; }
+    .saved { color: #2e8b57; font-weight: 800; font-size: .9rem; }
+
+    /* Historique des enregistrements, groupés par date. */
+    .hist { margin: 26px 0 10px; }
+    .hist h2 { font-size: 1.05rem; font-weight: 900; text-transform: uppercase; letter-spacing: .04em; margin: 0 0 10px; color: var(--dark); }
+    .hist-day { margin: 0 0 14px; }
+    .hist-date { font-weight: 900; font-size: .82rem; text-transform: uppercase; letter-spacing: .06em; color: var(--gold-dark);
+      border-bottom: 1px solid rgba(197,157,95,.45); padding-bottom: 4px; margin-bottom: 6px; }
+    .rec { display: flex; gap: 10px; align-items: flex-start; background: #fff; border: 1.5px solid var(--border); border-radius: 11px; padding: 9px 11px; margin-bottom: 6px; }
+    .rec .rp { flex: 0 0 auto; font-size: 1.25rem; font-weight: 900; color: #9e1f24; min-width: 70px; }
+    .rec .rd { flex: 1; min-width: 0; font-size: .86rem; line-height: 1.4; color: var(--muted); }
+    .rec .rd b { color: var(--dark); }
+    .rec .rx { flex: 0 0 auto; border: 0; background: none; color: #b3ab9d; font-size: 1.1rem; cursor: pointer; padding: 2px 4px; }
+    .rec .rx:hover { color: #9e1f24; }
+    .hist-empty { color: var(--muted); font-size: .9rem; padding: 8px 2px; }
   </style>
 </head>
 <body>
@@ -83,7 +99,14 @@
     <section class="result empty" id="result">Renseignez le poids étiquette et le poids réel détaillé.</section>
     <div class="actions">
       <button class="btn btn-grey" id="reset" type="button">Effacer</button>
+      <button class="btn btn-red" id="save" type="button" disabled>💾 Enregistrer</button>
+      <span class="saved" id="saved-msg"></span>
     </div>
+
+    <section class="hist">
+      <h2>📒 Enregistrements</h2>
+      <div id="hist"><div class="hist-empty">Chargement…</div></div>
+    </section>
   </main>
 
   <script>
@@ -99,6 +122,9 @@
       const reel = num($('reel').value);
       const prix = num($('prix').value);
       const box = $('result');
+      $('saved-msg').textContent = '';
+      const valid = etiq > 0 && reel >= 0 && $('reel').value.trim() !== '' && reel <= etiq;
+      $('save').disabled = !valid;
       if (!(etiq > 0) || !(reel >= 0) || $('reel').value.trim() === '') {
         box.className = 'result empty';
         box.textContent = 'Renseignez le poids étiquette et le poids réel détaillé.';
@@ -143,6 +169,64 @@
       ['produit', 'etiquette', 'reel', 'prix', 'portion'].forEach((id) => { $(id).value = ''; });
       compute(); $('etiquette').focus();
     });
+
+    // --- Enregistrement daté + historique ---------------------------------
+    const JOURS = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+    const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+    const longDate = (iso) => { const d = new Date(iso + 'T12:00:00'); return `${JOURS[d.getDay()]} ${d.getDate()} ${MOIS[d.getMonth()]} ${d.getFullYear()}`; };
+    const heure = (iso) => new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+    function recLine(r) {
+      const perte = (r.etiquetteKg - r.reelKg) / r.etiquetteKg * 100;
+      const parts = [`${fr(r.etiquetteKg, 3)} → ${fr(r.reelKg, 3)} kg`];
+      const cout = r.prixKg && r.reelKg > 0 ? r.prixKg * r.etiquetteKg / r.reelKg : null;
+      if (r.prixKg) parts.push(`${fr(r.prixKg, 2)} €/kg → <b>${fr(cout, 2)} €/kg réel</b>`);
+      if (r.portionG && r.reelKg > 0) {
+        const nb = Math.floor(r.reelKg * 1000 / r.portionG + 1e-9);
+        parts.push(`${nb} portion${nb > 1 ? 's' : ''} de ${fr(r.portionG, 0)} g${cout ? ` · <b>${fr(cout * r.portionG / 1000, 2)} €/portion</b>` : ''}`);
+      }
+      return `<div class="rec">
+          <span class="rp">${fr(perte, 1)} %</span>
+          <span class="rd"><b>${esc(r.produit || 'Sans nom')}</b> · ${heure(r.createdAt)}<br>${parts.join('<br>')}</span>
+          <button class="rx" type="button" data-del="${esc(r.id)}" title="Supprimer cet enregistrement">✕</button>
+        </div>`;
+    }
+
+    async function loadHist() {
+      const box = $('hist');
+      let list = [];
+      try { list = await fetch('api/couts').then((r) => r.json()); } catch (e) { box.innerHTML = '<div class="hist-empty">Impossible de charger les enregistrements.</div>'; return; }
+      if (!Array.isArray(list) || !list.length) { box.innerHTML = '<div class="hist-empty">Aucun enregistrement pour l\'instant.</div>'; return; }
+      const byDate = new Map();
+      for (const r of list) { if (!byDate.has(r.date)) byDate.set(r.date, []); byDate.get(r.date).push(r); }
+      box.innerHTML = [...byDate.entries()].map(([d, recs]) => `<div class="hist-day"><div class="hist-date">${longDate(d)}</div>${recs.map(recLine).join('')}</div>`).join('');
+      box.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', async () => {
+        if (!confirm('Supprimer cet enregistrement ?')) return;
+        await fetch('api/couts/' + encodeURIComponent(b.dataset.del), { method: 'DELETE' });
+        loadHist();
+      }));
+    }
+
+    $('save').addEventListener('click', async () => {
+      const btn = $('save');
+      btn.disabled = true;
+      const body = {
+        produit: $('produit').value.trim(),
+        etiquetteKg: num($('etiquette').value), reelKg: num($('reel').value),
+        prixKg: num($('prix').value) || null, portionG: num($('portion').value) || null,
+      };
+      try {
+        const r = await fetch('api/couts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erreur');
+        $('saved-msg').textContent = '✅ Enregistré';
+        loadHist();
+      } catch (e) {
+        alert('Enregistrement impossible : ' + e.message);
+        btn.disabled = false;
+      }
+    });
+
+    loadHist();
   </script>
   <script src="/tabbar.js?v=4"></script>
 </body>

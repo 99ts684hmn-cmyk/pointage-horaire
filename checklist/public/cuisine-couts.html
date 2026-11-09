@@ -14,6 +14,13 @@
     .calc input:focus { outline: 2px solid var(--gold); outline-offset: 0; border-color: var(--gold); }
     .calc .hint { font-size: .78rem; color: var(--muted); margin-top: 4px; }
     .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    /* Champ de poids + bouton « + » (le clavier numérique de l'iPhone n'a pas de +). */
+    .addfield { display: flex; gap: 6px; }
+    .addfield input { flex: 1; min-width: 0; }
+    .addfield .plus { flex: 0 0 46px; border: 1.5px solid var(--gold); border-radius: 10px; background: #fbf3e3; color: var(--gold-dark);
+      font-size: 1.5rem; font-weight: 900; font-family: inherit; cursor: pointer; line-height: 1; }
+    .sum { font-size: .85rem; font-weight: 800; color: var(--gold-dark); margin-top: 4px; min-height: 1em; }
+    .sum.bad { color: #9e1f24; }
     @media (max-width: 420px) { .row2 { grid-template-columns: 1fr; } }
 
     .result { background: #fff; border: 2px solid var(--gold); border-radius: 14px; padding: 16px; }
@@ -83,14 +90,16 @@
       <div class="row2">
         <div>
           <label for="etiquette">Poids étiquette (kg)</label>
-          <input type="text" id="etiquette" inputmode="decimal" placeholder="12,450" autocomplete="off">
+          <div class="addfield"><input type="text" id="etiquette" inputmode="decimal" placeholder="12,450" autocomplete="off"><button type="button" class="plus" data-for="etiquette" title="Ajouter un poids">+</button></div>
+          <div class="sum" id="sum-etiquette"></div>
         </div>
         <div>
           <label for="reel">Poids réel détaillé (kg)</label>
-          <input type="text" id="reel" inputmode="decimal" placeholder="9,800" autocomplete="off">
+          <div class="addfield"><input type="text" id="reel" inputmode="decimal" placeholder="9,800" autocomplete="off"><button type="button" class="plus" data-for="reel" title="Ajouter un poids">+</button></div>
+          <div class="sum" id="sum-reel"></div>
         </div>
       </div>
-      <div class="hint">Poids réel = ce qui reste de vendable après parage, croûte, os…</div>
+      <div class="hint">Poids réel = ce qui reste de vendable après parage, croûte, os… Plusieurs pièces : touchez « + » entre chaque poids (ex. 12 + 11,5).</div>
 
       <label for="prix">Prix d'achat au kg — étiquette (€, facultatif)</label>
       <input type="text" id="prix" inputmode="decimal" placeholder="38,50" autocomplete="off">
@@ -118,12 +127,34 @@
     'use strict';
     const $ = (id) => document.getElementById(id);
     // Accepte « 12,450 », « 12.450 » ou « 12 450 ».
-    const num = (s) => { const n = parseFloat(String(s || '').replace(/\s/g, '').replace(',', '.')); return Number.isFinite(n) ? n : NaN; };
+    // Accepte aussi les additions : « 12+11,5 » → 23,5. Un « + » en fin de saisie
+    // (en cours de frappe) est ignoré. Toute partie invalide → NaN.
+    const num = (s) => {
+      const parts = String(s || '').replace(/\s/g, '').replace(/\+$/, '').split('+');
+      if (!parts.length || parts[0] === '') return NaN;
+      let total = 0;
+      for (const p of parts) {
+        if (!/^\d*[.,]?\d+$|^\d+[.,]?$/.test(p)) return NaN;
+        total += parseFloat(p.replace(',', '.'));
+      }
+      return total;
+    };
     const fr = (n, d) => n.toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d });
     const COEFS = [2.5, 3, 3.5, 4]; // coefficients de prix de vente
     const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+    // Total affiché sous un champ de poids quand il contient une addition.
+    function showSum(id) {
+      const raw = $(id).value; const el = $('sum-' + id);
+      if (!el) return;
+      if (!raw.includes('+')) { el.textContent = ''; el.className = 'sum'; return; }
+      const n = num(raw);
+      el.className = Number.isFinite(n) ? 'sum' : 'sum bad';
+      el.textContent = Number.isFinite(n) ? `= ${fr(n, 3)} kg` : 'Saisie incorrecte';
+    }
+
     function compute() {
+      showSum('etiquette'); showSum('reel');
       const etiq = num($('etiquette').value);
       const reel = num($('reel').value);
       const prix = num($('prix').value);
@@ -176,6 +207,19 @@
     }
 
     ['produit', 'etiquette', 'reel', 'prix', 'portion'].forEach((id) => $(id).addEventListener('input', compute));
+    // Bouton « + » : ajoute un signe + en fin de champ et garde le clavier ouvert.
+    document.querySelectorAll('.plus').forEach((b) => {
+      b.addEventListener('pointerdown', (e) => e.preventDefault()); // ne pas faire perdre le focus au champ
+      b.addEventListener('click', () => {
+        const inp = $(b.dataset.for);
+        const v = inp.value.replace(/\s+$/, '');
+        if (v && !v.endsWith('+')) inp.value = v + '+';
+        inp.focus();
+        const end = inp.value.length; try { inp.setSelectionRange(end, end); } catch (e) { /* ignore */ }
+        compute();
+      });
+    });
+
     $('reset').addEventListener('click', () => {
       ['produit', 'etiquette', 'reel', 'prix', 'portion'].forEach((id) => { $(id).value = ''; });
       compute(); $('etiquette').focus();

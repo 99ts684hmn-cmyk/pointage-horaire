@@ -552,7 +552,7 @@ app.get('/api/admin/poste-assigns', requireAdmin, (req, res) => {
   const { from, to } = req.query;
   if (!from || !to) return res.status(400).json({ error: 'Période manquante' });
   res.json(db.prepare(
-    'SELECT employee_id AS employeeId, day, service, poste FROM poste_assign WHERE day >= ? AND day <= ?'
+    'SELECT employee_id AS employeeId, day, service, poste, src FROM poste_assign WHERE day >= ? AND day <= ?'
   ).all(from, to));
 });
 
@@ -569,8 +569,8 @@ app.put('/api/admin/poste-assign', requireAdmin, (req, res) => {
   }
   if (!POSTE_ASSIGN_VALUES.includes(poste)) return res.status(400).json({ error: 'Poste invalide' });
   db.prepare(`
-    INSERT INTO poste_assign (employee_id, day, service, poste) VALUES (?, ?, ?, ?)
-    ON CONFLICT(employee_id, day, service) DO UPDATE SET poste = excluded.poste
+    INSERT INTO poste_assign (employee_id, day, service, poste, src) VALUES (?, ?, ?, ?, NULL)
+    ON CONFLICT(employee_id, day, service) DO UPDATE SET poste = excluded.poste, src = NULL
   `).run(emp.id, date, service, poste);
   res.json({ ok: true });
 });
@@ -586,7 +586,9 @@ app.post('/api/admin/poste-assigns/reset', requireAdmin, (req, res) => {
 
 // --- Semaine type (modèle hebdomadaire récurrent, historisé) ---------------
 // Setting `week_templates` : liste de périodes { from:'AAAA-MM-JJ', shifts:{
-//   <employeeId>: { <jour 0=dim..6=sam>: { start:'HH:MM', end:'HH:MM', demi:'midi'|'soir'|null } } } }.
+//   <employeeId>: { <jour 0=dim..6=sam>: { start:'HH:MM', end:'HH:MM', demi:'midi'|'soir'|null,
+//                                           midi:<poste>, soir:<poste> } } } }.
+// start/end facultatifs : un jour sans horaire fixe peut ne porter que les postes.
 // La période applicable à une date = dernière dont from <= date (comme les repos).
 // Les jours de repos complets ne sont PAS dans le modèle (gérés par les profils).
 function readTemplates() {
@@ -640,8 +642,12 @@ app.post('/api/admin/apply-template', requireAdmin, (req, res) => {
     ON CONFLICT(employee_id, day) DO UPDATE SET status = excluded.status
   `);
   const hasEntries = db.prepare('SELECT 1 FROM time_entries WHERE employee_id = ? AND clock_in >= ? AND clock_in < ? LIMIT 1');
+  const getStatus = db.prepare('SELECT status FROM day_status WHERE employee_id = ? AND day = ?');
+  const hasAssign = db.prepare('SELECT 1 FROM poste_assign WHERE employee_id = ? AND day = ? AND service = ?');
+  const insAssign = db.prepare("INSERT INTO poste_assign (employee_id, day, service, poste, src) VALUES (?, ?, ?, ?, 'tpl')");
+  const AWAY = ['cp', 'am', 'absent', 'ecole', 'repos'];
 
-  let created = 0; let demis = 0; let skipped = 0;
+  let created = 0; let demis = 0; let skipped = 0; let postes = 0;
   db.transaction(() => {
     for (const day of days) {
       const tpl = templateOn(day);
@@ -649,12 +655,26 @@ app.post('/api/admin/apply-template', requireAdmin, (req, res) => {
       const wd = String(new Date(`${day}T12:00:00`).getDay());
       for (const [empId, byWd] of Object.entries(tpl.shifts)) {
         const sh = byWd && byWd[wd];
-        if (!sh || !/^\d{2}:\d{2}$/.test(sh.start || '')) continue;
+        if (!sh) continue;
         const emp = byId.get(String(empId));
         if (!emp) continue;
         if (!emp.active && !(emp.end_date && emp.end_date >= day)) continue;
         // Repos au profil ce jour-là → on ne crée rien (cohérence).
         if (restDaysOn(parseRestPeriods(emp.rest_days), day).includes(Number(wd))) continue;
+        // Postes du modèle : posés seulement si le service n'a pas déjà un poste
+        // (une affectation faite à la main est conservée) et si le salarié n'est
+        // pas absent ce jour-là (CP, arrêt, école…).
+        const st = getStatus.get(emp.id, day);
+        if (!(st && AWAY.includes(st.status))) {
+          for (const svc of ['midi', 'soir']) {
+            const p = sh[svc];
+            if (!POSTE_ASSIGN_VALUES.includes(p) || sh.demi === svc) continue;
+            if (hasAssign.get(emp.id, day, svc)) continue;
+            insAssign.run(emp.id, day, svc, p);
+            postes++;
+          }
+        }
+        if (!/^\d{2}:\d{2}$/.test(sh.start || '')) continue; // jour sans horaire fixe : postes seulement
         // Jour déjà rempli (statut ou horaires) → conservé tel quel.
         if (hasStatus.get(emp.id, day)) { skipped++; continue; }
         const f = businessDayStart(day);
@@ -674,7 +694,7 @@ app.post('/api/admin/apply-template', requireAdmin, (req, res) => {
       }
     }
   })();
-  res.json({ ok: true, created, demis, skipped });
+  res.json({ ok: true, created, demis, skipped, postes });
 });
 
 // --- Données du planning ---------------------------------------------------

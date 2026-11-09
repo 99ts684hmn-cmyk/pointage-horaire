@@ -397,6 +397,7 @@ POSTE_LABELS.mise_en_place = 'Mise en place'; // renfort au-delà des 6 postes (
 const POSTE_PRIORITY = ['grillade', 'garnitures', 'froid', 'plonge', 'volant'];
 
 let assignMap = new Map(); // affectations MANUELLES : "empId|jour|service" → poste
+let tplAssign = new Set(); // parmi elles, celles posées par la semaine type
 let lastPosteOf = {}; // affectations effectives du dernier rendu (manuel + auto)
 
 // Données du planning.
@@ -427,8 +428,13 @@ async function loadPlanning() {
   }
   extraMap = (ex.ok && ex.data && typeof ex.data === 'object') ? ex.data : {};
   assignMap = new Map();
+  tplAssign = new Set(); // affectations posées par la semaine type (pas de liseré « manuel »)
   if (pa.ok && Array.isArray(pa.data)) {
-    for (const a of pa.data) assignMap.set(a.employeeId + '|' + a.day + '|' + a.service, a.poste);
+    for (const a of pa.data) {
+      const k = a.employeeId + '|' + a.day + '|' + a.service;
+      assignMap.set(k, a.poste);
+      if (a.src === 'tpl') tplAssign.add(k);
+    }
   }
   renderPlanning();
 }
@@ -618,8 +624,9 @@ function renderPlanning() {
           const pmKey = posteOf[emp.id + '|' + d + '|midi'];
           const psKey = posteOf[emp.id + '|' + d + '|soir'];
           // Liseré sur les affectations manuelles (≠ automatiques).
-          const pmCls = pmKey ? ` po-${pmKey}${assignMap.has(emp.id + '|' + d + '|midi') ? ' po-manual' : ''}` : '';
-          const psCls = psKey ? ` po-${psKey}${assignMap.has(emp.id + '|' + d + '|soir') ? ' po-manual' : ''}` : '';
+          const isManual = (svc) => { const k = emp.id + '|' + d + '|' + svc; return assignMap.has(k) && !tplAssign.has(k); };
+          const pmCls = pmKey ? ` po-${pmKey}${isManual('midi') ? ' po-manual' : ''}` : '';
+          const psCls = psKey ? ` po-${psKey}${isManual('soir') ? ' po-manual' : ''}` : '';
           const pLbl = (k) => (k ? `<span class="pl-poste">${POSTE_LABELS[k]}</span>` : '');
           let stack;
           if (isCont) {
@@ -915,7 +922,7 @@ $('tpl-btn').addEventListener('click', () => {
   cellModal.innerHTML = `
     <h2>⚡ Semaine type</h2>
     <div class="sub">du ${frDate(from)} au ${frDate(to)}</div>
-    <p style="margin:10px 0 0;font-size:.92rem">Les horaires fixes et les demi-journées du planning type seront posés.
+    <p style="margin:10px 0 0;font-size:.92rem">Les horaires fixes, les demi-journées et les postes du planning type seront posés.
     Les jours déjà remplis (horaires ou statut) sont conservés tels quels.</p>
     <div class="action-buttons" style="margin-top:16px;grid-template-columns:1fr 1fr">
       <button class="btn btn-green" id="tp-ok">Remplir la semaine</button>
@@ -932,7 +939,7 @@ $('tpl-btn').addEventListener('click', () => {
       toast((data && data.error) || 'Erreur');
       return;
     }
-    toast(`Semaine type appliquée : ${data.created} horaire(s), ${data.demis} demi(s)${data.skipped ? `, ${data.skipped} case(s) déjà remplie(s) conservée(s)` : ''}`);
+    toast(`Semaine type appliquée : ${data.created} horaire(s), ${data.demis} demi(s), ${data.postes || 0} poste(s)${data.skipped ? `, ${data.skipped} case(s) déjà remplie(s) conservée(s)` : ''}`);
     loadPlanning();
   });
   cellModal.querySelector('#tp-cancel').addEventListener('click', () => cellOverlay.classList.remove('show'));

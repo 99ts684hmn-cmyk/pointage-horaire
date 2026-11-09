@@ -28,6 +28,12 @@
     .line b { color: var(--dark); }
     .line.cost { background: #fbf3e3; border: 1.5px solid var(--gold); }
     .warn { color: #9e1f24; font-weight: 700; font-size: .9rem; margin-top: 8px; }
+    /* Prix portion × coefficients */
+    .coefs { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 10px; font-size: .9rem; border: 1.5px solid var(--gold); border-radius: 10px; overflow: hidden; }
+    .coefs th, .coefs td { padding: 7px 3px; text-align: center; white-space: nowrap; font-size: .84rem; }
+    .coefs thead th { background: #f7ecd6; color: var(--gold-dark); font-weight: 900; }
+    .coefs thead th:first-child, .coefs tbody td:first-child { text-align: left; padding-left: 10px; color: var(--muted); font-weight: 700; }
+    .coefs tbody td { font-weight: 800; color: var(--dark); background: #fff; }
     .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
     .actions .btn[disabled] { opacity: .45; cursor: not-allowed; }
     .saved { color: #2e8b57; font-weight: 800; font-size: .9rem; }
@@ -115,6 +121,7 @@
     // Accepte « 12,450 », « 12.450 » ou « 12 450 ».
     const num = (s) => { const n = parseFloat(String(s || '').replace(/\s/g, '').replace(',', '.')); return Number.isFinite(n) ? n : NaN; };
     const fr = (n, d) => n.toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d });
+    const COEFS = [2.5, 3, 3.5, 4]; // coefficients de prix de vente
     const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
     function compute() {
@@ -140,6 +147,7 @@
         <div class="lines">
           <div class="line"><span>Perte en poids</span><b>${fr(perteKg, 3)} kg</b></div>
           <div class="line"><span>Rendement (vendable)</span><b>${fr(rendement, 1)} %</b></div>`;
+      let coefHtml = '';
       const coutReel = (prix > 0 && reel > 0) ? (prix * etiq) / reel : NaN; // prix payé réparti sur le seul poids vendable
       if (Number.isFinite(coutReel)) {
         html += `<div class="line"><span>Prix payé (total)</span><b>${fr(prix * etiq, 2)} €</b></div>
@@ -155,10 +163,14 @@
         html += `<div class="line cost"><span>Portions de ${fr(portionG, 0)} g</span><b>${nb} portion${nb > 1 ? 's' : ''}</b></div>
           <div class="line"><span>Reste après portionnage</span><b>${fr(reste, 0)} g</b></div>`;
         if (Number.isFinite(coutReel)) {
-          html += `<div class="line cost"><span>Coût matière par portion</span><b>${fr(coutReel * portionG / 1000, 2)} €</b></div>`;
+          const cp = coutReel * portionG / 1000;
+          html += `<div class="line cost"><span>Coût matière par portion</span><b>${fr(cp, 2)} €</b></div>`;
+          // Prix de vente indicatifs : coût portion × coefficient.
+          coefHtml = `<table class="coefs"><thead><tr><th>Coef.</th>${COEFS.map((k) => `<th>×${fr(k, k % 1 ? 1 : 0)}</th>`).join('')}</tr></thead>
+            <tbody><tr><td>Prix</td>${COEFS.map((k) => `<td>${fr(cp * k, 2)} €</td>`).join('')}</tr></tbody></table>`;
         }
       }
-      html += '</div>';
+      html += '</div>' + coefHtml;
       if (reel > etiq) html += '<div class="warn">⚠️ Le poids réel dépasse le poids étiquette : vérifiez la saisie.</div>';
       box.className = 'result';
       box.innerHTML = html;

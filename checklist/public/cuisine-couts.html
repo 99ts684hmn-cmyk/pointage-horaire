@@ -32,7 +32,6 @@
     .coefs { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 10px; font-size: .9rem; border: 1.5px solid var(--gold); border-radius: 10px; overflow: hidden; }
     .coefs th, .coefs td { padding: 7px 3px; text-align: center; white-space: nowrap; font-size: .84rem; }
     .coefs thead th { background: #f7ecd6; color: var(--gold-dark); font-weight: 900; }
-    .coefs thead th:first-child, .coefs tbody td:first-child { text-align: left; padding-left: 10px; color: var(--muted); font-weight: 700; }
     .coefs tbody td { font-weight: 800; color: var(--dark); background: #fff; }
     .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
     .actions .btn[disabled] { opacity: .45; cursor: not-allowed; }
@@ -166,8 +165,8 @@
           const cp = coutReel * portionG / 1000;
           html += `<div class="line cost"><span>Coût matière par portion</span><b>${fr(cp, 2)} €</b></div>`;
           // Prix de vente indicatifs : coût portion × coefficient.
-          coefHtml = `<table class="coefs"><thead><tr><th>Coef.</th>${COEFS.map((k) => `<th>×${fr(k, k % 1 ? 1 : 0)}</th>`).join('')}</tr></thead>
-            <tbody><tr><td>Prix</td>${COEFS.map((k) => `<td>${fr(cp * k, 2)} €</td>`).join('')}</tr></tbody></table>`;
+          coefHtml = `<table class="coefs"><thead><tr>${COEFS.map((k) => `<th>×${fr(k, k % 1 ? 1 : 0)}</th>`).join('')}</tr></thead>
+            <tbody><tr>${COEFS.map((k) => `<td>${fr(cp * k, 2)} €</td>`).join('')}</tr></tbody></table>`;
         }
       }
       html += '</div>' + coefHtml;

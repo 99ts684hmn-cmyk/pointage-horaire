@@ -2,8 +2,8 @@
 
 // Barre d'onglets fixe en bas d'écran, sur TÉLÉPHONE uniquement (≤ 680 px),
 // présente sur toutes les pages du site. Son contenu dépend de la SECTION :
-//   accueil  → Accueil · Pointage · Salle · Cuisine · Charlène
-//   salle    → Accueil · Pointage · Check-lists · Managers · Admin
+//   accueil  → Accueil · Planning · Salle · Cuisine · Charlène
+//   salle    → Accueil · Salle · Planning · Check-lists · Managers · Admin
 //   cuisine  → Accueil · Cuisine · Check-lists · Coûts · Groupes · Menu
 // L'onglet actif est déduit de l'adresse de la page.
 (function () {
@@ -22,7 +22,7 @@
   const SETS = {
     accueil: [
       HOME,
-      { icon: '🕒', label: 'Pointage', href: '/pointage.html', active: () => false },
+      { icon: '🕒', label: 'Planning', href: '/pointage.html', active: () => false },
       { icon: '🛎️', label: 'Salle', href: '/salle.html', active: () => false },
       { icon: '🧑‍🍳', label: 'Cuisine', href: '/checklist/cuisine-accueil.html', active: () => false },
       { icon: '👸', label: 'Charlène', href: '/charlene.html', active: (p) => p === '/charlene.html' },
@@ -30,7 +30,7 @@
     salle: [
       HOME,
       { icon: '🛎️', label: 'Salle', href: '/salle.html', active: (p) => p === '/salle.html' },
-      { icon: '🕒', label: 'Pointage', href: '/pointage.html', active: (p) => p === '/pointage.html' },
+      { icon: '🕒', label: 'Planning', href: '/pointage.html', active: (p) => p === '/pointage.html' },
       { icon: '✅', label: 'Check-lists', href: '/checklist/', active: (p) => is('/checklist/', '/checklist/index.html', '/checklist/session.html') && !/tab=manager/.test(q) },
       { icon: '👔', label: 'Managers', href: '/checklist/index.html?tab=manager', active: (p) => (p === '/checklist/index.html' && /tab=manager/.test(q)) || p === '/manager-salle.html' || p === '/checklist/rapports.html' },
       { icon: '⚙️', label: 'Admin', href: '/admin.html', active: (p) => p === '/admin.html' || p === '/checklist/admin.html' },

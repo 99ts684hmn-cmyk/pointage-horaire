@@ -4,7 +4,7 @@
 // présente sur toutes les pages du site. Son contenu dépend de la SECTION :
 //   accueil  → Accueil · Pointage · Salle · Cuisine · Charlène
 //   salle    → Accueil · Pointage · Check-lists · Managers · Admin
-//   cuisine  → Accueil · Check-lists · Commandes · Groupes · Menu
+//   cuisine  → Accueil · Cuisine · Check-lists · Coûts · Groupes · Menu
 // L'onglet actif est déduit de l'adresse de la page.
 (function () {
   const path = location.pathname;
@@ -39,7 +39,7 @@
       HOME,
       { icon: '🧑‍🍳', label: 'Cuisine', href: '/checklist/cuisine-accueil.html', active: (p) => p === '/checklist/cuisine-accueil.html' || p === '/responsable-cuisine.html' },
       { icon: '✅', label: 'Check-lists', href: '/checklist/cuisine.html', active: (p) => is('/checklist/cuisine.html', '/checklist/resp-cuisine.html', '/checklist/session.html') },
-      { icon: '📦', label: 'Commandes', href: '/checklist/cuisine-commandes-accueil.html', active: (p) => /\/checklist\/cuisine-(commandes|ppp)/.test(p) },
+      { icon: '⚖️', label: 'Coûts', href: '/checklist/cuisine-couts.html', active: (p) => p === '/checklist/cuisine-couts.html' },
       { icon: '👥', label: 'Groupes', href: '/checklist/cuisine-groupes.html', active: (p) => p === '/checklist/cuisine-groupes.html' },
       { icon: '📋', label: 'Menu', href: '/checklist/cuisine-menudujour.html', active: (p) => p === '/checklist/cuisine-menudujour.html' },
     ],

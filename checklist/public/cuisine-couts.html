@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Bœuf & Cow — Coûts matière</title>
+  <link rel="stylesheet" href="styles.css?v=27">
+  <style>
+    .calc { background: #fff; border: 2px solid var(--border); border-radius: 14px; padding: 16px; margin: 18px 0 14px; }
+    .calc label { display: block; font-size: .8rem; font-weight: 800; color: var(--muted); margin: 12px 0 4px; }
+    .calc label:first-child { margin-top: 0; }
+    .calc input { width: 100%; box-sizing: border-box; border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 14px;
+      font-size: 1.15rem; font-weight: 700; font-family: inherit; color: var(--dark); background: #fff; }
+    .calc input:focus { outline: 2px solid var(--gold); outline-offset: 0; border-color: var(--gold); }
+    .calc .hint { font-size: .78rem; color: var(--muted); margin-top: 4px; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 420px) { .row2 { grid-template-columns: 1fr; } }
+
+    .result { background: #fff; border: 2px solid var(--gold); border-radius: 14px; padding: 16px; }
+    .result.empty { border-color: var(--border); color: var(--muted); font-size: .9rem; text-align: center; padding: 22px 16px; }
+    .big { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+    .big .lbl { font-weight: 900; text-transform: uppercase; letter-spacing: .06em; font-size: .85rem; color: var(--gold-dark); }
+    .big .val { font-size: 2.4rem; font-weight: 900; color: #9e1f24; line-height: 1; }
+    .bar { height: 12px; border-radius: 999px; background: #e8f3ec; overflow: hidden; margin: 0 0 12px; }
+    .bar i { display: block; height: 100%; background: #c0392b; }
+    .lines { display: flex; flex-direction: column; gap: 6px; }
+    .line { display: flex; justify-content: space-between; gap: 10px; padding: 8px 10px; background: #faf7f1; border-radius: 9px; font-size: .95rem; }
+    .line b { color: var(--dark); }
+    .line.cost { background: #fbf3e3; border: 1.5px solid var(--gold); }
+    .warn { color: #9e1f24; font-weight: 700; font-size: .9rem; margin-top: 8px; }
+    .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <div class="brand">
+        <div class="logo">B</div>
+        <span class="name">BŒUF <span class="amp">&amp;</span> COW</span>
+        <span class="tag">Coûts matière</span>
+      </div>
+      <nav class="nav-links">
+        <a href="cuisine-accueil.html" class="back">🍳 Cuisine</a>
+        <a href="cuisine.html">✅ Check-lists</a>
+        <a href="cuisine-commandes-accueil.html">📦 Commandes</a>
+        <a href="cuisine-groupes.html">👥 Groupes</a>
+        <a href="cuisine-menudujour.html">📋 Menu de la semaine</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div>
+      <h1 class="page-title">Coûts matière</h1>
+      <p class="page-sub">Viandes maturées : perte à la découpe et coût réel au kilo.</p>
+    </div>
+
+    <section class="calc">
+      <label for="produit">Produit (facultatif)</label>
+      <input type="text" id="produit" placeholder="Ex. Côte de bœuf maturée 45 j" autocomplete="off" style="font-size:1rem;font-weight:600">
+
+      <div class="row2">
+        <div>
+          <label for="etiquette">Poids étiquette (kg)</label>
+          <input type="text" id="etiquette" inputmode="decimal" placeholder="12,450" autocomplete="off">
+        </div>
+        <div>
+          <label for="reel">Poids réel détaillé (kg)</label>
+          <input type="text" id="reel" inputmode="decimal" placeholder="9,800" autocomplete="off">
+        </div>
+      </div>
+      <div class="hint">Poids réel = ce qui reste de vendable après parage, croûte, os…</div>
+
+      <label for="prix">Prix d'achat au kg — étiquette (€, facultatif)</label>
+      <input type="text" id="prix" inputmode="decimal" placeholder="38,50" autocomplete="off">
+      <div class="hint">Renseigné, il donne le coût réel du kilo une fois la perte déduite.</div>
+    </section>
+
+    <section class="result empty" id="result">Renseignez le poids étiquette et le poids réel détaillé.</section>
+    <div class="actions">
+      <button class="btn btn-grey" id="reset" type="button">Effacer</button>
+    </div>
+  </main>
+
+  <script>
+    'use strict';
+    const $ = (id) => document.getElementById(id);
+    // Accepte « 12,450 », « 12.450 » ou « 12 450 ».
+    const num = (s) => { const n = parseFloat(String(s || '').replace(/\s/g, '').replace(',', '.')); return Number.isFinite(n) ? n : NaN; };
+    const fr = (n, d) => n.toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d });
+    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    function compute() {
+      const etiq = num($('etiquette').value);
+      const reel = num($('reel').value);
+      const prix = num($('prix').value);
+      const box = $('result');
+      if (!(etiq > 0) || !(reel >= 0) || $('reel').value.trim() === '') {
+        box.className = 'result empty';
+        box.textContent = 'Renseignez le poids étiquette et le poids réel détaillé.';
+        return;
+      }
+      const perteKg = etiq - reel;
+      const pertePct = (perteKg / etiq) * 100;
+      const rendement = (reel / etiq) * 100;
+      const produit = $('produit').value.trim();
+      let html = `${produit ? `<div style="font-weight:800;margin-bottom:8px">${esc(produit)}</div>` : ''}
+        <div class="big"><span class="lbl">Perte</span><span class="val">${fr(pertePct, 1)} %</span></div>
+        <div class="bar"><i style="width:${Math.max(0, Math.min(100, pertePct))}%"></i></div>
+        <div class="lines">
+          <div class="line"><span>Perte en poids</span><b>${fr(perteKg, 3)} kg</b></div>
+          <div class="line"><span>Rendement (vendable)</span><b>${fr(rendement, 1)} %</b></div>`;
+      if (prix > 0 && reel > 0) {
+        const coutReel = (prix * etiq) / reel; // le prix payé est réparti sur le seul poids vendable
+        html += `<div class="line"><span>Prix payé (total)</span><b>${fr(prix * etiq, 2)} €</b></div>
+          <div class="line cost"><span>Coût réel au kg</span><b>${fr(coutReel, 2)} €/kg</b></div>
+          <div class="line"><span>Surcoût dû à la perte</span><b>+ ${fr(coutReel - prix, 2)} €/kg</b></div>`;
+      }
+      html += '</div>';
+      if (reel > etiq) html += '<div class="warn">⚠️ Le poids réel dépasse le poids étiquette : vérifiez la saisie.</div>';
+      box.className = 'result';
+      box.innerHTML = html;
+    }
+
+    ['produit', 'etiquette', 'reel', 'prix'].forEach((id) => $(id).addEventListener('input', compute));
+    $('reset').addEventListener('click', () => {
+      ['produit', 'etiquette', 'reel', 'prix'].forEach((id) => { $(id).value = ''; });
+      compute(); $('etiquette').focus();
+    });
+  </script>
+  <script src="/tabbar.js?v=4"></script>
+</body>
+</html>

@@ -773,12 +773,33 @@ const BACKUP_DIR = process.env.CHECKLIST_BACKUP_DIR
   || (process.env.BACKUP_DIR
     ? path.join(process.env.BACKUP_DIR, 'checklist')
     : path.join(__dirname, 'backups'));
-const BACKUP_KEEP = 60;
+// Conservation : la base check-lists grossit avec l'historique (plusieurs Mo) ;
+// garder 60 copies horaires a REMPLI le disque en ligne le 10/11/2026 (« database
+// or disk is full » → plus aucune session créée). Désormais : les 12 dernières
+// copies (12 dernières heures) + la plus récente de chacun des 7 derniers jours.
+const BACKUP_KEEP_RECENT = 12;
+const BACKUP_KEEP_DAYS = 7;
 const BACKUP_EVERY_MS = 60 * 60 * 1000; // 1 h
+
+function pruneBackups() {
+  try {
+    const files = fs.readdirSync(BACKUP_DIR).filter((f) => /^data-.*\.db$/.test(f)).sort();
+    const keep = new Set(files.slice(-BACKUP_KEEP_RECENT));
+    const lastOfDay = new Map(); // « AAAA-MM-JJ » → dernier fichier du jour
+    for (const f of files) lastOfDay.set(f.slice(5, 15), f);
+    [...lastOfDay.keys()].sort().slice(-BACKUP_KEEP_DAYS).forEach((day) => keep.add(lastOfDay.get(day)));
+    let removed = 0;
+    for (const f of files) if (!keep.has(f)) { fs.unlinkSync(path.join(BACKUP_DIR, f)); removed++; }
+    if (removed) console.log(`  Sauvegardes check-lists élaguées : ${removed} supprimée(s), ${keep.size} conservée(s)`);
+  } catch (e) {
+    console.warn('  Élagage des sauvegardes check-lists impossible :', e.message);
+  }
+}
 
 function backupNow() {
   try {
     fs.mkdirSync(BACKUP_DIR, { recursive: true });
+    pruneBackups(); // AVANT la copie : libère la place même si le disque est plein
     const d = new Date();
     const p = (n) => String(n).padStart(2, '0');
     const stamp = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
@@ -787,13 +808,13 @@ function backupNow() {
     db.backup(dest)
       .then(() => {
         console.log(`  Sauvegarde check-lists créée : ${path.basename(BACKUP_DIR)}/data-${stamp}.db`);
-        const files = fs.readdirSync(BACKUP_DIR)
-          .filter((f) => /^data-.*\.db$/.test(f)).sort();
-        while (files.length > BACKUP_KEEP) {
-          fs.unlinkSync(path.join(BACKUP_DIR, files.shift()));
-        }
+        pruneBackups();
       })
-      .catch((e) => console.warn('  Sauvegarde check-lists impossible :', e.message));
+      .catch((e) => {
+        console.warn('  Sauvegarde check-lists impossible :', e.message);
+        // Copie incomplète (disque plein…) : on ne la garde pas.
+        try { fs.unlinkSync(dest); } catch (_) { /* déjà absente */ }
+      });
   } catch (e) {
     console.warn('  Sauvegarde check-lists impossible :', e.message);
   }

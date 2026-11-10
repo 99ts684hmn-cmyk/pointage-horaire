@@ -76,6 +76,10 @@ body {
   .nav-inner { flex-wrap: wrap; height: auto; padding: 8px 12px; gap: 6px; }
   .brand .tag { display: none; }
   .nav-links a { padding: 6px 10px; font-size: .82rem; }
+  /* Rangée de liens : défile horizontalement DANS la largeur de l'écran. Sans ça,
+     elle élargissait toute la page (iPhone : page dézoomée et décalée). */
+  .nav-links { flex: 1 1 100%; min-width: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .nav-links::-webkit-scrollbar { display: none; }
 }
 
 .wrap { max-width: 960px; margin: 0 auto; width: 100%; padding: 22px 16px 60px; }

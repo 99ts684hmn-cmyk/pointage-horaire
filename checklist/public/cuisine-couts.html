@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Bœuf & Cow — Coûts matière</title>
-  <link rel="stylesheet" href="styles.css?v=27">
+  <link rel="stylesheet" href="styles.css?v=28">
   <style>
     .calc { background: #fff; border: 2px solid var(--border); border-radius: 14px; padding: 16px; margin: 18px 0 14px; }
     .calc label { display: block; font-size: .8rem; font-weight: 800; color: var(--muted); margin: 12px 0 4px; }
@@ -19,7 +19,8 @@
     .addfield input { flex: 1; min-width: 0; }
     .addfield .plus { flex: 0 0 46px; border: 1.5px solid var(--gold); border-radius: 10px; background: #fbf3e3; color: var(--gold-dark);
       font-size: 1.5rem; font-weight: 900; font-family: inherit; cursor: pointer; line-height: 1; }
-    .sum { font-size: .85rem; font-weight: 800; color: var(--gold-dark); margin-top: 4px; min-height: 1em; }
+    .sum { font-size: .85rem; font-weight: 800; color: var(--gold-dark); margin-top: 4px; }
+    .sum:empty { display: none; }
     /* Onglets Ratio viande / Pertes */
     .tabs2 { display: flex; gap: 6px; margin: 16px 0 0; background: #eee7db; padding: 4px; border-radius: 12px; }
     .tabs2 .t2 { flex: 1; border: 0; border-radius: 9px; padding: 10px 8px; font: inherit; font-weight: 800; font-size: .95rem;
@@ -47,6 +48,20 @@
     .editbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 16px 0 -6px;
       background: #e8f0fb; border: 1.5px solid #2f6fb5; color: #1f4f8a; border-radius: 12px; padding: 8px 12px; font-weight: 800; font-size: .9rem; }
     .editbar .btn { padding: 7px 12px; }
+    .editbar[hidden] { display: none; } /* sinon le display:flex l'emporte et un bandeau vide apparaît */
+    /* Lisibilité mobile : un montant ne se coupe jamais, le libellé passe à la ligne si besoin. */
+    .line span { min-width: 0; }
+    .line b { white-space: nowrap; }
+    /* Fiche : pas d'encadré dans l'encadré, marges réduites sur téléphone. */
+    #fiche .result { border: 0; padding: 0; background: none; margin-top: 4px; }
+    #fiche .flines { margin-bottom: 6px; }
+    .factions { flex-wrap: nowrap; }
+    .factions .btn { flex: 1; padding: 11px 6px; white-space: nowrap; }
+    @media (max-width: 480px) {
+      #fiche { padding: 18px 14px; }
+      .line { padding: 7px 9px; font-size: .9rem; }
+      .big .val { font-size: 2rem; }
+    }
     .sum.bad { color: #9e1f24; }
     @media (max-width: 420px) { .row2 { grid-template-columns: 1fr; } }
 
@@ -172,15 +187,13 @@
           <div class="sum" id="sum-reel"></div>
         </div>
       </div>
-      <div class="hint">Poids réel = ce qui reste de vendable après parage, croûte, os… Plusieurs pièces : touchez « + » entre chaque poids (ex. 12 + 11,5).</div>
+      <div class="hint">Poids réel = vendable après parage. Plusieurs pièces : « + » entre chaque poids.</div>
 
       <label for="prix">Prix d'achat au kg — étiquette (€, facultatif)</label>
       <input type="text" id="prix" inputmode="decimal" placeholder="38,50" autocomplete="off">
-      <div class="hint">Renseigné, il donne le coût réel du kilo une fois la perte déduite.</div>
 
       <label for="portion">Poids par portion (g, facultatif)</label>
       <input type="text" id="portion" inputmode="decimal" placeholder="350" autocomplete="off">
-      <div class="hint">Renseigné, il donne le nombre de portions et, avec le prix, le coût matière par portion.</div>
     </section>
 
     <section class="result empty" id="result">Renseignez le poids étiquette et le poids réel détaillé.</section>

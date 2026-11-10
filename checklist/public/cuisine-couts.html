@@ -20,7 +20,7 @@
     .addfield .plus { flex: 0 0 46px; border: 1.5px solid var(--gold); border-radius: 10px; background: #fbf3e3; color: var(--gold-dark);
       font-size: 1.5rem; font-weight: 900; font-family: inherit; cursor: pointer; line-height: 1; }
     .sum { font-size: .85rem; font-weight: 800; color: var(--gold-dark); margin-top: 4px; min-height: 1em; }
-    /* Onglets Maturées / Pertes */
+    /* Onglets Ratio viande / Pertes */
     .tabs2 { display: flex; gap: 6px; margin: 16px 0 0; background: #eee7db; padding: 4px; border-radius: 12px; }
     .tabs2 .t2 { flex: 1; border: 0; border-radius: 9px; padding: 10px 8px; font: inherit; font-weight: 800; font-size: .95rem;
       background: transparent; color: var(--muted); cursor: pointer; }
@@ -91,11 +91,11 @@
   <main class="wrap">
     <div>
       <h1 class="page-title">Coûts matière</h1>
-      <p class="page-sub" id="page-sub">Viandes maturées : perte à la découpe et coût réel au kilo.</p>
+      <p class="page-sub" id="page-sub">Ratio viande : perte à la découpe et coût réel au kilo.</p>
     </div>
 
     <div class="tabs2">
-      <button type="button" class="t2 on" data-tab="mat">⚖️ Maturées</button>
+      <button type="button" class="t2 on" data-tab="mat">⚖️ Ratio viande</button>
       <button type="button" class="t2" data-tab="pertes">🗑️ Pertes</button>
     </div>
 
@@ -134,7 +134,7 @@
       </section>
     </div>
 
-    <!-- ====== Onglet Maturées : calculette ====== -->
+    <!-- ====== Onglet Ratio viande : calculette ====== -->
     <div id="tab-mat">
     <section class="calc">
       <label for="produit">Produit (facultatif)</label>
@@ -341,7 +341,7 @@
     //  Onglets
     // =====================================================================
     const SUBS = {
-      mat: 'Viandes maturées : perte à la découpe et coût réel au kilo.',
+      mat: 'Ratio viande : perte à la découpe et coût réel au kilo.',
       pertes: 'Produits jetés : la date se met automatiquement.',
     };
     function showTab(t) {

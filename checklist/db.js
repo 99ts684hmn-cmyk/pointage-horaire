@@ -729,7 +729,7 @@ function ensureTemplateByType(type, build) {
 }
 
 // Version de schéma/migrations appliquée à cette base (PRAGMA user_version).
-const SCHEMA_VERSION = 21;
+const SCHEMA_VERSION = 22;
 
 function seedAndMigrate() {
   const count = db.prepare('SELECT COUNT(*) c FROM templates').get().c;
@@ -995,6 +995,14 @@ function seedAndMigrate() {
   // réaffiche, sous son nouveau nom et dans le bloc Ménage. Idempotent.
   if (version < 21) {
     db.prepare("UPDATE templates SET is_active = 1, name = 'Ménage du jour', grp = COALESCE(grp, 'Ménage') WHERE type = 'CUISINE_MENAGE_HEBDO'").run();
+  }
+  // Migration 22 : le 10/11/2026, un diagnostic a interrogé des dates FUTURES
+  // (11 au 18/11) et a pu créer des sessions d'avance. Elles figeraient le report
+  // des tâches non faites : on supprime les sessions datées du futur, créées ce
+  // jour-là et sans aucune coche (leurs completions partent en cascade).
+  if (version < 22 && !freshDb) {
+    db.prepare(`DELETE FROM sessions WHERE date >= '2026-11-11' AND substr(created_at, 1, 10) = '2026-11-10'
+      AND NOT EXISTS (SELECT 1 FROM completions c WHERE c.session_id = sessions.id AND c.is_done = 1)`).run();
   }
   db.pragma('user_version = ' + SCHEMA_VERSION);
 }

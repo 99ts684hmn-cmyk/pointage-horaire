@@ -148,7 +148,24 @@ app.get('/api/sessions', (req, res) => {
   const templates = qActiveTemplates.all();
 
   const weekDate = mondayAnchor();
+  // Une check-list en erreur ne doit pas bloquer toutes les autres : on l'écarte,
+  // on journalise, et l'erreur remonte dans l'en-tête X-Session-Errors (diagnostic).
+  const errors = [];
   const out = templates.map((template) => {
+    try {
+      return sessionSummary(template, date, todayDow, weekDate);
+    } catch (e) {
+      console.error(`[checklist] /api/sessions ${date} « ${template.name} » :`, e);
+      errors.push(`${template.name}: ${e && e.message ? e.message : e}`);
+      return null;
+    }
+  }).filter(Boolean);
+  if (errors.length) res.set('X-Session-Errors', encodeURIComponent(errors.join(' | ').slice(0, 900)));
+  res.json(out);
+});
+
+function sessionSummary(template, date, todayDow, weekDate) {
+  {
     // Les check-lists hebdo-lundi partagent une session par semaine (datée du
     // lundi) ; les autres ont une session par jour.
     const sessDate = template.reset_mode === 'WEEKLY_MONDAY' ? weekDate : date;
@@ -181,10 +198,8 @@ app.get('/api/sessions', (req, res) => {
       todayLabel: template.reset_mode === 'WEEKLY_CARRY_OVER' ? DAY_NAMES[todayDow]
         : (template.reset_mode === 'WEEKLY_MONDAY' ? `Semaine du ${session.date.split('-').reverse().slice(0, 2).join('/')}` : null),
     };
-  });
-
-  res.json(out);
-});
+  }
+}
 
 // GET /api/sessions/:id — détail d'une session
 app.get('/api/sessions/:id', (req, res) => {

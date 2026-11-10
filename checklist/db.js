@@ -168,6 +168,10 @@ if (!db.prepare('PRAGMA table_info(templates)').all().some((c) => c.name === 'ca
 if (!db.prepare('PRAGMA table_info(templates)').all().some((c) => c.name === 'grp')) {
   db.exec('ALTER TABLE templates ADD COLUMN grp TEXT');
 }
+// Coûts matière : date de dernière modification d'un enregistrement (NULL = jamais).
+if (!db.prepare('PRAGMA table_info(cost_records)').all().some((c) => c.name === 'updated_at')) {
+  db.exec('ALTER TABLE cost_records ADD COLUMN updated_at TEXT');
+}
 // Colonne « days » (jours d'une tâche pour le mode WEEKLY_CARRY_OVER, ex. "1,3,5").
 // Si NULL, on retombe sur day_of_week (compat. tâches hebdo salle existantes).
 if (!db.prepare('PRAGMA table_info(tasks)').all().some((c) => c.name === 'days')) {

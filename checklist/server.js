@@ -682,9 +682,22 @@ const posNum = (v) => { const n = Number(v); return Number.isFinite(n) && n > 0 
 
 // Liste des calculs enregistrés, du plus récent au plus ancien (400 derniers).
 app.get('/api/couts', (req, res) => {
-  res.json(db.prepare(`SELECT id, date, created_at AS createdAt, produit, etiquette_kg AS etiquetteKg,
+  res.json(db.prepare(`SELECT id, date, created_at AS createdAt, updated_at AS updatedAt, produit, etiquette_kg AS etiquetteKg,
     reel_kg AS reelKg, prix_kg AS prixKg, portion_g AS portionG
     FROM cost_records ORDER BY created_at DESC LIMIT 400`).all());
+});
+
+// Modifier / compléter un calcul : la date de création (classement) est conservée,
+// la date de modification est posée.
+app.put('/api/couts/:id', (req, res) => {
+  const b = req.body || {};
+  const etiq = posNum(b.etiquetteKg);
+  const reel = Number(b.reelKg);
+  if (!etiq || !(Number.isFinite(reel) && reel >= 0)) return res.status(400).json({ error: 'Poids étiquette et poids réel requis' });
+  const info = db.prepare(`UPDATE cost_records SET produit = ?, etiquette_kg = ?, reel_kg = ?, prix_kg = ?, portion_g = ?, updated_at = ?
+    WHERE id = ?`).run(String(b.produit || '').trim().slice(0, 120) || null, etiq, reel, posNum(b.prixKg), posNum(b.portionG), nowISO(), req.params.id);
+  if (!info.changes) return res.status(404).json({ error: 'Enregistrement introuvable' });
+  res.json({ ok: true });
 });
 
 // Enregistre un calcul à la date du jour (heure de Paris).

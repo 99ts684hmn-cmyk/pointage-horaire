@@ -31,6 +31,22 @@
     select.unit { flex: 0 0 120px; }
     select.who { width: 100%; }
     .rec .rq { flex: 0 0 auto; font-size: 1rem; font-weight: 900; color: #9e1f24; min-width: 70px; }
+    /* Lignes cliquables → fiche complète */
+    .rec-btn { width: 100%; text-align: left; font: inherit; cursor: pointer; }
+    .rec-btn:hover { border-color: var(--gold); }
+    .rec .rgo { flex: 0 0 auto; color: #b3ab9d; font-size: 1.4rem; line-height: 1; align-self: center; }
+    .rec .modif { color: #2f6fb5; font-weight: 700; }
+    /* Fiche (fenêtre) */
+    #fiche h2 { margin: 0 0 4px; font-size: 1.15rem; }
+    .fdates { color: var(--muted); font-size: .82rem; margin-bottom: 12px; line-height: 1.45; }
+    .flines { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+    .factions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+    .btn-green { background: #2e8b57; color: #fff; }
+    .btn-blue { background: #2f6fb5; color: #fff; }
+    /* Bandeau « modification en cours » */
+    .editbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 16px 0 -6px;
+      background: #e8f0fb; border: 1.5px solid #2f6fb5; color: #1f4f8a; border-radius: 12px; padding: 8px 12px; font-weight: 800; font-size: .9rem; }
+    .editbar .btn { padding: 7px 12px; }
     .sum.bad { color: #9e1f24; }
     @media (max-width: 420px) { .row2 { grid-template-columns: 1fr; } }
 
@@ -136,6 +152,10 @@
 
     <!-- ====== Onglet Ratio viande : calculette ====== -->
     <div id="tab-mat">
+    <div class="editbar" id="editbar" hidden>
+      <span id="editbar-txt"></span>
+      <button type="button" class="btn btn-grey" id="edit-cancel">Annuler</button>
+    </div>
     <section class="calc">
       <label for="produit">Produit (facultatif)</label>
       <input type="text" id="produit" placeholder="Ex. Côte de bœuf maturée 45 j" autocomplete="off" style="font-size:1rem;font-weight:600">
@@ -177,6 +197,11 @@
     </div>
   </main>
 
+  <!-- Fiche complète d'un enregistrement « Ratio viande » -->
+  <div class="overlay" id="fiche-ov">
+    <div class="modal" id="fiche" style="max-width:480px; max-height:88vh; overflow-y:auto"></div>
+  </div>
+
   <script>
     'use strict';
     const $ = (id) => document.getElementById(id);
@@ -211,7 +236,6 @@
       showSum('etiquette'); showSum('reel');
       const etiq = num($('etiquette').value);
       const reel = num($('reel').value);
-      const prix = num($('prix').value);
       const box = $('result');
       $('saved-msg').textContent = '';
       const valid = etiq > 0 && reel >= 0 && $('reel').value.trim() !== '' && reel <= etiq;
@@ -221,10 +245,19 @@
         box.textContent = 'Renseignez le poids étiquette et le poids réel détaillé.';
         return;
       }
+      box.className = 'result';
+      box.innerHTML = calcHTML({
+        produit: $('produit').value.trim(), etiq, reel,
+        prix: num($('prix').value), portionG: num($('portion').value),
+      });
+    }
+
+    // Récapitulatif complet d'un calcul (utilisé par la calculette ET par la
+    // fiche d'un enregistrement) : perte, rendement, coût réel, portions, coefs.
+    function calcHTML({ produit, etiq, reel, prix, portionG }) {
       const perteKg = etiq - reel;
       const pertePct = (perteKg / etiq) * 100;
       const rendement = (reel / etiq) * 100;
-      const produit = $('produit').value.trim();
       let html = `${produit ? `<div style="font-weight:800;margin-bottom:8px">${esc(produit)}</div>` : ''}
         <div class="big"><span class="lbl">Perte</span><span class="val">${fr(pertePct, 1)} %</span></div>
         <div class="bar"><i style="width:${Math.max(0, Math.min(100, pertePct))}%"></i></div>
@@ -239,7 +272,6 @@
           <div class="line"><span>Surcoût dû à la perte</span><b>+ ${fr(coutReel - prix, 2)} €/kg</b></div>`;
       }
       // Portions : nombre de portions entières tirées du poids réel, et reste.
-      const portionG = num($('portion').value);
       if (portionG > 0 && reel > 0) {
         const reelG = reel * 1000;
         const nb = Math.floor(reelG / portionG + 1e-9);
@@ -256,8 +288,7 @@
       }
       html += '</div>' + coefHtml;
       if (reel > etiq) html += '<div class="warn">⚠️ Le poids réel dépasse le poids étiquette : vérifiez la saisie.</div>';
-      box.className = 'result';
-      box.innerHTML = html;
+      return html;
     }
 
     ['produit', 'etiquette', 'reel', 'prix', 'portion'].forEach((id) => $(id).addEventListener('input', compute));
@@ -274,10 +305,11 @@
       });
     });
 
-    $('reset').addEventListener('click', () => {
+    function clearForm() {
       ['produit', 'etiquette', 'reel', 'prix', 'portion'].forEach((id) => { $(id).value = ''; });
-      compute(); $('etiquette').focus();
-    });
+      compute();
+    }
+    $('reset').addEventListener('click', () => { stopEdit(); clearForm(); $('etiquette').focus(); });
 
     // --- Enregistrement daté + historique ---------------------------------
     const JOURS = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
@@ -294,27 +326,81 @@
         const nb = Math.floor(r.reelKg * 1000 / r.portionG + 1e-9);
         parts.push(`${nb} portion${nb > 1 ? 's' : ''} de ${fr(r.portionG, 0)} g${cout ? ` · <b>${fr(cout * r.portionG / 1000, 2)} €/portion</b>` : ''}`);
       }
-      return `<div class="rec">
+      return `<button type="button" class="rec rec-btn" data-open="${esc(r.id)}">
           <span class="rp">${fr(perte, 1)} %</span>
-          <span class="rd"><b>${esc(r.produit || 'Sans nom')}</b> · ${heure(r.createdAt)}<br>${parts.join('<br>')}</span>
-          <button class="rx" type="button" data-del="${esc(r.id)}" title="Supprimer cet enregistrement">✕</button>
-        </div>`;
+          <span class="rd"><b>${esc(r.produit || 'Sans nom')}</b> · ${heure(r.createdAt)}${r.updatedAt ? ' <span class="modif">· modifié</span>' : ''}<br>${parts.join('<br>')}</span>
+          <span class="rgo">›</span>
+        </button>`;
     }
 
+    let records = []; // derniers enregistrements chargés (pour ouvrir une fiche)
     async function loadHist() {
       const box = $('hist');
       let list = [];
       try { list = await fetch('api/couts').then((r) => r.json()); } catch (e) { box.innerHTML = '<div class="hist-empty">Impossible de charger les enregistrements.</div>'; return; }
-      if (!Array.isArray(list) || !list.length) { box.innerHTML = '<div class="hist-empty">Aucun enregistrement pour l\'instant.</div>'; return; }
+      records = Array.isArray(list) ? list : [];
+      if (!records.length) { box.innerHTML = '<div class="hist-empty">Aucun enregistrement pour l\'instant.</div>'; return; }
       const byDate = new Map();
-      for (const r of list) { if (!byDate.has(r.date)) byDate.set(r.date, []); byDate.get(r.date).push(r); }
+      for (const r of records) { if (!byDate.has(r.date)) byDate.set(r.date, []); byDate.get(r.date).push(r); }
       box.innerHTML = [...byDate.entries()].map(([d, recs]) => `<div class="hist-day"><div class="hist-date">${longDate(d)}</div>${recs.map(recLine).join('')}</div>`).join('');
-      box.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', async () => {
-        if (!confirm('Supprimer cet enregistrement ?')) return;
-        await fetch('api/couts/' + encodeURIComponent(b.dataset.del), { method: 'DELETE' });
-        loadHist();
-      }));
+      box.querySelectorAll('[data-open]').forEach((b) => b.addEventListener('click', () => openFiche(b.dataset.open)));
     }
+
+    // --- Fiche complète d'un enregistrement (au clic) -----------------------
+    const dateHeure = (iso) => { const d = new Date(iso); return `${longDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)} à ${heure(iso)}`; };
+    function openFiche(id) {
+      const r = records.find((x) => x.id === id);
+      if (!r) return;
+      $('fiche').innerHTML = `
+        <h2>${esc(r.produit || 'Sans nom')}</h2>
+        <div class="fdates">Créé le ${dateHeure(r.createdAt)}${r.updatedAt ? `<br>Modifié le ${dateHeure(r.updatedAt)}` : ''}</div>
+        <div class="flines">
+          <div class="line"><span>Poids étiquette</span><b>${fr(r.etiquetteKg, 3)} kg</b></div>
+          <div class="line"><span>Poids réel détaillé</span><b>${fr(r.reelKg, 3)} kg</b></div>
+          ${r.prixKg ? `<div class="line"><span>Prix d'achat au kg</span><b>${fr(r.prixKg, 2)} €/kg</b></div>` : ''}
+          ${r.portionG ? `<div class="line"><span>Poids par portion</span><b>${fr(r.portionG, 0)} g</b></div>` : ''}
+        </div>
+        <div class="result">${calcHTML({ produit: '', etiq: r.etiquetteKg, reel: r.reelKg, prix: r.prixKg || NaN, portionG: r.portionG || NaN })}</div>
+        <div class="factions">
+          <button class="btn btn-green" id="f-close" type="button">Fermer</button>
+          <button class="btn btn-blue" id="f-edit" type="button">✏️ Modifier</button>
+          <button class="btn btn-grey" id="f-del" type="button">Supprimer</button>
+        </div>`;
+      $('f-close').addEventListener('click', closeFiche);
+      $('f-edit').addEventListener('click', () => { closeFiche(); startEdit(r); });
+      $('f-del').addEventListener('click', async () => {
+        if (!confirm('Supprimer définitivement cet enregistrement ?')) return;
+        await fetch('api/couts/' + encodeURIComponent(r.id), { method: 'DELETE' });
+        if (editing && editing.id === r.id) { stopEdit(); clearForm(); }
+        closeFiche(); loadHist();
+      });
+      $('fiche-ov').classList.add('show');
+    }
+    function closeFiche() { $('fiche-ov').classList.remove('show'); }
+    $('fiche-ov').addEventListener('click', (e) => { if (e.target === $('fiche-ov')) closeFiche(); });
+
+    // --- Mode modification : la fiche est rechargée dans la calculette -------
+    let editing = null;
+    const toField = (n) => (n == null ? '' : n.toLocaleString('fr-FR', { maximumFractionDigits: 3, useGrouping: false }));
+    function startEdit(r) {
+      editing = r;
+      $('produit').value = r.produit || '';
+      $('etiquette').value = toField(r.etiquetteKg);
+      $('reel').value = toField(r.reelKg);
+      $('prix').value = r.prixKg ? toField(r.prixKg) : '';
+      $('portion').value = r.portionG ? toField(r.portionG) : '';
+      $('editbar-txt').textContent = `✏️ Modification de l'enregistrement du ${longDate(r.date)}`;
+      $('editbar').hidden = false;
+      $('save').textContent = '💾 Enregistrer les modifications';
+      compute();
+      $('editbar').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    function stopEdit() {
+      editing = null;
+      $('editbar').hidden = true;
+      $('save').textContent = '💾 Enregistrer';
+    }
+    $('edit-cancel').addEventListener('click', () => { stopEdit(); clearForm(); });
 
     $('save').addEventListener('click', async () => {
       const btn = $('save');
@@ -324,10 +410,14 @@
         etiquetteKg: num($('etiquette').value), reelKg: num($('reel').value),
         prixKg: num($('prix').value) || null, portionG: num($('portion').value) || null,
       };
+      const wasEditing = !!editing;
       try {
-        const r = await fetch('api/couts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const r = wasEditing
+          ? await fetch('api/couts/' + encodeURIComponent(editing.id), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+          : await fetch('api/couts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
         if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erreur');
-        $('saved-msg').textContent = '✅ Enregistré';
+        if (wasEditing) { stopEdit(); clearForm(); }
+        $('saved-msg').textContent = wasEditing ? '✅ Modifications enregistrées' : '✅ Enregistré';
         loadHist();
       } catch (e) {
         alert('Enregistrement impossible : ' + e.message);

@@ -5,6 +5,33 @@ const fs = require('fs');
 const os = require('os');
 const crypto = require('crypto');
 const express = require('express');
+
+// --- Élagage d'urgence des sauvegardes check-lists, AVANT d'ouvrir les bases ---
+// Le 10/11/2026 le disque persistant a été saturé par les copies horaires de la
+// base check-lists : les migrations qui écrivent au démarrage échouaient alors
+// (SQLITE_FULL) et le serveur ne démarrait plus. On libère la place en premier.
+// Règle identique à checklist/server.js : 12 dernières copies + 1 par jour sur 7 jours.
+(function pruneChecklistBackupsAtBoot() {
+  try {
+    const dir = process.env.CHECKLIST_BACKUP_DIR
+      || (process.env.BACKUP_DIR ? path.join(process.env.BACKUP_DIR, 'checklist') : path.join(__dirname, 'checklist', 'backups'));
+    if (!fs.existsSync(dir)) return;
+    const files = fs.readdirSync(dir).filter((f) => /^data-.*\.db$/.test(f)).sort();
+    const keep = new Set(files.slice(-12));
+    const lastOfDay = new Map();
+    for (const f of files) lastOfDay.set(f.slice(5, 15), f);
+    [...lastOfDay.keys()].sort().slice(-7).forEach((day) => keep.add(lastOfDay.get(day)));
+    let removed = 0;
+    for (const f of files) {
+      if (keep.has(f)) continue;
+      try { fs.unlinkSync(path.join(dir, f)); removed++; } catch (_) { /* on continue */ }
+    }
+    if (removed) console.log(`  Démarrage : ${removed} ancienne(s) sauvegarde(s) check-lists supprimée(s)`);
+  } catch (e) {
+    console.warn('  Élagage des sauvegardes au démarrage impossible :', e.message);
+  }
+})();
+
 const {
   db, hashSecret, verifySecret, getSetting, setSetting,
 } = require('./db');

@@ -20,6 +20,17 @@
     .addfield .plus { flex: 0 0 46px; border: 1.5px solid var(--gold); border-radius: 10px; background: #fbf3e3; color: var(--gold-dark);
       font-size: 1.5rem; font-weight: 900; font-family: inherit; cursor: pointer; line-height: 1; }
     .sum { font-size: .85rem; font-weight: 800; color: var(--gold-dark); margin-top: 4px; min-height: 1em; }
+    /* Onglets Maturées / Pertes */
+    .tabs2 { display: flex; gap: 6px; margin: 16px 0 0; background: #eee7db; padding: 4px; border-radius: 12px; }
+    .tabs2 .t2 { flex: 1; border: 0; border-radius: 9px; padding: 10px 8px; font: inherit; font-weight: 800; font-size: .95rem;
+      background: transparent; color: var(--muted); cursor: pointer; }
+    .tabs2 .t2.on { background: #fff; color: var(--dark); box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+    /* Fiche perte : unité et personne */
+    select.unit, select.who { border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 10px; font-size: 1rem;
+      font-weight: 700; font-family: inherit; color: var(--dark); background: #fff; }
+    select.unit { flex: 0 0 120px; }
+    select.who { width: 100%; }
+    .rec .rq { flex: 0 0 auto; font-size: 1rem; font-weight: 900; color: #9e1f24; min-width: 70px; }
     .sum.bad { color: #9e1f24; }
     @media (max-width: 420px) { .row2 { grid-template-columns: 1fr; } }
 
@@ -80,9 +91,51 @@
   <main class="wrap">
     <div>
       <h1 class="page-title">Coûts matière</h1>
-      <p class="page-sub">Viandes maturées : perte à la découpe et coût réel au kilo.</p>
+      <p class="page-sub" id="page-sub">Viandes maturées : perte à la découpe et coût réel au kilo.</p>
     </div>
 
+    <div class="tabs2">
+      <button type="button" class="t2 on" data-tab="mat">⚖️ Maturées</button>
+      <button type="button" class="t2" data-tab="pertes">🗑️ Pertes</button>
+    </div>
+
+    <!-- ====== Onglet Pertes : produits jetés ====== -->
+    <div id="tab-pertes" hidden>
+      <section class="calc">
+        <label for="w-produit">Nom du produit</label>
+        <input type="text" id="w-produit" list="w-produits" placeholder="Ex. Crème fraîche, bavette…" autocomplete="off" style="font-size:1rem;font-weight:600">
+        <datalist id="w-produits"></datalist>
+
+        <label for="w-qte">Quantité</label>
+        <div class="addfield">
+          <input type="text" id="w-qte" inputmode="decimal" placeholder="1,5" autocomplete="off">
+          <select id="w-unite" class="unit">
+            <option value="kg">kg</option>
+            <option value="g">g</option>
+            <option value="L">L</option>
+            <option value="pièce(s)">pièce(s)</option>
+            <option value="portion(s)">portion(s)</option>
+          </select>
+        </div>
+
+        <label for="w-par">Constaté par</label>
+        <select id="w-par" class="who"><option value="">— Choisir —</option></select>
+
+        <div class="hint" id="w-date"></div>
+      </section>
+      <div class="actions">
+        <button class="btn btn-red" id="w-save" type="button" disabled>💾 Enregistrer la perte</button>
+        <span class="saved" id="w-saved"></span>
+      </div>
+
+      <section class="hist">
+        <h2>🗑️ Pertes enregistrées</h2>
+        <div id="w-hist"><div class="hist-empty">Chargement…</div></div>
+      </section>
+    </div>
+
+    <!-- ====== Onglet Maturées : calculette ====== -->
+    <div id="tab-mat">
     <section class="calc">
       <label for="produit">Produit (facultatif)</label>
       <input type="text" id="produit" placeholder="Ex. Côte de bœuf maturée 45 j" autocomplete="off" style="font-size:1rem;font-weight:600">
@@ -121,6 +174,7 @@
       <h2>📒 Enregistrements</h2>
       <div id="hist"><div class="hist-empty">Chargement…</div></div>
     </section>
+    </div>
   </main>
 
   <script>
@@ -282,6 +336,103 @@
     });
 
     loadHist();
+
+    // =====================================================================
+    //  Onglets
+    // =====================================================================
+    const SUBS = {
+      mat: 'Viandes maturées : perte à la découpe et coût réel au kilo.',
+      pertes: 'Produits jetés : la date se met automatiquement.',
+    };
+    function showTab(t) {
+      if (!SUBS[t]) t = 'mat';
+      document.querySelectorAll('.t2').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
+      $('tab-mat').hidden = t !== 'mat';
+      $('tab-pertes').hidden = t !== 'pertes';
+      $('page-sub').textContent = SUBS[t];
+      if (location.hash !== '#' + t) history.replaceState(null, '', '#' + t);
+      if (t === 'pertes') loadPertes();
+    }
+    document.querySelectorAll('.t2').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
+
+    // =====================================================================
+    //  Pertes : produits jetés
+    // =====================================================================
+    const LS_PAR = 'bc_pertes_par';
+    const todayLabel = () => { const d = new Date(); return `${JOURS[d.getDay()]} ${d.getDate()} ${MOIS[d.getMonth()]} ${d.getFullYear()}`; };
+    $('w-date').textContent = `📅 Date : ${todayLabel()} (automatique)`;
+
+    function wValid() {
+      const q = num($('w-qte').value);
+      const ok = $('w-produit').value.trim() && q > 0 && $('w-par').value;
+      $('w-save').disabled = !ok;
+      $('w-saved').textContent = '';
+    }
+    ['w-produit', 'w-qte'].forEach((id) => $(id).addEventListener('input', wValid));
+    ['w-unite', 'w-par'].forEach((id) => $(id).addEventListener('change', wValid));
+
+    // Cuisiniers actifs du planning cuisine (même liste que la clôture des check-lists).
+    fetch('/cuisine/api/cooks').then((r) => r.json()).then((list) => {
+      const sel = $('w-par');
+      let last = '';
+      try { last = localStorage.getItem(LS_PAR) || ''; } catch (e) { /* stockage indisponible */ }
+      (Array.isArray(list) ? list : []).forEach((c) => {
+        const o = document.createElement('option'); o.value = c.name; o.textContent = c.name;
+        if (c.name === last) o.selected = true;
+        sel.appendChild(o);
+      });
+      wValid();
+    }).catch(() => {});
+
+    const fmtQte = (q, u) => `${q.toLocaleString('fr-FR', { maximumFractionDigits: 3 })} ${u}`;
+    function pertLine(r) {
+      return `<div class="rec">
+          <span class="rq">${esc(fmtQte(r.quantite, r.unite))}</span>
+          <span class="rd"><b>${esc(r.produit)}</b><br>constaté par ${esc(r.constatePar)} · ${heure(r.createdAt)}</span>
+          <button class="rx" type="button" data-wdel="${esc(r.id)}" title="Supprimer cette perte">✕</button>
+        </div>`;
+    }
+    async function loadPertes() {
+      const box = $('w-hist');
+      let list = [];
+      try { list = await fetch('api/pertes').then((r) => r.json()); } catch (e) { box.innerHTML = '<div class="hist-empty">Impossible de charger les pertes.</div>'; return; }
+      if (!Array.isArray(list)) list = [];
+      // Suggestions de produits déjà saisis (saisie plus rapide).
+      $('w-produits').innerHTML = [...new Set(list.map((r) => r.produit))].slice(0, 80).map((p) => `<option value="${esc(p)}">`).join('');
+      if (!list.length) { box.innerHTML = '<div class="hist-empty">Aucune perte enregistrée.</div>'; return; }
+      const byDate = new Map();
+      for (const r of list) { if (!byDate.has(r.date)) byDate.set(r.date, []); byDate.get(r.date).push(r); }
+      box.innerHTML = [...byDate.entries()].map(([d, recs]) => `<div class="hist-day"><div class="hist-date">${longDate(d)} · ${recs.length} produit${recs.length > 1 ? 's' : ''}</div>${recs.map(pertLine).join('')}</div>`).join('');
+      box.querySelectorAll('[data-wdel]').forEach((b) => b.addEventListener('click', async () => {
+        if (!confirm('Supprimer cette perte ?')) return;
+        await fetch('api/pertes/' + encodeURIComponent(b.dataset.wdel), { method: 'DELETE' });
+        loadPertes();
+      }));
+    }
+
+    $('w-save').addEventListener('click', async () => {
+      const btn = $('w-save');
+      btn.disabled = true;
+      const body = {
+        produit: $('w-produit').value.trim(), quantite: num($('w-qte').value),
+        unite: $('w-unite').value, constatePar: $('w-par').value,
+      };
+      try {
+        const r = await fetch('api/pertes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erreur');
+        try { localStorage.setItem(LS_PAR, body.constatePar); } catch (e) { /* ignore */ }
+        // Prêt pour la saisie suivante : on garde l'unité et la personne.
+        $('w-produit').value = ''; $('w-qte').value = '';
+        $('w-saved').textContent = '✅ Perte enregistrée';
+        loadPertes();
+        $('w-produit').focus();
+      } catch (e) {
+        alert('Enregistrement impossible : ' + e.message);
+        btn.disabled = false;
+      }
+    });
+
+    showTab((location.hash || '').slice(1));
   </script>
   <script src="/tabbar.js?v=6"></script>
 </body>

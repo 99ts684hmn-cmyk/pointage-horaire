@@ -705,6 +705,33 @@ app.delete('/api/couts/:id', (req, res) => {
   res.json({ ok: true, deleted: info.changes });
 });
 
+// --- Pertes : produits jetés ------------------------------------------------
+const WASTE_UNITS = ['kg', 'g', 'L', 'pièce(s)', 'portion(s)'];
+
+app.get('/api/pertes', (req, res) => {
+  res.json(db.prepare(`SELECT id, date, created_at AS createdAt, produit, quantite, unite, constate_par AS constatePar
+    FROM waste_records ORDER BY created_at DESC LIMIT 500`).all());
+});
+
+// Enregistre une perte à la date du jour (heure de Paris).
+app.post('/api/pertes', (req, res) => {
+  const b = req.body || {};
+  const produit = String(b.produit || '').trim().slice(0, 120);
+  const quantite = posNum(b.quantite);
+  const unite = WASTE_UNITS.includes(b.unite) ? b.unite : null;
+  const par = String(b.constatePar || '').trim().slice(0, 60);
+  if (!produit || !quantite || !unite || !par) return res.status(400).json({ error: 'Produit, quantité et personne requis' });
+  const id = uid();
+  db.prepare(`INSERT INTO waste_records (id, date, created_at, produit, quantite, unite, constate_par)
+    VALUES (?, ?, ?, ?, ?, ?, ?)`).run(id, todayParis(), nowISO(), produit, quantite, unite, par);
+  res.status(201).json({ ok: true, id });
+});
+
+app.delete('/api/pertes/:id', (req, res) => {
+  const info = db.prepare('DELETE FROM waste_records WHERE id = ?').run(req.params.id);
+  res.json({ ok: true, deleted: info.changes });
+});
+
 // =========================================================================
 //  Sauvegarde automatique
 // =========================================================================

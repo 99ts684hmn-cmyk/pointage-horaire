@@ -145,6 +145,16 @@ db.exec(`
     prix_kg      REAL,
     portion_g    REAL
   );
+  -- Pertes : produits jetés (date automatique, constaté par un cuisinier).
+  CREATE TABLE IF NOT EXISTS waste_records (
+    id           TEXT PRIMARY KEY,
+    date         TEXT NOT NULL,   -- jour de la saisie (AAAA-MM-JJ, heure de Paris)
+    created_at   TEXT NOT NULL,
+    produit      TEXT NOT NULL,
+    quantite     REAL NOT NULL,
+    unite        TEXT NOT NULL,   -- kg, g, L, pièce(s), portion(s)
+    constate_par TEXT NOT NULL
+  );
 `);
 
 // Migration de schéma : ajoute la colonne « category » sur les bases déjà

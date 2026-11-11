@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=2">
+  <link rel="stylesheet" href="styles.css?v=4">
 </head>
 <body>
   <div class="topbar">
@@ -52,6 +52,7 @@
           </div>
           <button class="btn btn-ghost" id="wk-next" style="flex:0 0 auto">Suivante ›</button>
           <button class="btn btn-green" id="tpl-btn" style="flex:0 0 auto">⚡ Semaine type</button>
+          <button class="btn btn-ghost" id="tpl-edit-btn" style="flex:0 0 auto">✏️ Modifier la semaine type</button>
           <button class="btn btn-blue" id="he-btn" style="flex:0 0 auto">🏖️ Hors entreprise</button>
           <button class="btn btn-green" id="grp-btn" style="flex:0 0 auto">👥 Arrivée groupée</button>
           <button class="btn btn-blue" id="pdf-btn" style="flex:0 0 auto">📄 PDF</button>
@@ -130,8 +131,16 @@
     <div class="modal" id="profile-modal"></div>
   </div>
 
+  <!-- Éditeur de la semaine type (versions datées) + fenêtre d'une case -->
+  <div class="overlay" id="tpl-overlay">
+    <div class="modal modal-wide" id="tpl-modal"></div>
+  </div>
+  <div class="overlay" id="tplcell-overlay">
+    <div class="modal" id="tplcell-modal" style="max-width:460px"></div>
+  </div>
+
   <script src="sortable.min.js"></script>
-  <script src="admin.js?v=4"></script>
+  <script src="admin.js?v=5"></script>
   <script src="/tabbar.js?v=6"></script>
 </body>
 </html>

@@ -660,20 +660,26 @@ app.post('/api/admin/apply-template', requireAdmin, (req, res) => {
         // Les postes du modèle ne sont plus copiés ici : l'affectation
         // automatique du planning lit directement la semaine type (toutes les
         // semaines, sans avoir à cliquer « ⚡ Semaine type »).
-        if (!/^\d{2}:\d{2}$/.test(sh.start || '')) continue; // jour sans horaire fixe : postes seulement
+        const hasStart = /^\d{2}:\d{2}$/.test(sh.start || '');
+        const isDemi = sh.demi === 'midi' || sh.demi === 'soir';
+        if (!hasStart && !isDemi) continue; // ni horaire fixe ni demi : postes seulement
         // Jour déjà rempli (statut ou horaires) → conservé tel quel.
         if (hasStatus.get(emp.id, day)) { skipped++; continue; }
         const f = businessDayStart(day);
         if (hasEntries.get(emp.id, f, f + DAY_MS)) { skipped++; continue; }
-        const inTs = tsFromDateTime(day, sh.start);
-        let outTs = null;
-        if (/^\d{2}:\d{2}$/.test(sh.end || '')) {
-          outTs = tsFromDateTime(day, sh.end);
-          if (outTs <= inTs) outTs += DAY_MS; // fin après minuit → lendemain
+        if (hasStart) {
+          const inTs = tsFromDateTime(day, sh.start);
+          let outTs = null;
+          if (/^\d{2}:\d{2}$/.test(sh.end || '')) {
+            outTs = tsFromDateTime(day, sh.end);
+            if (outTs <= inTs) outTs += DAY_MS; // fin après minuit → lendemain
+          }
+          insEntry.run(emp.id, inTs, outTs, outTs != null ? 'manual' : null);
+          created++;
         }
-        insEntry.run(emp.id, inTs, outTs, outTs != null ? 'manual' : null);
-        created++;
-        if (sh.demi === 'midi' || sh.demi === 'soir') {
+        // Demi-journée : posée même sans horaire fixe (sinon le salarié
+        // apparaît présent aux deux services).
+        if (isDemi) {
           upStatus.run(emp.id, day, sh.demi === 'midi' ? 'demi_midi' : 'demi_soir');
           demis++;
         }

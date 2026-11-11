@@ -24,7 +24,7 @@
     .g { padding: 8px 12px; border-top: 1px solid #ece7de; }
     .g:first-of-type { border-top: 0; }
     .g .t { font-weight: 800; font-size: 1rem; }
-    .g .t .heure { color: var(--gold-dark); font-weight: 800; }
+    .g .t .heure { color: var(--gold-dark); font-weight: 800; margin-left: 8px; }
     .g .t .pers { color: var(--gold-dark); font-weight: 700; margin-left: 8px; }
     .g .t .prix { color: var(--muted); font-weight: 600; margin-left: 8px; }
     .g .l { font-size: .9rem; margin-top: 2px; line-height: 1.35; white-space: pre-line; }
@@ -73,7 +73,7 @@
     // PDF volontairement sobre : nom, personnes, heure et menu uniquement.
     const LINES = [['menu', 'Menu']];
     function groupHTML(g) {
-      const head = `<div class="t">${g.heure ? `<span class="heure">🕒 ${esc(String(g.heure).replace(':', 'h'))}</span> ` : ''}${esc(g.nom || '(sans nom)')}${g.pers ? `<span class="pers">${esc(g.pers)} pers</span>` : ''}</div>`;
+      const head = `<div class="t">${esc(g.nom || '(sans nom)')}${g.pers ? `<span class="pers">${esc(g.pers)} pers</span>` : ''}${g.heure ? `<span class="heure">🕒 ${esc(String(g.heure).replace(':', 'h'))}</span>` : ''}</div>`;
       const lines = LINES.filter(([k]) => g[k] && String(g[k]).trim()).map(([k, l]) => `<div class="l"><b>${l} :</b> ${esc(g[k])}</div>`).join('');
       return `<div class="g${g.annule ? ' annule' : ''}">${head}${lines}</div>`;
     }
@@ -133,7 +133,7 @@
         y += 1;
         for (const g of arr) {
           total += g.annule ? 0 : 1;
-          const head = `${g.heure ? String(g.heure).replace(':', 'h') + '  ' : ''}${g.nom || '(sans nom)'}${g.pers ? `   ${g.pers} pers` : ''}${g.annule ? '   (ANNULÉ)' : ''}`;
+          const head = `${g.nom || '(sans nom)'}${g.pers ? `   ${g.pers} pers` : ''}${g.heure ? `   ${String(g.heure).replace(':', 'h')}` : ''}${g.annule ? '   (ANNULÉ)' : ''}`;
           line(head, 11, 'bold', g.annule ? [150, 150, 150] : [31, 33, 32], 2);
           if (g.menu && String(g.menu).trim()) line('Menu : ' + g.menu, 9.5, 'normal', [60, 56, 52], 6);
           y += 1.5;

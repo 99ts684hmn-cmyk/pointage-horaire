@@ -86,12 +86,21 @@ function menuTable(monday) {
 }
 
 // Plusieurs groupes par jour → tableau JSON. Compat : objet unique ou texte brut.
+// Heure d'un groupe : champ « Heure d'arrivée », sinon l'heure écrite au DÉBUT
+// des infos (ex. « 21:00 – Dîner samedi · Tables… », « 12h30 … », « 19h … »).
+function withHeure(g) {
+  if (g && !g.heure) {
+    const m = /^\s*(\d{1,2})\s*[:hH]\s*(\d{2})?(?!\d)/.exec(g.infos || '');
+    if (m && Number(m[1]) < 24 && Number(m[2] || 0) < 60) g.heure = `${m[1].padStart(2, '0')}:${m[2] || '00'}`;
+  }
+  return g;
+}
 function parseGroups(raw) {
   if (!raw) return [];
   try {
     const o = JSON.parse(raw);
-    if (Array.isArray(o)) return o.filter((x) => x && typeof x === 'object');
-    if (o && typeof o === 'object') return [o];
+    if (Array.isArray(o)) return o.filter((x) => x && typeof x === 'object').map(withHeure);
+    if (o && typeof o === 'object') return [withHeure(o)];
   } catch (e) { return [{ nom: String(raw) }]; }
   return [];
 }

@@ -596,6 +596,16 @@ app.get('/api/menus', (req, res) => {
   res.json({ semaineMonday: m1, semaineProMonday: m2, semaineSuivMonday: m3, today, groupStart: gStart, groupes, cells, pins });
 });
 
+// Heure d'un groupe : champ « Heure d'arrivée », sinon l'heure écrite au DÉBUT
+// des infos (ex. « 21:00 – Dîner samedi · Tables… », « 12h30 … », « 19h … »).
+function withHeure(g) {
+  if (g && !g.heure) {
+    const m = /^\s*(\d{1,2})\s*[:hH]\s*(\d{2})?(?!\d)/.exec(g.infos || '');
+    if (m && Number(m[1]) < 24 && Number(m[2] || 0) < 60) g.heure = `${m[1].padStart(2, '0')}:${m[2] || '00'}`;
+  }
+  return g;
+}
+
 // GET /api/menus/recap — tout l'historique, par date décroissante.
 // menus : une entrée par semaine (date = lundi) ; groupes : une entrée par jour.
 app.get('/api/menus/recap', (req, res) => {
@@ -633,7 +643,7 @@ app.get('/api/menus/apercu', (req, res) => {
     try { const o = JSON.parse(r.value); arr = Array.isArray(o) ? o : (o && typeof o === 'object' ? [o] : []); }
     catch (e) { arr = [{ nom: r.value }]; }
     for (const g of arr) {
-      if (g && !g.annule && (g.nom || '').trim()) groupes.push({ date: r.date, nom: g.nom, pers: g.pers || '', heure: g.heure || '' });
+      if (g && !g.annule && (g.nom || '').trim()) groupes.push({ date: r.date, nom: g.nom, pers: g.pers || '', heure: withHeure(g).heure || '' });
       if (groupes.length >= 3) break;
     }
     if (groupes.length >= 3) break;

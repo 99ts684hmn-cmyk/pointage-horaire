@@ -397,7 +397,21 @@ POSTE_LABELS.mise_en_place = 'Mise en place'; // renfort au-delà des 6 postes (
 const POSTE_PRIORITY = ['grillade', 'garnitures', 'froid', 'plonge', 'volant'];
 
 let assignMap = new Map(); // affectations MANUELLES : "empId|jour|service" → poste
-let tplAssign = new Set(); // parmi elles, celles posées par la semaine type
+let weekTemplates = []; // semaines types (périodes) : l'auto suit leurs postes
+
+// Poste prévu par la SEMAINE TYPE pour ce salarié, ce jour et ce service
+// (null si rien de prévu, mise en place, ou service non travaillé ce jour-là).
+// La période applicable = la dernière dont « from » <= jour.
+function tplPosteOf(empId, day, svc) {
+  let best = null;
+  for (const t of weekTemplates) {
+    if (t && t.from && t.from <= day && (!best || t.from > best.from)) best = t;
+  }
+  const byWd = best && best.shifts && best.shifts[empId];
+  const sh = byWd && byWd[new Date(day + 'T12:00:00').getDay()];
+  if (!sh || sh.demi === svc) return null;
+  return POSTES.some((p) => p.key === sh[svc]) ? sh[svc] : null;
+}
 let lastPosteOf = {}; // affectations effectives du dernier rendu (manuel + auto)
 
 // Données du planning.
@@ -415,12 +429,14 @@ async function loadPlanning() {
   const to = $('rep-to').value;
   if (!from || !to) { renderPlanning(); return; }
   const params = new URLSearchParams({ from, to });
-  const [rep, st, ex, pa] = await Promise.all([
+  const [rep, st, ex, pa, wt] = await Promise.all([
     api('/api/admin/report?' + params.toString()),
     api('/api/admin/day-statuses?' + params.toString()),
     api('/api/admin/extra?' + params.toString()),
     api('/api/admin/poste-assigns?' + params.toString()),
+    api('/api/admin/week-template'),
   ]);
+  weekTemplates = (wt.ok && Array.isArray(wt.data)) ? wt.data : [];
   planningReport = (rep.ok && rep.data) ? rep.data : [];
   statusMap = new Map();
   if (st.ok && Array.isArray(st.data)) {
@@ -428,12 +444,12 @@ async function loadPlanning() {
   }
   extraMap = (ex.ok && ex.data && typeof ex.data === 'object') ? ex.data : {};
   assignMap = new Map();
-  tplAssign = new Set(); // affectations posées par la semaine type (pas de liseré « manuel »)
   if (pa.ok && Array.isArray(pa.data)) {
     for (const a of pa.data) {
-      const k = a.employeeId + '|' + a.day + '|' + a.service;
-      assignMap.set(k, a.poste);
-      if (a.src === 'tpl') tplAssign.add(k);
+      // Les anciennes lignes posées par « ⚡ Semaine type » (src 'tpl') sont
+      // ignorées : l'automatique lit désormais la semaine type directement.
+      if (a.src === 'tpl') continue;
+      assignMap.set(a.employeeId + '|' + a.day + '|' + a.service, a.poste);
     }
   }
   renderPlanning();
@@ -463,7 +479,7 @@ function renderPlanning() {
   let html = '<div class="poste-legend">'
     + POSTES.map((p) => `<span class="po-chip"><i class="po-dot po-${p.key}"></i>${p.label}${p.slots > 1 ? ' ×' + p.slots : ''}</span>`).join('')
     + '<span class="po-chip"><i class="po-dot po-mise_en_place"></i>Mise en place</span>'
-    + '<span class="poste-legend-note">postes selon les préférences (Profil) — clic sur une case pour changer, ↻ en bas de colonne pour réaffecter le jour</span></div>';
+    + '<span class="poste-legend-note">postes selon la semaine type, puis les préférences (Profil) — clic sur une case pour changer, ↻ en bas de colonne pour réaffecter le jour</span></div>';
   html += '<table class="planning"><thead><tr><th class="pl-name">Salarié</th>';
   for (const d of days) html += `<th class="pl-day-head" data-day="${d}" title="Cliquer pour copier les arrivées du jour">${planningDayLabel(d)}</th>`;
   html += '<th style="text-align:right">Total</th></tr></thead><tbody>';
@@ -479,8 +495,9 @@ function renderPlanning() {
   let grand = 0;
 
   // Affectation des postes par jour et par service : on liste les présents
-  // (mêmes règles que les compteurs), puis on attribue les postes en partant
-  // des préférences les plus fortes (3 → 1 ; 0/vide = jamais). Égalité :
+  // (mêmes règles que les compteurs), puis on attribue les postes : d'abord
+  // celui prévu par la SEMAINE TYPE, sinon les préférences du profil (1 → 3 ;
+  // vide = jamais). Égalité :
   // l'ordre du planning (sortOrder) tranche. Clé : "empId|jour|service".
   const posteOf = {};
   for (const d of days) {
@@ -525,7 +542,13 @@ function renderPlanning() {
       // Recherche exhaustive (équipe petite) avec garde-fou de complexité.
       const slots = [];
       for (const pk of POSTE_PRIORITY) for (let k = 0; k < left[pk]; k++) slots.push(pk);
+      // Le poste de la semaine type vaut 0 : il passe avant toute préférence
+      // du profil (1 à 3). Semaine normale → chacun à son poste type ; en cas
+      // d'absence, les autres comblent selon leurs préférences.
+      const tplOf = {};
+      for (const emp of autoCands) tplOf[emp.id] = tplPosteOf(emp.id, d, svc);
       const prefOf = (emp, pk) => {
+        if (tplOf[emp.id] === pk) return 0;
         const v = Number((emp.postes || {})[pk] || 0);
         return (v >= 1 && v <= 3) ? v : null; // 4 / non renseigné = jamais
       };
@@ -555,7 +578,7 @@ function renderPlanning() {
         for (const emp of autoCands) {
           if (used.has(emp.id)) continue;
           const v = prefOf(emp, slots[i]);
-          if (!v) continue;
+          if (v == null) continue;
           any = true;
           used.add(emp.id); picks.push(emp.id); vec.push(v);
           explore(i + 1, coverage | bit, prefSum + v);
@@ -624,7 +647,7 @@ function renderPlanning() {
           const pmKey = posteOf[emp.id + '|' + d + '|midi'];
           const psKey = posteOf[emp.id + '|' + d + '|soir'];
           // Liseré sur les affectations manuelles (≠ automatiques).
-          const isManual = (svc) => { const k = emp.id + '|' + d + '|' + svc; return assignMap.has(k) && !tplAssign.has(k); };
+          const isManual = (svc) => assignMap.has(emp.id + '|' + d + '|' + svc);
           const pmCls = pmKey ? ` po-${pmKey}${isManual('midi') ? ' po-manual' : ''}` : '';
           const psCls = psKey ? ` po-${psKey}${isManual('soir') ? ' po-manual' : ''}` : '';
           const pLbl = (k) => (k ? `<span class="pl-poste">${POSTE_LABELS[k]}</span>` : '');
@@ -922,7 +945,7 @@ $('tpl-btn').addEventListener('click', () => {
   cellModal.innerHTML = `
     <h2>⚡ Semaine type</h2>
     <div class="sub">du ${frDate(from)} au ${frDate(to)}</div>
-    <p style="margin:10px 0 0;font-size:.92rem">Les horaires fixes, les demi-journées et les postes du planning type seront posés.
+    <p style="margin:10px 0 0;font-size:.92rem">Les horaires fixes et les demi-journées du planning type seront posés (les postes suivent déjà la semaine type en automatique).
     Les jours déjà remplis (horaires ou statut) sont conservés tels quels.</p>
     <div class="action-buttons" style="margin-top:16px;grid-template-columns:1fr 1fr">
       <button class="btn btn-green" id="tp-ok">Remplir la semaine</button>
@@ -939,7 +962,7 @@ $('tpl-btn').addEventListener('click', () => {
       toast((data && data.error) || 'Erreur');
       return;
     }
-    toast(`Semaine type appliquée : ${data.created} horaire(s), ${data.demis} demi(s), ${data.postes || 0} poste(s)${data.skipped ? `, ${data.skipped} case(s) déjà remplie(s) conservée(s)` : ''}`);
+    toast(`Semaine type appliquée : ${data.created} horaire(s), ${data.demis} demi(s)${data.skipped ? `, ${data.skipped} case(s) déjà remplie(s) conservée(s)` : ''}`);
     loadPlanning();
   });
   cellModal.querySelector('#tp-cancel').addEventListener('click', () => cellOverlay.classList.remove('show'));
@@ -1175,7 +1198,7 @@ function openCellEditor(empId, day) {
     return `<div class="ce-poste-row" data-svc="${svc}">
       <span class="ce-poste-svc">${icon}</span>
       ${ALL_POSTE_KEYS.map((k) => `<button type="button" class="po-pick po-${k}${manual === k ? ' active' : ''}" data-svc="${svc}" data-k="${k}">${POSTE_LABELS[k]}</button>`).join('')}
-      <button type="button" class="po-pick po-pick-auto${manual ? '' : ' active'}" data-svc="${svc}" data-k="" title="Laisser l'affectation automatique selon les préférences${autoTitle}">Auto${autoTitle}</button>
+      <button type="button" class="po-pick po-pick-auto${manual ? '' : ' active'}" data-svc="${svc}" data-k="" title="Laisser l'affectation automatique (semaine type, puis préférences)${autoTitle}">Auto${autoTitle}</button>
     </div>`;
   };
 

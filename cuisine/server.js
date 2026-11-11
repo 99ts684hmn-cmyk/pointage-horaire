@@ -642,12 +642,8 @@ app.post('/api/admin/apply-template', requireAdmin, (req, res) => {
     ON CONFLICT(employee_id, day) DO UPDATE SET status = excluded.status
   `);
   const hasEntries = db.prepare('SELECT 1 FROM time_entries WHERE employee_id = ? AND clock_in >= ? AND clock_in < ? LIMIT 1');
-  const getStatus = db.prepare('SELECT status FROM day_status WHERE employee_id = ? AND day = ?');
-  const hasAssign = db.prepare('SELECT 1 FROM poste_assign WHERE employee_id = ? AND day = ? AND service = ?');
-  const insAssign = db.prepare("INSERT INTO poste_assign (employee_id, day, service, poste, src) VALUES (?, ?, ?, ?, 'tpl')");
-  const AWAY = ['cp', 'am', 'absent', 'ecole', 'repos'];
 
-  let created = 0; let demis = 0; let skipped = 0; let postes = 0;
+  let created = 0; let demis = 0; let skipped = 0;
   db.transaction(() => {
     for (const day of days) {
       const tpl = templateOn(day);
@@ -661,19 +657,9 @@ app.post('/api/admin/apply-template', requireAdmin, (req, res) => {
         if (!emp.active && !(emp.end_date && emp.end_date >= day)) continue;
         // Repos au profil ce jour-là → on ne crée rien (cohérence).
         if (restDaysOn(parseRestPeriods(emp.rest_days), day).includes(Number(wd))) continue;
-        // Postes du modèle : posés seulement si le service n'a pas déjà un poste
-        // (une affectation faite à la main est conservée) et si le salarié n'est
-        // pas absent ce jour-là (CP, arrêt, école…).
-        const st = getStatus.get(emp.id, day);
-        if (!(st && AWAY.includes(st.status))) {
-          for (const svc of ['midi', 'soir']) {
-            const p = sh[svc];
-            if (!POSTE_ASSIGN_VALUES.includes(p) || sh.demi === svc) continue;
-            if (hasAssign.get(emp.id, day, svc)) continue;
-            insAssign.run(emp.id, day, svc, p);
-            postes++;
-          }
-        }
+        // Les postes du modèle ne sont plus copiés ici : l'affectation
+        // automatique du planning lit directement la semaine type (toutes les
+        // semaines, sans avoir à cliquer « ⚡ Semaine type »).
         if (!/^\d{2}:\d{2}$/.test(sh.start || '')) continue; // jour sans horaire fixe : postes seulement
         // Jour déjà rempli (statut ou horaires) → conservé tel quel.
         if (hasStatus.get(emp.id, day)) { skipped++; continue; }
@@ -694,7 +680,7 @@ app.post('/api/admin/apply-template', requireAdmin, (req, res) => {
       }
     }
   })();
-  res.json({ ok: true, created, demis, skipped, postes });
+  res.json({ ok: true, created, demis, skipped });
 });
 
 // --- Données du planning ---------------------------------------------------

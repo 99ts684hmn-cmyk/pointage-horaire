@@ -30,6 +30,12 @@
     .g .l { font-size: .9rem; margin-top: 2px; line-height: 1.35; white-space: pre-line; }
     .g .l b { color: var(--muted); font-weight: 700; }
     .g.annule { opacity: .55; }
+    /* Groupes sans menu : regroupés sur une seule ligne, séparés par « / ». */
+    .g .t .it { white-space: nowrap; }
+    .g .t .it.annule { opacity: .55; }
+    .g .t .it.annule::before { content: "ANNULÉ — "; color: var(--red); }
+    .g .t .sep { color: var(--muted); font-weight: 600; margin: 0 5px; }
+    .g .t.multi { line-height: 1.55; }
     .g.annule .t::before { content: "ANNULÉ — "; color: var(--red); }
     .empty { color: var(--muted); padding: 20px 0; }
     .total { margin-top: 10px; color: var(--muted); font-size: .85rem; }
@@ -81,8 +87,26 @@
     }
     // PDF volontairement sobre : nom, personnes, heure et menu uniquement.
     const LINES = [['menu', 'Menu']];
+    const hasMenu = (g) => !!(g.menu && String(g.menu).trim());
+    // Lignes d'un jour : un bloc par groupe AVEC menu ; les groupes SANS menu sont
+    // réunis sur une seule ligne (à la place du premier d'entre eux).
+    function dayRows(arr) {
+      const rows = []; let multi = null;
+      for (const g of arr) {
+        if (hasMenu(g)) rows.push({ g });
+        else if (multi) multi.gs.push(g);
+        else { multi = { gs: [g] }; rows.push(multi); }
+      }
+      return rows;
+    }
+    const headInner = (g) => `${esc(g.nom || '(sans nom)')}${g.pers ? `<span class="pers">${esc(g.pers)} pers</span>` : ''}${g.heure ? `<span class="heure">🕒 ${esc(String(g.heure).replace(':', 'h'))}</span>` : ''}`;
+    function rowHTML(r) {
+      if (r.g) return groupHTML(r.g);
+      if (r.gs.length === 1) return groupHTML(r.gs[0]);
+      return `<div class="g"><div class="t multi">${r.gs.map((g) => `<span class="it${g.annule ? ' annule' : ''}">${headInner(g)}</span>`).join(' <span class="sep">/</span> ')}</div></div>`;
+    }
     function groupHTML(g) {
-      const head = `<div class="t">${esc(g.nom || '(sans nom)')}${g.pers ? `<span class="pers">${esc(g.pers)} pers</span>` : ''}${g.heure ? `<span class="heure">🕒 ${esc(String(g.heure).replace(':', 'h'))}</span>` : ''}</div>`;
+      const head = `<div class="t">${headInner(g)}</div>`;
       const lines = LINES.filter(([k]) => g[k] && String(g[k]).trim()).map(([k, l]) => `<div class="l"><b>${l} :</b> ${esc(g[k])}</div>`).join('');
       return `<div class="g${g.annule ? ' annule' : ''}">${head}${lines}</div>`;
     }
@@ -98,7 +122,7 @@
           if (!arr.length) return '';
           total += arr.filter((g) => !g.annule).length;
           const pers = arr.filter((g) => !g.annule).reduce((s, g) => s + (parseInt(g.pers, 10) || 0), 0);
-          return `<section class="day"><h2>${longDate(date)}<span class="n">${arr.length} groupe${arr.length > 1 ? 's' : ''}${pers ? ` · ${pers} pers` : ''}</span></h2>${arr.map(groupHTML).join('')}</section>`;
+          return `<section class="day"><h2>${longDate(date)}<span class="n">${arr.length} groupe${arr.length > 1 ? 's' : ''}${pers ? ` · ${pers} pers` : ''}</span></h2>${dayRows(arr).map(rowHTML).join('')}</section>`;
         }).join('');
         content.innerHTML = blocks || '<div class="empty">Aucun groupe sur les 30 prochains jours.</div>';
         if (blocks) content.insertAdjacentHTML('beforeend', `<div class="total">${total} groupe${total > 1 ? 's' : ''} sur ${DAYS} jours (hors annulés).</div>`);
@@ -140,11 +164,21 @@
         doc.setFillColor(243, 240, 234); doc.rect(M, y - 4.5, maxW, 7, 'F');
         line(`${longDate(date).toUpperCase()}   —   ${arr.length} groupe${arr.length > 1 ? 's' : ''}${pers ? ` · ${pers} pers` : ''}`, 10, 'bold', [138, 107, 50]);
         y += 1;
-        for (const g of arr) {
-          total += g.annule ? 0 : 1;
-          const head = `${g.nom || '(sans nom)'}${g.pers ? `   ${g.pers} pers` : ''}${g.heure ? `   ${String(g.heure).replace(':', 'h')}` : ''}${g.annule ? '   (ANNULÉ)' : ''}`;
-          line(head, 11, 'bold', g.annule ? [150, 150, 150] : [31, 33, 32], 2);
-          if (g.menu && String(g.menu).trim()) line('Menu : ' + g.menu, 9.5, 'normal', [60, 56, 52], 6);
+        total += arr.filter((g) => !g.annule).length;
+        const headOf = (g) => `${g.nom || '(sans nom)'}${g.pers ? `   ${g.pers} pers` : ''}${g.heure ? `   ${String(g.heure).replace(':', 'h')}` : ''}${g.annule ? '   (ANNULÉ)' : ''}`;
+        for (const r of dayRows(arr)) {
+          // Groupes sans menu : une seule ligne, séparés par « / ».
+          const gs = r.g ? [r.g] : r.gs;
+          // Retour à la ligne entre deux groupes (jamais au milieu d'un groupe).
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
+          const packed = []; let curLine = '';
+          for (const it of gs.map((g) => clean(headOf(g)))) {
+            const tryLine = curLine ? curLine + '   /   ' + it : it;
+            if (curLine && doc.getTextWidth(tryLine + '   /') > maxW - 2) { packed.push(curLine + '   /'); curLine = it; } else curLine = tryLine;
+          }
+          packed.push(curLine);
+          for (const p of packed) line(p, 11, 'bold', gs.every((g) => g.annule) ? [150, 150, 150] : [31, 33, 32], 2);
+          if (r.g && hasMenu(r.g)) line('Menu : ' + r.g.menu, 9.5, 'normal', [60, 56, 52], 6);
           y += 1.5;
         }
       }

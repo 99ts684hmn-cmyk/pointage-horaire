@@ -253,18 +253,13 @@ td.num { font-variant-numeric: tabular-nums; }
   font-weight: 400; font-size: .78rem; line-height: 1.25; cursor: pointer; color: var(--dark); }
 .planning td.pl-info:hover { background: #fff7ec; }
 .planning td.pl-info .pl-empty { color: #cdc8c0; }
-/* Ligne « Notes » de la semaine, au-dessus des dates (légende du tableau : même
-   largeur que lui), éditable au clic. */
-.planning caption.pl-notes-cap { caption-side: top; padding: 0; text-align: left; }
-.pl-notes-band { display: flex; align-items: stretch; border: 1px solid var(--border); border-bottom: 0;
-  background: #fffdf8; font-size: .82rem; }
-.pl-notes-band.pl-note-click { cursor: pointer; }
-.pl-notes-band.pl-note-click:hover { background: #fff7ec; }
-.pl-notes-lbl { flex: 0 0 auto; box-sizing: border-box; min-width: 64px; padding: 8px 10px; font-weight: 600; text-align: left;
-  background: #fff7ec; border-right: 1px solid var(--border); }
-.pl-notes-txt { flex: 1 1 auto; min-width: 0; min-height: 36px; padding: 8px 10px; text-align: left;
-  white-space: pre-wrap; word-break: break-word; font-weight: 400; line-height: 1.35; color: var(--dark); }
-.pl-notes-txt .pl-empty { color: #cdc8c0; }
+/* Grande case « Notes » de la semaine (sur la largeur des 7 jours), éditable. */
+.planning .pl-notes-row .pl-name { background: #fff7ec; vertical-align: top; }
+.planning td.pl-notes-cell { text-align: left; white-space: pre-wrap; word-break: break-word;
+  font-weight: 400; font-size: .82rem; line-height: 1.35; padding: 8px 10px; min-height: 46px;
+  cursor: pointer; color: var(--dark); vertical-align: top; }
+.planning td.pl-notes-cell:hover { background: #fff7ec; }
+.planning td.pl-notes-cell .pl-empty { color: #cdc8c0; }
 .planning .pl-tot-row td { background: #f0eadf; font-weight: 700; }
 .planning .pl-svc-row td { background: #eef4ff; font-weight: 700; color: #1e3a8a; }
 .planning .pl-svc-row .pl-name { background: #eef4ff; }
@@ -448,11 +443,6 @@ td.num { font-variant-numeric: tabular-nums; }
   .planning .pl-name { position: static; box-shadow: none; }
   /* À l'impression : noms + jours + horaires + Total + Infos ; on masque Moy. /sem et Demis. */
   .planning .pl-tot-row { display: none !important; }
-  .pl-notes-band { font-size: 9px; }
-  .pl-notes-lbl, .pl-notes-txt { padding: 3px 4px; }
-  .pl-notes-lbl { width: auto !important; }
-  .pl-notes-txt { min-height: 22px; }
-  .pl-notes-txt .pl-empty { visibility: hidden; }
   .planning thead th:nth-last-child(2), .planning tbody td:nth-last-child(2),
   .planning thead th:nth-last-child(3), .planning tbody td:nth-last-child(3) { display: none !important; }
   /* PDF « sans horaire » : grille compacte et centrée (pas étirée sur toute la

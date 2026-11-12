@@ -634,7 +634,7 @@ let planningReport = [];
 let avgHours = {}; // empId → moyenne hebdo (secondes) depuis le 01/06
 let demisTotal = {}; // empId → nb de demis depuis le 01/06 (semaines terminées)
 let weekInfo = {}; // "empId|lundiSemaine" → texte libre (colonne Infos)
-let weekNotes = {}; // "lundiSemaine" → texte libre (ligne Notes au-dessus des dates)
+let weekNotes = {}; // "lundiSemaine" → texte libre (grande case Notes en bas)
 let statusMap = new Map(); // clé "empId|day" → 'cp'|'am'|'ecole'
 let extraMap = {}; // clé "YYYY-MM-DD|midi" / "…|soir" → texte libre (ligne « Extra »)
 let planningNoHours = false; // PDF « sans horaire » : on affiche PM/PS au lieu des heures, sans les totaux
@@ -702,16 +702,7 @@ function renderPlanning() {
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
   if (!actives.length) { out.innerHTML = '<div class="empty">Aucun salarié.</div>'; return; }
 
-  // Ligne « Notes » de la semaine, AU-DESSUS des dates. C'est la légende du tableau
-  // (<caption>) : elle prend exactement sa largeur sans peser sur les colonnes.
-  const weekNote = (weekNotes[from] || '').trim();
-  const noteInner = weekNote
-    ? `<span class="pl-wn-txt">${escapeHtml(weekNote)}</span>`
-    : (planningNoHours ? '' : '<span class="pl-empty">+ Ajouter une note pour la semaine…</span>');
-  let html = `<table class="planning${planningNoHours ? ' no-hours' : ''}">`
-    + `<caption class="pl-notes-cap"><div class="pl-notes-band${planningNoHours ? '' : ' pl-note-click'}">`
-    + `<span class="pl-notes-lbl">Notes</span><span class="pl-notes-txt">${noteInner}</span></div></caption>`
-    + '<thead><tr><th class="pl-name">Salarié</th>';
+  let html = `<table class="planning${planningNoHours ? ' no-hours' : ''}"><thead><tr><th class="pl-name">Salarié</th>`;
   for (const d of days) html += `<th class="pl-day-head" data-day="${d}" title="Cliquer pour copier les arrivées du jour">${planningDayLabel(d)}</th>`;
   html += planningNoHours
     ? '<th></th><th></th><th></th><th></th></tr></thead><tbody>'
@@ -905,6 +896,16 @@ function renderPlanning() {
   for (const d of days) html += `<td>${dayTotals[d] ? fmtH(dayTotals[d]) : '—'}</td>`;
   html += `<td class="pl-total">${fmtH(grand)}</td><td></td><td></td><td></td></tr>`;
 
+  // Grande case « Notes » de la semaine : s'étend sur les 7 colonnes des jours.
+  const weekNote = (weekNotes[from] || '').trim();
+  const noteInner = planningNoHours
+    ? `<span class="pl-wn-txt">${escapeHtml(weekNote)}</span>`
+    : (weekNote ? `<span class="pl-wn-txt">${escapeHtml(weekNote)}</span>` : '<span class="pl-empty">+ Ajouter une note pour la semaine…</span>');
+  const noteCls = 'pl-notes-cell' + (planningNoHours ? '' : ' pl-note-click');
+  html += '<tr class="pl-notes-row"><td class="pl-name">Notes</td>'
+    + `<td class="${noteCls}" colspan="${days.length}">${noteInner}</td>`
+    + '<td></td><td></td><td></td><td></td></tr>';
+
   html += '</tbody></table>';
   out.innerHTML = html;
 
@@ -920,10 +921,6 @@ function renderPlanning() {
   out.querySelectorAll('.pl-info-click').forEach((td) => {
     td.addEventListener('click', () => openInfoEditor(Number(td.dataset.emp)));
   });
-  // Le libellé « Notes » prend la largeur de la colonne des noms (alignement).
-  const noteLbl = out.querySelector('.pl-notes-lbl');
-  const nameTh = out.querySelector('thead th.pl-name');
-  if (noteLbl && nameTh && nameTh.offsetWidth) noteLbl.style.width = nameTh.offsetWidth + 'px';
   const noteCell = out.querySelector('.pl-note-click');
   if (noteCell) noteCell.addEventListener('click', openWeekNoteEditor);
 }

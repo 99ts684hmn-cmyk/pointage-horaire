@@ -484,7 +484,7 @@ let statusMap = new Map(); // clé "empId|day" → 'cp'|'am'|…
 let virtualStatus = new Map(); // clé "empId|day" → 'demi'|'cont' : demi posée par le PROFIL (rien d'enregistré ce jour-là)
 let extraMap = {}; // clé "YYYY-MM-DD|midi" / "…|soir" → texte libre (ligne « Extra »)
 let weekInfo = {}; // "empId|lundiSemaine" → texte libre (colonne Infos)
-let weekNotes = {}; // "lundiSemaine" → texte libre (ligne Notes au-dessus des dates)
+let weekNotes = {}; // "lundiSemaine" → texte libre (ligne Notes en bas du planning)
 const STATUS_SHORT = { cp: 'CP', am: 'AM', ecole: 'École', absent: 'Abs', repos: 'Repos' };
 // ½ CP : la personne ne travaille pas ce service (payé comme un CP). Midi = 3h, soir = 4h.
 const HALF_CP = { midi: 3 * 3600, soir: 4 * 3600 };
@@ -562,16 +562,10 @@ function renderPlanning() {
     + POSTES.map((p) => `<span class="po-chip"><i class="po-dot po-${p.key}"></i>${p.label}${p.slots > 1 ? ' ×' + p.slots : ''}</span>`).join('')
     + '<span class="po-chip"><i class="po-dot po-mise_en_place"></i>Mise en place</span>'
     + '<span class="poste-legend-note">postes verrouillés de la semaine type, puis préférences (Profil) — clic sur une case pour changer, ↻ en bas de colonne pour réaffecter le jour</span></div>';
-  // Largeurs fixées par colonne (la ligne « Notes », en tête, fusionne des cellules).
+  // Largeurs fixées par colonne (le tableau garde sa largeur, quel que soit l'écran).
   html += `<table class="planning pl-main" style="--plw:${88 + 86 * days.length + 62 + 170}px">`
     + '<colgroup><col class="c-name">'
     + days.map(() => '<col class="c-day">').join('') + '<col class="c-total"><col class="c-info"></colgroup><thead>';
-  // Ligne « Notes » de la semaine, AU-DESSUS des dates : toute la largeur du planning.
-  const weekNote = (weekNotes[from] || '').trim();
-  html += `<tr class="pl-notes-row${weekNote ? '' : ' pl-notes-empty'}"><td class="pl-name">Notes</td>`
-    + `<td class="pl-notes-cell pl-note-click" colspan="${days.length + 2}">`
-    + (weekNote ? `<span class="pl-wn-txt">${escapeHtml(weekNote)}</span>` : '<span class="pl-empty">+ Ajouter une note pour la semaine…</span>')
-    + '</td></tr>';
   html += '<tr><th class="pl-name">Salarié</th>';
   for (const d of days) html += `<th class="pl-day-head" data-day="${d}" title="Cliquer pour copier les arrivées du jour">${planningDayLabel(d)}</th>`;
   html += '<th class="pl-tcol" style="text-align:right">Total</th><th class="pl-info-head" title="Note libre par salarié pour la semaine affichée">Infos</th></tr></thead><tbody>';
@@ -851,6 +845,13 @@ function renderPlanning() {
   html += '<tr class="pl-reassign-row"><td class="pl-name">Postes</td>';
   for (const d of days) html += `<td><button class="pl-reassign" data-day="${d}" title="Réaffecter les postes de ce jour selon les préférences (efface les choix manuels du jour)">↻</button></td>`;
   html += '<td class="pl-tcol"></td><td class="pl-info-pad"></td></tr>';
+
+  // Ligne « Notes » de la semaine, tout en bas : toute la largeur du planning.
+  const weekNote = (weekNotes[from] || '').trim();
+  html += `<tr class="pl-notes-row${weekNote ? '' : ' pl-notes-empty'}"><td class="pl-name">Notes</td>`
+    + `<td class="pl-notes-cell pl-note-click" colspan="${days.length + 2}">`
+    + (weekNote ? `<span class="pl-wn-txt">${escapeHtml(weekNote)}</span>` : '<span class="pl-empty">+ Ajouter une note pour la semaine…</span>')
+    + '</td></tr>';
 
   html += '</tbody></table>';
   out.innerHTML = html;

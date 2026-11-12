@@ -493,7 +493,7 @@ const cpSvcOf = (st) => ((st === 'demi_cp_midi' || st === 'cp_midi_demi_soir') ?
   : ((st === 'demi_cp_soir' || st === 'cp_soir_demi_midi') ? 'soir' : null));
 const demiSvcOf = (st) => ((st === 'demi_midi' || st === 'cp_soir_demi_midi') ? 'midi'
   : ((st === 'demi_soir' || st === 'cp_midi_demi_soir') ? 'soir' : null));
-const STATUS_FULL = { demi_cp_midi: '½ CP midi (3h) — présent soir', demi_cp_soir: '½ CP soir (4h) — présent midi', cp_midi_demi_soir: '½ CP midi (3h) + demi soir', cp_soir_demi_midi: '½ CP soir (4h) + demi midi', normal: 'Journée complète (demi / continue du profil annulée ce jour)', cp: 'Congés payés', am: 'Arrêt maladie', ecole: 'École', absent: 'Absent', repos: 'Repos', demi_midi: 'Demi midi (présent soir)', demi_soir: 'Demi soir (présent midi)', echange_midi: 'Échange midi', echange_soir: 'Échange soir', echange_both: 'Échange midi + soir', extra_midi: 'Extra midi', extra_soir: 'Extra soir', extra_both: 'Extra midi + soir' };
+const STATUS_FULL = { demi_cp_midi: '½ CP midi — présent soir', demi_cp_soir: '½ CP soir — présent midi', cp_midi_demi_soir: '½ CP midi + demi soir', cp_soir_demi_midi: '½ CP soir + demi midi', normal: 'Journée complète (demi / continue du profil annulée ce jour)', cp: 'Congés payés', am: 'Arrêt maladie', ecole: 'École', absent: 'Absent', repos: 'Repos', demi_midi: 'Demi midi (présent soir)', demi_soir: 'Demi soir (présent midi)', echange_midi: 'Échange midi', echange_soir: 'Échange soir', echange_both: 'Échange midi + soir', extra_midi: 'Extra midi', extra_soir: 'Extra soir', extra_both: 'Extra midi + soir' };
 const AWAY_STATUSES = ['cp', 'am', 'absent', 'ecole'];
 // Croix (X) en coin à coin, remplit la case (repos) ou la demi-case (demi).
 const CROSS_SVG = '<svg class="pl-cross" viewBox="0 0 10 10" preserveAspectRatio="none" aria-hidden="true"><line x1="0" y1="0" x2="10" y2="10"/><line x1="10" y1="0" x2="0" y2="10"/></svg>';
@@ -759,7 +759,7 @@ function renderPlanning() {
               midiHalf = `<div class="pl-half${pmCls}">${exBadge(extraMidi)}${midi.map(fmt).join('<br>')}${pLbl(pmKey)}</div>`;
               midiCount[d]++;
             } else if (cpMidi) {
-              midiHalf = '<div class="pl-half pl-cphalf" title="½ CP midi (3h)">½CP</div>'; // congé payé → non compté présent
+              midiHalf = '<div class="pl-half pl-cphalf" title="½ CP midi">½CP</div>'; // congé payé → non compté présent
             } else if (demiMidi) {
               midiHalf = `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;
             } else if (echMidi) {
@@ -778,7 +778,7 @@ function renderPlanning() {
               soirHalf = `<div class="pl-half${psCls}">${exBadge(extraSoir)}${soir.map(fmt).join('<br>')}${pLbl(psKey)}</div>`;
               soirCount[d]++;
             } else if (cpSoir) {
-              soirHalf = '<div class="pl-half pl-cphalf" title="½ CP soir (4h)">½CP</div>'; // congé payé → non compté présent
+              soirHalf = '<div class="pl-half pl-cphalf" title="½ CP soir">½CP</div>'; // congé payé → non compté présent
             } else if (demiSoir) {
               soirHalf = `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;
             } else if (echSoir) {
@@ -1716,8 +1716,8 @@ function openCellEditor(empId, day) {
       ${isApprenti ? `<button class="btn btn-ghost st-btn st-ecole${status === 'ecole' ? ' active' : ''}" data-st="ecole">École</button>` : ''}
       <button class="btn btn-ghost st-btn st-demi${status === 'demi_midi' ? ' active' : ''}" data-st="demi_midi">Demi midi</button>
       <button class="btn btn-ghost st-btn st-demi${status === 'demi_soir' ? ' active' : ''}" data-st="demi_soir">Demi soir</button>
-      <button class="btn btn-ghost cph-btn st-cp${cpSvcOf(status) === 'midi' ? ' active' : ''}" data-svc="midi" title="Congé payé sur le service du midi : l'horaire du midi est supprimé">½ CP midi (3h)</button>
-      <button class="btn btn-ghost cph-btn st-cp${cpSvcOf(status) === 'soir' ? ' active' : ''}" data-svc="soir" title="Congé payé sur le service du soir : l'horaire du soir est supprimé">½ CP soir (4h)</button>
+      <button class="btn btn-ghost cph-btn st-cp${cpSvcOf(status) === 'midi' ? ' active' : ''}" data-svc="midi" title="Congé payé sur le service du midi : l'horaire du midi est supprimé">½ CP midi</button>
+      <button class="btn btn-ghost cph-btn st-cp${cpSvcOf(status) === 'soir' ? ' active' : ''}" data-svc="soir" title="Congé payé sur le service du soir : l'horaire du soir est supprimé">½ CP soir</button>
       <button class="btn btn-ghost ech-btn st-echange${(status === 'echange_midi' || status === 'echange_both') ? ' active' : ''}" data-ech="midi">Échange midi</button>
       <button class="btn btn-ghost ech-btn st-echange${(status === 'echange_soir' || status === 'echange_both') ? ' active' : ''}" data-ech="soir">Échange soir</button>
       <button class="btn btn-ghost exb-btn st-extra${(status === 'extra_midi' || status === 'extra_both') ? ' active' : ''}" data-exb="midi">Extra midi</button>

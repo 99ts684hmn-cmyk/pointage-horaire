@@ -639,7 +639,7 @@ let statusMap = new Map(); // clé "empId|day" → 'cp'|'am'|'ecole'
 let extraMap = {}; // clé "YYYY-MM-DD|midi" / "…|soir" → texte libre (ligne « Extra »)
 let planningNoHours = false; // PDF « sans horaire » : on affiche PM/PS au lieu des heures, sans les totaux
 const STATUS_SHORT = { cp: 'CP', am: 'AM', ecole: 'École', absent: 'Abs', repos: 'Repos' };
-const STATUS_FULL = { cp: 'Congés payés', am: 'Arrêt maladie', ecole: 'École', absent: 'Absent', repos: 'Repos', demi_midi: 'Demi midi (présent soir)', demi_soir: 'Demi soir (présent midi)', demi_cp_midi: '½ CP midi (3h, absent midi)', demi_cp_soir: '½ CP soir (4h, absent soir)', echange_midi: 'Échange midi', echange_soir: 'Échange soir', echange_both: 'Échange midi + soir', continu: 'Continu (midi + soir)' };
+const STATUS_FULL = { cp: 'Congés payés', am: 'Arrêt maladie', ecole: 'École', absent: 'Absent', repos: 'Repos', demi_midi: 'Demi midi (présent soir)', demi_soir: 'Demi soir (présent midi)', demi_cp_midi: '½ CP midi (absent midi)', demi_cp_soir: '½ CP soir (absent soir)', echange_midi: 'Échange midi', echange_soir: 'Échange soir', echange_both: 'Échange midi + soir', continu: 'Continu (midi + soir)' };
 const AWAY_STATUSES = ['cp', 'am', 'absent', 'ecole'];
 // Demi-CP : la personne ne travaille pas ce service (payé comme un CP). Midi = 3h, soir = 4h.
 const HALF_CP = { demi_cp_midi: 3 * 3600, demi_cp_soir: 4 * 3600 };
@@ -1727,8 +1727,8 @@ function openCellEditor(empId, day) {
       ${isApprenti ? `<button class="btn btn-ghost st-btn st-ecole${status === 'ecole' ? ' active' : ''}" data-st="ecole">École</button>` : ''}
       <button class="btn btn-ghost st-btn st-demi${status === 'demi_midi' ? ' active' : ''}" data-st="demi_midi">Demi midi</button>
       <button class="btn btn-ghost st-btn st-demi${status === 'demi_soir' ? ' active' : ''}" data-st="demi_soir">Demi soir</button>
-      <button class="btn btn-ghost st-btn st-cp${status === 'demi_cp_midi' ? ' active' : ''}" data-st="demi_cp_midi">½ CP midi (3h)</button>
-      <button class="btn btn-ghost st-btn st-cp${status === 'demi_cp_soir' ? ' active' : ''}" data-st="demi_cp_soir">½ CP soir (4h)</button>
+      <button class="btn btn-ghost st-btn st-cp${status === 'demi_cp_midi' ? ' active' : ''}" data-st="demi_cp_midi">½ CP midi</button>
+      <button class="btn btn-ghost st-btn st-cp${status === 'demi_cp_soir' ? ' active' : ''}" data-st="demi_cp_soir">½ CP soir</button>
       <button class="btn btn-ghost ech-btn st-echange${(status === 'echange_midi' || status === 'echange_both') ? ' active' : ''}" data-ech="midi">Échange midi</button>
       <button class="btn btn-ghost ech-btn st-echange${(status === 'echange_soir' || status === 'echange_both') ? ' active' : ''}" data-ech="soir">Échange soir</button>
       ${status ? '<button class="btn btn-ghost" id="ce-clear">Effacer le statut</button>' : ''}

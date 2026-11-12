@@ -494,31 +494,23 @@ td.num { font-variant-numeric: tabular-nums; }
   .panel { padding: 18px 14px; }
 }
 
-/* --- Éditeur de la semaine type --- */
-.modal.modal-wide { max-width: 1040px; padding: 22px 18px; }
-.te-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 10px; }
-.te-bar .field { flex: 0 1 380px; margin-bottom: 0; }
-.te-state { font-size: .85rem; font-weight: 600; color: #475569; background: #f1f5f9; border-radius: 10px; padding: 8px 12px; margin-bottom: 10px; }
-.te-state.te-dirty { color: #9a3412; background: #ffedd5; }
-.te-table { margin: 0 auto; }
-.te-table thead th { padding: 6px 3px; }
-.te-table .pl-svc-row td { text-align: center; vertical-align: top; }
-.te-warn { font-size: .58rem; font-weight: 700; color: #b45309; line-height: 1.15; white-space: normal; }
-.te-warn.te-dup { color: #b91c1c; }
-.te-foot { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-top: 14px; }
-.te-foot .field { flex: 0 0 200px; margin-bottom: 0; }
-.te-foot .btn { flex: 0 0 auto; }
-.te-hint { font-size: .85rem; color: var(--muted); margin-top: 8px; min-height: 1.2em; }
-.te-small { font-size: .8rem; color: var(--muted); margin: 8px 0 0; }
-.te-modes { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
-.te-mode {
-  border: 1.5px solid #cbd5e1; background: #fff; color: var(--text); border-radius: 999px;
-  padding: 8px 13px; font-family: inherit; font-size: .82rem; font-weight: 700; cursor: pointer;
+/* --- Profil : demi-journée et journée continue --- */
+.pf-sched-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+.pf-sched-lbl { flex: 0 0 76px; font-weight: 700; font-size: .92rem; }
+.pf-sched-row select, .pf-sched-row input[type="time"] {
+  padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px;
+  background: #fff; color: var(--text); font-family: inherit; font-size: .95rem;
 }
-.te-mode.active { background: #1f2120; color: #fff; border-color: #1f2120; }
-.te-table thead th.pl-name { background: #1f2120; color: var(--cream); }
+.pf-sched-row select { flex: 1 1 130px; min-width: 0; }
+.modal .field label.pf-sched-t { display: flex; align-items: center; gap: 6px; margin: 0; font-size: .8rem; font-weight: 600; color: var(--muted); }
+.pf-sched-row.off .pf-sched-t { opacity: .45; }
+/* Éditeur de case : horaire issu du profil */
+.cell-existing.cell-profil { background: #eef4ff; border: 1px solid #c7d7f5; }
+.cell-profil-h { font-size: 1.05rem; font-weight: 700; }
+.modal .cell-profil-note { font-size: .78rem; color: var(--muted); margin-top: 4px; }
 @media (max-width: 680px) {
-  .modal.modal-wide { padding: 16px 10px; }
-  .te-foot .field { flex: 1 1 100%; }
-  .te-foot .btn { flex: 1 1 auto; }
+  .pf-sched-lbl { flex: 1 1 100%; }
+  .pf-sched-row select { flex: 1 1 100%; }
+  .pf-sched-row .pf-sched-t { flex: 1 1 40%; }
+  .pf-sched-row input[type="time"] { flex: 1 1 auto; min-width: 0; }
 }

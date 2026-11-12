@@ -242,6 +242,149 @@ function restDaysOn(periods, dateStr) {
   return best ? best.days : [];
 }
 
+// --- Rythme hebdomadaire du profil : demi-journée + journée continue --------
+// Chaque salarié peut avoir, par semaine, UNE demi-journée et UNE journée
+// continue : un jour de la semaine + une heure de début et de fin. Le planning
+// les applique tout seul, chaque semaine, tant que le jour n'a rien de saisi
+// (ni horaires, ni statut). Historisé par date d'effet, comme les repos.
+const HM_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
+function cleanShift(x) {
+  if (!x || typeof x !== 'object') return null;
+  const day = Number(x.day);
+  if (x.day === '' || x.day === null || x.day === undefined) return null;
+  if (!Number.isInteger(day) || day < 0 || day > 6) return null;
+  if (!HM_RE.test(x.start || '') || !HM_RE.test(x.end || '')) return null;
+  return { day, start: x.start, end: x.end };
+}
+function parseSchedule(raw) {
+  if (!raw) return [];
+  try {
+    const v = JSON.parse(raw);
+    if (!Array.isArray(v)) return [];
+    return v
+      .filter((p) => p && ISO_RE.test(p.from || ''))
+      .map((p) => ({ from: p.from, demi: cleanShift(p.demi), cont: cleanShift(p.cont) }))
+      .sort((a, b) => a.from.localeCompare(b.from));
+  } catch { return []; }
+}
+function scheduleOn(periods, dateStr) {
+  let best = null;
+  for (const p of periods) if (p.from <= dateStr && (!best || p.from > best.from)) best = p;
+  return best;
+}
+const sameShift = (a, b) => (!a && !b) || (!!a && !!b && a.day === b.day && a.start === b.start && a.end === b.end);
+const hmMin = (hm) => Number(hm.slice(0, 2)) * 60 + Number(hm.slice(3, 5));
+// Horodatages + service NON travaillé d'un créneau programmé, un jour donné.
+// Mêmes fenêtres que le planning : midi 9h–14h, soir 18h–21h. Un créneau qui
+// couvre les deux services ne pose aucune demi.
+function shiftTimes(day, sh) {
+  const inTs = tsFromDateTime(day, sh.start);
+  let outTs = tsFromDateTime(day, sh.end);
+  if (outTs <= inTs) outTs += DAY_MS; // fin après minuit → lendemain
+  const s = hmMin(sh.start);
+  let e = hmMin(sh.end); if (e <= s) e += 24 * 60;
+  const midi = s < 14 * 60 && e > 9 * 60;
+  const soir = s < 21 * 60 && e > 18 * 60;
+  let status = null;
+  if (midi && !soir) status = 'demi_soir';
+  else if (soir && !midi) status = 'demi_midi';
+  else if (!midi && !soir) status = s < 17 * 60 ? 'demi_soir' : 'demi_midi';
+  return { inTs, outTs, status };
+}
+// Créneau programmé d'un salarié pour ce jour (null si aucun, ou jour de repos).
+function shiftOn(schedPeriods, restPeriods, day) {
+  const p = scheduleOn(schedPeriods, day);
+  if (!p) return null;
+  const wd = new Date(`${day}T12:00:00`).getDay();
+  const kind = (p.demi && p.demi.day === wd) ? 'demi' : ((p.cont && p.cont.day === wd) ? 'cont' : null);
+  if (!kind) return null;
+  if (restDaysOn(restPeriods, day).includes(wd)) return null;
+  return { kind, start: p[kind].start, end: p[kind].end };
+}
+function dayList(from, to) {
+  if (!ISO_RE.test(from || '') || !ISO_RE.test(to || '')) return [];
+  const days = [];
+  const cur = new Date(`${from}T12:00:00`); const end = new Date(`${to}T12:00:00`);
+  while (cur <= end && days.length < 800) { days.push(localDay(cur.getTime())); cur.setDate(cur.getDate() + 1); }
+  return days;
+}
+// Créneaux programmés À AFFICHER sur une plage : uniquement les jours où rien
+// n'est saisi. Des horaires saisis ce jour-là, ou un statut (CP, repos, demi,
+// échange, « journée complète »…), prennent toujours le dessus. Seule exception :
+// un « extra » garde les horaires programmés (sans la croix de demi).
+function virtualShifts(from, to, employeeId) {
+  const days = dayList(from, to);
+  if (!days.length) return [];
+  let emps = db.prepare("SELECT id, name, active, end_date, rest_days, schedule FROM employees WHERE schedule != ''").all();
+  if (employeeId) emps = emps.filter((e) => e.id === Number(employeeId));
+  if (!emps.length) return [];
+  const statuses = new Map();
+  for (const r of db.prepare('SELECT employee_id, day, status FROM day_status WHERE day >= ? AND day <= ?').all(from, to)) {
+    statuses.set(r.employee_id + '|' + r.day, r.status);
+  }
+  const filled = new Set();
+  const fromTs = businessDayStart(from); const toTs = businessDayStart(to) + DAY_MS;
+  for (const r of db.prepare('SELECT employee_id, clock_in FROM time_entries WHERE clock_in >= ? AND clock_in < ?').all(fromTs, toTs)) {
+    filled.add(r.employee_id + '|' + businessDay(r.clock_in));
+  }
+  const out = [];
+  for (const emp of emps) {
+    const sched = parseSchedule(emp.schedule);
+    if (!sched.length) continue;
+    const rest = parseRestPeriods(emp.rest_days);
+    for (const day of days) {
+      if (!emp.active && !(emp.end_date && emp.end_date >= day)) continue;
+      const sh = shiftOn(sched, rest, day);
+      if (!sh) continue;
+      const key = emp.id + '|' + day;
+      if (filled.has(key)) continue;
+      const st = statuses.get(key);
+      if (st && !/^extra_/.test(st)) continue;
+      const t = shiftTimes(day, sh);
+      out.push({
+        employeeId: emp.id, name: emp.name, day, kind: sh.kind, start: sh.start, end: sh.end,
+        inTs: t.inTs, outTs: t.outTs, status: st ? null : t.status,
+      });
+    }
+  }
+  return out;
+}
+// Quand le rythme (ou les repos) d'un profil change, les jours DÉJÀ remplis à
+// l'identique de l'ancien rythme (un seul horaire, mêmes heures, même demi) sont
+// vidés à partir de la date d'effet : le nouveau rythme s'y applique alors.
+// Un jour modifié à la main (autre horaire, autre statut) n'est jamais touché.
+function cleanGeneratedDays(oldEmp, newEmp, from) {
+  const oldS = parseSchedule(oldEmp.schedule);
+  if (!oldS.length) return 0;
+  const newS = parseSchedule(newEmp.schedule);
+  const oldR = parseRestPeriods(oldEmp.rest_days); const newR = parseRestPeriods(newEmp.rest_days);
+  const last = db.prepare('SELECT MAX(clock_in) AS m FROM time_entries WHERE employee_id = ?').get(oldEmp.id).m;
+  if (!last) return 0;
+  const entOf = db.prepare('SELECT id, clock_in, clock_out FROM time_entries WHERE employee_id = ? AND clock_in >= ? AND clock_in < ?');
+  const stOf = db.prepare('SELECT status FROM day_status WHERE employee_id = ? AND day = ?');
+  const delEnt = db.prepare('DELETE FROM time_entries WHERE id = ?');
+  const delSt = db.prepare('DELETE FROM day_status WHERE employee_id = ? AND day = ?');
+  let n = 0;
+  for (const day of dayList(from, businessDay(last))) {
+    const o = shiftOn(oldS, oldR, day);
+    if (!o) continue;
+    const nw = shiftOn(newS, newR, day);
+    if (nw && nw.start === o.start && nw.end === o.end) continue; // rien ne change ce jour-là
+    const f = businessDayStart(day);
+    const ents = entOf.all(oldEmp.id, f, f + DAY_MS);
+    if (ents.length !== 1) continue;
+    const t = shiftTimes(day, o);
+    if (ents[0].clock_in !== t.inTs || ents[0].clock_out !== t.outTs) continue;
+    const st = stOf.get(oldEmp.id, day);
+    if ((st ? st.status : null) !== t.status) continue;
+    delEnt.run(ents[0].id);
+    if (st) delSt.run(oldEmp.id, day);
+    n++;
+  }
+  return n;
+}
+
 // Postes de cuisine. Préférences par salarié : 1 = poste principal,
 // 2 = bon pour le poste, 3 = dépannage, 4/non renseigné = jamais
 // (seuls 1 à 3 sont stockés ; « jamais » = clé absente).
@@ -270,7 +413,7 @@ app.get('/api/cooks', (req, res) => {
 
 app.get('/api/admin/employees', requireAdmin, (req, res) => {
   const rows = db.prepare(
-    'SELECT id, name, category, rest_days, continuous_service, sort_order, active, end_date, created_at, postes FROM employees ORDER BY active DESC, sort_order ASC, name COLLATE NOCASE'
+    'SELECT id, name, category, rest_days, continuous_service, sort_order, active, end_date, created_at, postes, schedule FROM employees ORDER BY active DESC, sort_order ASC, name COLLATE NOCASE'
   ).all();
   const today = localDay(Date.now());
   res.json(rows.map((r) => {
@@ -285,6 +428,7 @@ app.get('/api/admin/employees', requireAdmin, (req, res) => {
       created_at: r.created_at,
       restDays: restDaysOn(periods, today), // applicables aujourd'hui (affichage profil)
       restPeriods: periods, // historique complet (utilisé par le planning, par jour)
+      schedulePeriods: parseSchedule(r.schedule), // demi + continue programmées (historisées)
       continuous: !!r.continuous_service,
       postes: parsePostes(r.postes), // préférences de poste (1..3 par poste)
     };
@@ -319,6 +463,23 @@ app.put('/api/admin/employees/:id', requireAdmin, (req, res) => {
   if (!emp) return res.status(404).json({ error: 'Employé introuvable' });
 
   const { name, active, category } = req.body || {};
+  // Date d'effet commune aux repos et au rythme (demi + continue) : par défaut
+  // aujourd'hui ; une date future n'altère ni le passé ni le présent.
+  const effFrom = ISO_RE.test((req.body && req.body.restDaysFrom) || '')
+    ? req.body.restDaysFrom : localDay(Date.now());
+  // Rythme hebdomadaire : validé AVANT toute écriture.
+  let newSched = null;
+  if (req.body && req.body.schedule !== undefined) {
+    const sc = req.body.schedule || {};
+    const asked = (x) => !!x && x.day !== '' && x.day !== null && x.day !== undefined;
+    const demi = cleanShift(sc.demi); const cont = cleanShift(sc.cont);
+    if (asked(sc.demi) && !demi) return res.status(400).json({ error: 'Demi-journée : le jour, le début et la fin sont obligatoires.' });
+    if (asked(sc.cont) && !cont) return res.status(400).json({ error: 'Journée continue : le jour, le début et la fin sont obligatoires.' });
+    if (demi && cont && demi.day === cont.day) {
+      return res.status(400).json({ error: 'La demi-journée et la journée continue ne peuvent pas tomber le même jour.' });
+    }
+    newSched = { demi, cont };
+  }
   if (name !== undefined && String(name).trim()) {
     db.prepare('UPDATE employees SET name = ? WHERE id = ?').run(String(name).trim(), id);
   }
@@ -328,14 +489,29 @@ app.put('/api/admin/employees/:id', requireAdmin, (req, res) => {
   if (req.body && Array.isArray(req.body.restDays)) {
     const clean = [...new Set(req.body.restDays
       .map((x) => Number(x)).filter((n) => Number.isInteger(n) && n >= 0 && n <= 6))].sort((a, b) => a - b);
-    // Date d'effet : par défaut aujourd'hui ; le futur n'altère pas le passé/présent.
-    const from = /^\d{4}-\d{2}-\d{2}$/.test(req.body.restDaysFrom || '')
-      ? req.body.restDaysFrom : localDay(Date.now());
+    const from = effFrom;
     const periods = parseRestPeriods(emp.rest_days).filter((p) => p.from !== from);
     periods.push({ from, days: clean });
     periods.sort((a, b) => a.from.localeCompare(b.from));
     db.prepare('UPDATE employees SET rest_days = ? WHERE id = ?')
       .run(JSON.stringify(periods.map((p) => ({ from: p.from, days: p.days }))), id);
+  }
+  let cleaned = 0;
+  if (newSched) {
+    const periods = parseSchedule(emp.schedule);
+    const cur = scheduleOn(periods, effFrom);
+    // Inchangé par rapport à ce qui est en vigueur à cette date → rien à écrire.
+    if (!(sameShift(cur && cur.demi, newSched.demi) && sameShift(cur && cur.cont, newSched.cont))) {
+      const next = periods.filter((p) => p.from !== effFrom);
+      next.push({ from: effFrom, demi: newSched.demi, cont: newSched.cont });
+      next.sort((a, b) => a.from.localeCompare(b.from));
+      db.prepare('UPDATE employees SET schedule = ? WHERE id = ?').run(JSON.stringify(next), id);
+    }
+  }
+  if (newSched || (req.body && Array.isArray(req.body.restDays))) {
+    // Les jours déjà remplis à l'identique de l'ancien rythme suivent le nouveau.
+    const after = db.prepare('SELECT * FROM employees WHERE id = ?').get(id);
+    db.transaction(() => { cleaned = cleanGeneratedDays(emp, after, effFrom); })();
   }
   if (req.body && req.body.continuous !== undefined) {
     db.prepare('UPDATE employees SET continuous_service = ? WHERE id = ?').run(req.body.continuous ? 1 : 0, id);
@@ -363,7 +539,7 @@ app.put('/api/admin/employees/:id', requireAdmin, (req, res) => {
       db.prepare('UPDATE employees SET active = 1, end_date = NULL WHERE id = ?').run(id);
     }
   }
-  res.json({ ok: true });
+  res.json({ ok: true, cleaned });
 });
 
 app.delete('/api/admin/employees/:id', requireAdmin, (req, res) => {
@@ -458,7 +634,9 @@ app.delete('/api/admin/entries/:id', requireAdmin, (req, res) => {
 
 // --- Statuts de journée (CP / AM / École / …) ------------------------------
 
-const DAY_STATUSES = ['cp', 'am', 'ecole', 'absent', 'repos', 'demi_midi', 'demi_soir', 'echange_midi', 'echange_soir', 'echange_both', 'extra_midi', 'extra_soir', 'extra_both'];
+// « normal » = journée complète : annule, pour ce jour seulement, la demi ou la
+// continue programmée dans le profil.
+const DAY_STATUSES = ['cp', 'am', 'ecole', 'absent', 'repos', 'demi_midi', 'demi_soir', 'echange_midi', 'echange_soir', 'echange_both', 'extra_midi', 'extra_soir', 'extra_both', 'normal'];
 
 app.get('/api/admin/day-statuses', requireAdmin, (req, res) => {
   const { from, to } = req.query;
@@ -466,6 +644,10 @@ app.get('/api/admin/day-statuses', requireAdmin, (req, res) => {
   const rows = db.prepare(
     'SELECT employee_id AS employeeId, day, status FROM day_status WHERE day >= ? AND day <= ?'
   ).all(from, to);
+  // + demi-journées du rythme programmé dans les profils (jours sans rien de saisi).
+  for (const v of virtualShifts(from, to)) {
+    if (v.status) rows.push({ employeeId: v.employeeId, day: v.day, status: v.status, virtual: true, kind: v.kind });
+  }
   res.json(rows);
 });
 
@@ -584,7 +766,9 @@ app.post('/api/admin/poste-assigns/reset', requireAdmin, (req, res) => {
   res.json({ ok: true, cleared: info.changes });
 });
 
-// --- Semaine type (modèle hebdomadaire récurrent, historisé) ---------------
+// --- Semaine type (répartition habituelle des POSTES, historisée) ----------
+// Ne sert plus qu'aux postes : l'affectation automatique du planning la lit.
+// Les horaires et demi-journées viennent désormais du profil (rythme ci-dessus).
 // Setting `week_templates` : liste de périodes { from:'AAAA-MM-JJ', shifts:{
 //   <employeeId>: { <jour 0=dim..6=sam>: { start:'HH:MM', end:'HH:MM', demi:'midi'|'soir'|null,
 //                                           midi:<poste>, soir:<poste> } } } }.
@@ -597,13 +781,72 @@ function readTemplates() {
     return Array.isArray(v) ? v : [];
   } catch { return []; }
 }
-function templateOn(dateStr) {
-  let best = null;
-  for (const t of readTemplates()) {
-    if (t && /^\d{4}-\d{2}-\d{2}$/.test(t.from || '') && t.from <= dateStr && (!best || t.from > best.from)) best = t;
+
+// Reprise unique : le rythme (demi + continue) de chaque profil est initialisé
+// à partir de la dernière semaine type, pour que rien ne change à l'écran.
+// Date d'effet = celle de cette semaine type si elle est à venir, sinon le jour
+// de la reprise (le passé n'est jamais modifié).
+(function seedSchedulesFromTemplate() {
+  if (getSetting('schedule_seeded')) return;
+  try {
+    const tpls = readTemplates()
+      .filter((t) => t && ISO_RE.test(t.from || '') && t.shifts && typeof t.shifts === 'object')
+      .sort((a, b) => a.from.localeCompare(b.from));
+    const last = tpls[tpls.length - 1];
+    if (last) {
+      const today = localDay(Date.now());
+      const from = last.from >= today ? last.from : today;
+      const upd = db.prepare("UPDATE employees SET schedule = ? WHERE id = ? AND schedule = ''");
+      db.transaction(() => {
+        for (const [empId, byWd] of Object.entries(last.shifts)) {
+          const list = [];
+          for (const wd of Object.keys(byWd || {})) {
+            const c = cleanShift({ day: Number(wd), start: (byWd[wd] || {}).start, end: (byWd[wd] || {}).end });
+            if (!c) continue;
+            let mins = hmMin(c.end) - hmMin(c.start); if (mins <= 0) mins += 24 * 60;
+            list.push({ c, mins });
+          }
+          if (!list.length) continue;
+          list.sort((a, b) => b.mins - a.mins); // le plus long = la continue
+          let cont = null; let demi = null;
+          if (list.length === 1) { if (list[0].mins > 7 * 60) cont = list[0].c; else demi = list[0].c; }
+          else { cont = list[0].c; demi = list[list.length - 1].c; }
+          upd.run(JSON.stringify([{ from, demi, cont }]), Number(empId));
+        }
+        // Semaines DÉJÀ préparées avec l'ancien bouton (elles ont des horaires
+        // ou des demi-journées) : un jour de demi / continue laissé vide l'a été
+        // volontairement (journée complète). On le fige en « journée complète »
+        // pour que ces plannings restent exactement tels qu'ils ont été saisis.
+        const lastSt = db.prepare('SELECT MAX(day) AS d FROM day_status').get().d || '';
+        const lastEn = db.prepare('SELECT MAX(clock_in) AS m FROM time_entries').get().m;
+        const lastDay = (lastEn && businessDay(lastEn) > lastSt) ? businessDay(lastEn) : lastSt;
+        if (lastDay && lastDay >= from) {
+          const hasDemi = db.prepare("SELECT 1 FROM day_status WHERE day >= ? AND day <= ? AND status IN ('demi_midi','demi_soir') LIMIT 1");
+          const hasEnt = db.prepare('SELECT 1 FROM time_entries WHERE clock_in >= ? AND clock_in < ? LIMIT 1');
+          const prepared = new Map(); // lundi → semaine déjà préparée ?
+          const isPrepared = (day) => {
+            const d = new Date(`${day}T12:00:00`);
+            d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+            const mon = localDay(d.getTime());
+            if (!prepared.has(mon)) {
+              d.setDate(d.getDate() + 6);
+              const sun = localDay(d.getTime());
+              prepared.set(mon, !!(hasDemi.get(mon, sun) || hasEnt.get(businessDayStart(mon), businessDayStart(sun) + DAY_MS)));
+            }
+            return prepared.get(mon);
+          };
+          const keepFull = db.prepare("INSERT OR IGNORE INTO day_status (employee_id, day, status) VALUES (?, ?, 'normal')");
+          for (const v of virtualShifts(from, lastDay)) {
+            if (v.status && isPrepared(v.day)) keepFull.run(v.employeeId, v.day);
+          }
+        }
+      })();
+    }
+    setSetting('schedule_seeded', '1');
+  } catch (e) {
+    console.warn('  Reprise du rythme des profils impossible :', e.message);
   }
-  return best;
-}
+})();
 
 app.get('/api/admin/week-template', requireAdmin, (req, res) => {
   res.json(readTemplates());
@@ -619,74 +862,6 @@ app.put('/api/admin/week-template', requireAdmin, (req, res) => {
   }
   setSetting('week_templates', JSON.stringify(periods));
   res.json({ ok: true, count: periods.length });
-});
-
-// Remplit une plage de jours avec la semaine type : crée les horaires fixes et
-// pose les statuts « demi ». Un jour déjà rempli (horaires OU statut) est laissé
-// tel quel. Les jours de repos du profil sont ignorés (sécurité).
-app.post('/api/admin/apply-template', requireAdmin, (req, res) => {
-  const { from, to } = req.body || {};
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(from || '') || !/^\d{4}-\d{2}-\d{2}$/.test(to || '')) {
-    return res.status(400).json({ error: 'Période invalide' });
-  }
-  const days = [];
-  const cur = new Date(`${from}T12:00:00`); const end = new Date(`${to}T12:00:00`);
-  while (cur <= end) { days.push(localDay(cur.getTime())); cur.setDate(cur.getDate() + 1); }
-
-  const employees = db.prepare('SELECT * FROM employees').all();
-  const byId = new Map(employees.map((e) => [String(e.id), e]));
-  const hasStatus = db.prepare('SELECT 1 FROM day_status WHERE employee_id = ? AND day = ?');
-  const insEntry = db.prepare('INSERT INTO time_entries (employee_id, clock_in, clock_out, ended_by) VALUES (?, ?, ?, ?)');
-  const upStatus = db.prepare(`
-    INSERT INTO day_status (employee_id, day, status) VALUES (?, ?, ?)
-    ON CONFLICT(employee_id, day) DO UPDATE SET status = excluded.status
-  `);
-  const hasEntries = db.prepare('SELECT 1 FROM time_entries WHERE employee_id = ? AND clock_in >= ? AND clock_in < ? LIMIT 1');
-
-  let created = 0; let demis = 0; let skipped = 0;
-  db.transaction(() => {
-    for (const day of days) {
-      const tpl = templateOn(day);
-      if (!tpl || !tpl.shifts) continue;
-      const wd = String(new Date(`${day}T12:00:00`).getDay());
-      for (const [empId, byWd] of Object.entries(tpl.shifts)) {
-        const sh = byWd && byWd[wd];
-        if (!sh) continue;
-        const emp = byId.get(String(empId));
-        if (!emp) continue;
-        if (!emp.active && !(emp.end_date && emp.end_date >= day)) continue;
-        // Repos au profil ce jour-là → on ne crée rien (cohérence).
-        if (restDaysOn(parseRestPeriods(emp.rest_days), day).includes(Number(wd))) continue;
-        // Les postes du modèle ne sont plus copiés ici : l'affectation
-        // automatique du planning lit directement la semaine type (toutes les
-        // semaines, sans avoir à cliquer « ⚡ Semaine type »).
-        const hasStart = /^\d{2}:\d{2}$/.test(sh.start || '');
-        const isDemi = sh.demi === 'midi' || sh.demi === 'soir';
-        if (!hasStart && !isDemi) continue; // ni horaire fixe ni demi : postes seulement
-        // Jour déjà rempli (statut ou horaires) → conservé tel quel.
-        if (hasStatus.get(emp.id, day)) { skipped++; continue; }
-        const f = businessDayStart(day);
-        if (hasEntries.get(emp.id, f, f + DAY_MS)) { skipped++; continue; }
-        if (hasStart) {
-          const inTs = tsFromDateTime(day, sh.start);
-          let outTs = null;
-          if (/^\d{2}:\d{2}$/.test(sh.end || '')) {
-            outTs = tsFromDateTime(day, sh.end);
-            if (outTs <= inTs) outTs += DAY_MS; // fin après minuit → lendemain
-          }
-          insEntry.run(emp.id, inTs, outTs, outTs != null ? 'manual' : null);
-          created++;
-        }
-        // Demi-journée : posée même sans horaire fixe (sinon le salarié
-        // apparaît présent aux deux services).
-        if (isDemi) {
-          upStatus.run(emp.id, day, sh.demi === 'midi' ? 'demi_midi' : 'demi_soir');
-          demis++;
-        }
-      }
-    }
-  })();
-  res.json({ ok: true, created, demis, skipped });
 });
 
 // --- Données du planning ---------------------------------------------------
@@ -711,6 +886,14 @@ function buildReport({ from, to, employeeId }) {
   sql += ' ORDER BY e.name COLLATE NOCASE, te.clock_in ASC';
 
   const rows = db.prepare(sql).all(...params);
+  // Horaires programmés dans les profils (demi + continue) : ajoutés les jours
+  // où rien n'est saisi. Ils comptent dans les totaux comme des horaires saisis.
+  for (const v of virtualShifts(from, to, employeeId)) {
+    rows.push({
+      id: null, employee_id: v.employeeId, employee_name: v.name,
+      clock_in: v.inTs, clock_out: v.outTs, ended_by: 'profil', virtual: true, kind: v.kind,
+    });
+  }
   const windows = getBreakWindows();
 
   // Regroupement par employé puis par jour. On accumule en millisecondes
@@ -742,6 +925,8 @@ function buildReport({ from, to, employeeId }) {
       grossSeconds: Math.floor(b.grossMs / 1000),
       breakSeconds: Math.floor(b.breakMs / 1000),
       open: r.clock_out == null,
+      virtual: !!r.virtual, // horaire issu du profil (non modifiable ligne à ligne)
+      kind: r.kind || null, // 'demi' | 'cont'
     });
   }
 

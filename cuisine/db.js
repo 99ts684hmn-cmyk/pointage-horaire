@@ -108,6 +108,12 @@ if (!empCols.some((c) => c.name === 'end_date')) {
 if (!empCols.some((c) => c.name === 'postes')) {
   db.exec("ALTER TABLE employees ADD COLUMN postes TEXT NOT NULL DEFAULT ''");
 }
+// Rythme hebdomadaire programmé dans le profil (JSON, historisé comme les repos) :
+// [{ from:'AAAA-MM-JJ', demi:{day,start,end}|null, cont:{day,start,end}|null }].
+// « demi » = la demi-journée de la semaine, « cont » = la journée continue.
+if (!empCols.some((c) => c.name === 'schedule')) {
+  db.exec("ALTER TABLE employees ADD COLUMN schedule TEXT NOT NULL DEFAULT ''");
+}
 // Origine d'une affectation de poste : NULL = posée à la main, 'tpl' = posée par
 // la semaine type (affichée sans le liseré « manuel »).
 if (!db.prepare('PRAGMA table_info(poste_assign)').all().some((c) => c.name === 'src')) {

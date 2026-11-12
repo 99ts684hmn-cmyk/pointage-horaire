@@ -463,8 +463,8 @@ const POSTE_PRIORITY = ['grillade', 'garnitures', 'froid', 'plonge', 'volant'];
 let assignMap = new Map(); // affectations MANUELLES : "empId|jour|service" → poste
 let weekTemplates = []; // semaines types (périodes) : l'auto suit leurs postes
 
-// Poste prévu par la SEMAINE TYPE pour ce salarié, ce jour et ce service
-// (null si rien de prévu, mise en place, ou service non travaillé ce jour-là).
+// Poste VERROUILLÉ dans la semaine type pour ce salarié, ce jour et ce service
+// (null si rien de verrouillé, ou « mise en place »).
 // La période applicable = la dernière dont « from » <= jour.
 function tplPosteOf(empId, day, svc) {
   let best = null;
@@ -473,7 +473,7 @@ function tplPosteOf(empId, day, svc) {
   }
   const byWd = best && best.shifts && best.shifts[empId];
   const sh = byWd && byWd[new Date(day + 'T12:00:00').getDay()];
-  if (!sh || sh.demi === svc) return null;
+  if (!sh) return null;
   return POSTES.some((p) => p.key === sh[svc]) ? sh[svc] : null;
 }
 let lastPosteOf = {}; // affectations effectives du dernier rendu (manuel + auto)
@@ -548,7 +548,7 @@ function renderPlanning() {
   let html = '<div class="poste-legend">'
     + POSTES.map((p) => `<span class="po-chip"><i class="po-dot po-${p.key}"></i>${p.label}${p.slots > 1 ? ' ×' + p.slots : ''}</span>`).join('')
     + '<span class="po-chip"><i class="po-dot po-mise_en_place"></i>Mise en place</span>'
-    + '<span class="poste-legend-note">postes automatiques : répartition habituelle de la semaine, puis préférences (Profil) — clic sur une case pour changer, ↻ en bas de colonne pour réaffecter le jour</span></div>';
+    + '<span class="poste-legend-note">postes verrouillés de la semaine type, puis préférences (Profil) — clic sur une case pour changer, ↻ en bas de colonne pour réaffecter le jour</span></div>';
   html += '<table class="planning"><thead><tr><th class="pl-name">Salarié</th>';
   for (const d of days) html += `<th class="pl-day-head" data-day="${d}" title="Cliquer pour copier les arrivées du jour">${planningDayLabel(d)}</th>`;
   html += '<th style="text-align:right">Total</th></tr></thead><tbody>';
@@ -1006,6 +1006,334 @@ $('wk-date').addEventListener('change', () => {
   loadPlanning();
 });
 
+// --- Semaine type : postes verrouillés ---------------------------------------
+// La semaine type ne porte plus que les POSTES : pour chaque salarié, chaque
+// jour et chaque service, un poste « verrouillé » (ou rien = automatique selon
+// les préférences). Les repos, la demi-journée et la journée continue viennent
+// du PROFIL : ils sont affichés ici pour information, pas modifiables.
+// Chaque version s'applique à partir de sa date (« from ») jusqu'à la veille de
+// la version suivante. Les anciennes versions restent enregistrées (historique).
+const tplOverlay = $('tpl-overlay');
+const tplModal = $('tpl-modal');
+const tplCellOverlay = $('tplcell-overlay');
+const tplCellModal = $('tplcell-modal');
+const TE_DAYS = [1, 2, 3, 4, 5, 6, 0]; // colonnes Lun → Dim (0 = dimanche)
+const TE_DAY_NAMES = { 1: 'Lundi', 2: 'Mardi', 3: 'Mercredi', 4: 'Jeudi', 5: 'Vendredi', 6: 'Samedi', 0: 'Dimanche' };
+const TE_DAY_SHORT = { 1: 'Lun', 2: 'Mar', 3: 'Mer', 4: 'Jeu', 5: 'Ven', 6: 'Sam', 0: 'Dim' };
+const TE_POSTE_KEYS = [...POSTES.map((p) => p.key), 'mise_en_place'];
+const TE_ISO = /^\d{4}-\d{2}-\d{2}$/;
+let te = null; // { from, shifts, dirty, readOnly, saveFrom, confirmClose, confirmDel }
+
+const teToday = () => localISO(new Date());
+function teAddDays(iso, n) { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return localISO(d); }
+function teFr(iso) { const [y, m, d] = iso.split('-'); return `${d}/${m}/${y}`; }
+function teNextMonday() {
+  const d = new Date(); d.setHours(12, 0, 0, 0);
+  d.setDate(d.getDate() + (((8 - d.getDay()) % 7) || 7));
+  return localISO(d);
+}
+function teVersions() {
+  return weekTemplates.filter((t) => t && TE_ISO.test(t.from || '') && t.shifts && typeof t.shifts === 'object')
+    .sort((a, b) => a.from.localeCompare(b.from));
+}
+function teVersionOn(day) { let best = null; for (const t of teVersions()) if (t.from <= day) best = t.from; return best; }
+
+async function openTplEditor() {
+  const wt = await api('/api/admin/week-template');
+  if (!wt.ok) { if (wt.status === 401) showLogin(); else toast('Erreur de chargement'); return; }
+  weekTemplates = Array.isArray(wt.data) ? wt.data : [];
+  const vs = teVersions();
+  // Version ouverte : celle en vigueur pour la semaine affichée au planning.
+  const shown = $('rep-from').value || teToday();
+  teLoad(teVersionOn(shown) || (vs[0] && vs[0].from) || null);
+  tplOverlay.classList.add('show');
+}
+
+function teLoad(from) {
+  const v = teVersions().find((t) => t.from === from) || null;
+  const today = teToday();
+  // On ne garde que les postes (les anciennes versions portaient aussi des
+  // horaires et des demi-journées, désormais réglés dans le profil).
+  const shifts = {};
+  for (const [empId, byWd] of Object.entries((v && v.shifts) || {})) {
+    for (const [wd, sh] of Object.entries(byWd || {})) {
+      const entry = {};
+      for (const svc of ['midi', 'soir']) if (sh && TE_POSTE_KEYS.includes(sh[svc])) entry[svc] = sh[svc];
+      if (Object.keys(entry).length) (shifts[empId] || (shifts[empId] = {}))[wd] = entry;
+    }
+  }
+  te = {
+    from: v ? v.from : null,
+    shifts,
+    dirty: false,
+    // Version dépassée (une plus récente est déjà en vigueur) : consultation seule.
+    readOnly: !!v && v.from < today && v.from !== teVersionOn(today),
+    // Date d'effet proposée : la version elle-même si elle n'a pas commencé,
+    // sinon lundi prochain (on ne réécrit pas les semaines déjà passées).
+    saveFrom: v && v.from > today ? v.from : teNextMonday(),
+    confirmClose: false, confirmDel: false,
+  };
+  renderTplEditor();
+}
+
+const teRefDate = () => (te.readOnly ? te.from : (TE_ISO.test(te.saveFrom) ? te.saveFrom : teToday()));
+function teEmployees() {
+  const ref = teRefDate();
+  return allEmployees.filter((e) => e.active || (e.endDate && e.endDate >= ref))
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+}
+// Service NON travaillé d'un créneau du profil (mêmes fenêtres que le planning :
+// midi 9h–14h, soir 18h–21h). null = le créneau couvre les deux services.
+function teOffService(sh) {
+  const mn = (hm) => Number(hm.slice(0, 2)) * 60 + Number(hm.slice(3, 5));
+  const s = mn(sh.start); let e = mn(sh.end); if (e <= s) e += 24 * 60;
+  const midi = s < 14 * 60 && e > 9 * 60;
+  const soir = s < 21 * 60 && e > 18 * 60;
+  if (midi && soir) return null;
+  if (midi) return 'soir';
+  if (soir) return 'midi';
+  return s < 17 * 60 ? 'soir' : 'midi';
+}
+// Ce que dit le PROFIL à la date de référence : repos, et pour le jour de demi /
+// de continue, le service non travaillé + l'horaire (affiché pour information).
+function teProfile(emp) {
+  const ref = teRefDate();
+  const out = { rest: restDaysOn(emp.restPeriods, ref), off: {}, hours: {}, kind: {} };
+  const p = scheduleOn(emp.schedulePeriods, ref);
+  for (const k of ['demi', 'cont']) {
+    const sh = p && p[k];
+    if (!sh || out.rest.includes(sh.day)) continue;
+    out.off[sh.day] = teOffService(sh);
+    out.hours[sh.day] = `${sh.start}–${sh.end}`;
+    out.kind[sh.day] = k;
+  }
+  return out;
+}
+function teShift(empId, wd) { return (te.shifts[empId] || {})[wd] || null; }
+
+function teCellHTML(emp, wd, prof) {
+  const attrs = `data-emp="${emp.id}" data-wd="${wd}"`;
+  if (prof.rest.includes(wd)) return `<td class="pl-cell pl-click pl-rest" ${attrs} title="Repos (profil)">${CROSS_SVG}</td>`;
+  const sh = teShift(emp.id, wd) || {};
+  const hours = prof.hours[wd] || '';
+  const off = prof.off[wd] || null;
+  const half = (svc) => {
+    if (off === svc) return `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;
+    const k = TE_POSTE_KEYS.includes(sh[svc]) ? sh[svc] : null;
+    // Horaire du profil : sur le service travaillé (ou sur le midi s'il couvre les deux).
+    const showH = hours && (off || svc === 'midi');
+    if (k) {
+      return showH
+        ? `<div class="pl-half po-${k}">${hours}<span class="pl-poste">${POSTE_LABELS[k]}</span></div>`
+        : `<div class="pl-half pl-pres po-${k}">${POSTE_LABELS[k]}</div>`;
+    }
+    return `<div class="pl-half pl-pres te-auto">${showH ? hours + ' · ' : ''}Auto</div>`;
+  };
+  return `<td class="pl-cell pl-click pl-filled" ${attrs}><div class="pl-stack">${half('midi')}${half('soir')}</div></td>`;
+}
+
+function teHint() {
+  if (te.readOnly) return '';
+  const from = te.saveFrom;
+  if (!TE_ISO.test(from)) return 'Choisis la date à partir de laquelle ces postes s\'appliquent.';
+  const vs = teVersions();
+  const notMonday = new Date(from + 'T12:00:00').getDay() !== 1 ? ' ⚠️ Cette date n\'est pas un lundi.' : '';
+  if (vs.some((t) => t.from === from)) {
+    const past = from <= teToday() ? ' Les semaines déjà passées depuis cette date suivront aussi ces postes.' : '';
+    return `Modifie la version qui commence le ${teFr(from)}.${past}${notMonday}`;
+  }
+  const prev = vs.filter((t) => t.from < from).pop();
+  const next = vs.find((t) => t.from > from);
+  return `Crée une nouvelle version à partir du ${teFr(from)}.`
+    + (prev ? ` Celle du ${teFr(prev.from)} reste enregistrée et s'applique jusqu'au ${teFr(teAddDays(from, -1))}.` : '')
+    + (next ? ` La nouvelle s'arrêtera le ${teFr(teAddDays(next.from, -1))} (version suivante déjà prévue).` : '')
+    + notMonday;
+}
+
+function renderTplEditor() {
+  const vs = teVersions();
+  const today = teToday();
+  const cur = teVersionOn(today);
+  const emps = teEmployees();
+  const opt = (t, i) => {
+    const until = vs[i + 1] ? ' au ' + teFr(teAddDays(vs[i + 1].from, -1)) : '';
+    const tag = t.from === cur ? ' — en cours' : (t.from > today ? ' — à venir' : ' — passée');
+    return `<option value="${t.from}"${t.from === te.from ? ' selected' : ''}>${until ? 'Du' : 'Depuis le'} ${teFr(t.from)}${until}${tag}</option>`;
+  };
+
+  let html = '<h2>✏️ Semaine type — postes verrouillés</h2>'
+    + '<div class="sub">Clique sur une case pour verrouiller le poste de la personne ce jour-là. « Auto » = pas de poste verrouillé : le planning choisit selon les préférences. Les repos, la demi et la continue se règlent dans le profil.</div>'
+    + '<div class="te-bar"><div class="field"><label for="te-ver">Version</label>'
+    + `<select id="te-ver"${te.dirty ? ' disabled title="Enregistre ou annule les modifications pour changer de version"' : ''}>`
+    + (vs.length ? vs.map(opt).join('') : '<option value="">Aucune version</option>') + '</select></div>'
+    + (te.dirty ? '<button class="btn btn-ghost" id="te-undo">↩︎ Annuler les modifications</button>' : '')
+    + '</div>';
+  if (te.readOnly) html += '<div class="te-state">Version passée — consultation seule. « Repartir de cette version » permet de la reprendre à partir d\'une nouvelle date.</div>';
+  else if (te.dirty) html += '<div class="te-state te-dirty">● Modifications non enregistrées</div>';
+
+  html += '<div class="table-wrap"><table class="planning te-table"><thead><tr><th class="pl-name">Salarié</th>';
+  for (const wd of TE_DAYS) html += `<th>${TE_DAY_SHORT[wd]}</th>`;
+  html += '<th title="Nombre de services travaillés dans la semaine">Serv.</th></tr></thead><tbody>';
+  const cover = {}; // "wd|svc" → { n, cnt:{poste:nb} }
+  for (const wd of TE_DAYS) for (const svc of ['midi', 'soir']) cover[wd + '|' + svc] = { n: 0, cnt: {} };
+  for (const emp of emps) {
+    const prof = teProfile(emp);
+    let services = 0; let cells = '';
+    for (const wd of TE_DAYS) {
+      cells += teCellHTML(emp, wd, prof);
+      if (prof.rest.includes(wd)) continue;
+      const sh = teShift(emp.id, wd) || {};
+      for (const svc of ['midi', 'soir']) {
+        if (prof.off[wd] === svc) continue;
+        services++;
+        const c = cover[wd + '|' + svc]; c.n++;
+        if (TE_POSTE_KEYS.includes(sh[svc])) c.cnt[sh[svc]] = (c.cnt[sh[svc]] || 0) + 1;
+      }
+    }
+    html += `<tr class="pl-emp-row"><td class="pl-name"><div class="pl-name-inner"><span class="pl-name-txt">${escapeHtml(emp.name)}</span></div></td>${cells}<td class="pl-total">${services}</td></tr>`;
+  }
+  // Contrôle par service : effectif + postes non verrouillés / en double.
+  for (const svc of ['midi', 'soir']) {
+    html += `<tr class="pl-svc-row"><td class="pl-name">${svc === 'midi' ? '☀️ Midi' : '🌙 Soir'}</td>`;
+    for (const wd of TE_DAYS) {
+      const c = cover[wd + '|' + svc];
+      const miss = POSTES.filter((p) => (c.cnt[p.key] || 0) < p.slots).map((p) => p.label);
+      const dup = POSTES.filter((p) => (c.cnt[p.key] || 0) > p.slots).map((p) => p.label);
+      html += `<td>${c.n}`
+        + (miss.length ? `<div class="te-warn" title="Poste(s) que personne n'a en verrouillé : le planning les attribue selon les préférences">non verrouillé : ${miss.join(', ')}</div>` : '')
+        + (dup.length ? `<div class="te-warn te-dup" title="Plus de personnes verrouillées que de places">en trop : ${dup.join(', ')}</div>` : '')
+        + '</td>';
+    }
+    html += '<td></td></tr>';
+  }
+  html += '</tbody></table></div>';
+
+  html += '<div class="te-foot">';
+  if (te.readOnly) {
+    html += '<button class="btn btn-blue" id="te-fork">Repartir de cette version</button>';
+  } else {
+    html += `<div class="field"><label for="te-from">Appliquer à partir du</label><input type="date" id="te-from" value="${TE_ISO.test(te.saveFrom) ? te.saveFrom : ''}"></div>`
+      + '<button class="btn btn-green" id="te-save">Enregistrer</button>';
+  }
+  html += `<button class="btn btn-ghost" id="te-close">${te.confirmClose ? 'Fermer sans enregistrer ?' : 'Fermer'}</button>`;
+  if (!te.dirty && te.from && te.from > today && vs.length > 1) {
+    html += `<button class="btn btn-red" id="te-del">${te.confirmDel ? 'Confirmer la suppression' : 'Supprimer cette version'}</button>`;
+  }
+  html += `</div><div class="te-hint" id="te-hint">${teHint()}</div>`;
+  tplModal.innerHTML = html;
+
+  const ver = tplModal.querySelector('#te-ver');
+  ver.addEventListener('change', () => teLoad(ver.value || null));
+  const undo = tplModal.querySelector('#te-undo');
+  if (undo) undo.addEventListener('click', () => teLoad(te.from));
+  tplModal.querySelectorAll('td.pl-click').forEach((td) => {
+    td.addEventListener('click', () => openTplCell(Number(td.dataset.emp), Number(td.dataset.wd)));
+  });
+  const fork = tplModal.querySelector('#te-fork');
+  if (fork) fork.addEventListener('click', () => { te.readOnly = false; te.dirty = true; te.saveFrom = teNextMonday(); renderTplEditor(); });
+  const fromEl = tplModal.querySelector('#te-from');
+  if (fromEl) fromEl.addEventListener('change', () => { te.saveFrom = fromEl.value; renderTplEditor(); });
+  const save = tplModal.querySelector('#te-save');
+  if (save) save.addEventListener('click', teSave);
+  tplModal.querySelector('#te-close').addEventListener('click', () => {
+    if (te.dirty && !te.confirmClose) { te.confirmClose = true; renderTplEditor(); return; }
+    tplOverlay.classList.remove('show');
+  });
+  const del = tplModal.querySelector('#te-del');
+  if (del) del.addEventListener('click', teDelete);
+}
+
+async function tePut(periods) {
+  const r = await api('/api/admin/week-template', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ periods }),
+  });
+  if (!r.ok) {
+    if (r.status === 401) { tplOverlay.classList.remove('show'); showLogin(); } else toast((r.data && r.data.error) || 'Erreur');
+    return false;
+  }
+  weekTemplates = periods;
+  return true;
+}
+
+async function teSave() {
+  const from = te.saveFrom;
+  if (!TE_ISO.test(from)) { toast('Choisis la date « Appliquer à partir du »'); return; }
+  const shifts = JSON.parse(JSON.stringify(te.shifts));
+  for (const empId of Object.keys(shifts)) {
+    const byWd = shifts[empId] || {};
+    for (const wd of Object.keys(byWd)) if (!byWd[wd] || (!byWd[wd].midi && !byWd[wd].soir)) delete byWd[wd];
+    if (!Object.keys(byWd).length) delete shifts[empId];
+  }
+  const periods = teVersions().filter((t) => t.from !== from);
+  periods.push({ from, shifts });
+  periods.sort((a, b) => a.from.localeCompare(b.from));
+  if (!(await tePut(periods))) return;
+  teLoad(from);
+  te.saveFrom = from; // on reste sur la version qu'on vient d'enregistrer
+  renderTplEditor();
+  loadPlanning();
+  toast(`Postes verrouillés enregistrés (à partir du ${teFr(from)})`);
+}
+
+async function teDelete() {
+  if (!te.confirmDel) { te.confirmDel = true; renderTplEditor(); return; }
+  const periods = teVersions().filter((t) => t.from !== te.from);
+  if (!(await tePut(periods))) return;
+  teLoad(teVersionOn($('rep-from').value || teToday()) || (periods[0] && periods[0].from) || null);
+  loadPlanning();
+  toast('Version supprimée');
+}
+
+// Fenêtre d'une case : poste verrouillé de chaque service travaillé (ou Auto).
+function openTplCell(empId, wd) {
+  if (te.readOnly) { toast('Version passée : « Repartir de cette version » pour la modifier'); return; }
+  const emp = allEmployees.find((e) => e.id === empId);
+  if (!emp) return;
+  const prof = teProfile(emp);
+  if (prof.rest.includes(wd)) { toast('Jour de repos — il se change dans le profil', 2600); return; }
+  const off = prof.off[wd] || null;
+  const sh = teShift(empId, wd) || {};
+  const st = {
+    midi: TE_POSTE_KEYS.includes(sh.midi) ? sh.midi : '',
+    soir: TE_POSTE_KEYS.includes(sh.soir) ? sh.soir : '',
+  };
+  const kindLbl = prof.kind[wd] === 'cont' ? 'journée continue' : 'demi-journée';
+  const picks = (svc, icon) => `<div class="ce-poste-row"><span class="ce-poste-svc">${icon}</span>`
+    + TE_POSTE_KEYS.map((k) => `<button type="button" class="po-pick po-${k}${st[svc] === k ? ' active' : ''}" data-svc="${svc}" data-k="${k}">${POSTE_LABELS[k]}</button>`).join('')
+    + `<button type="button" class="po-pick po-pick-auto${st[svc] ? '' : ' active'}" data-svc="${svc}" data-k="" title="Pas de poste verrouillé : le planning choisit selon les préférences">Auto</button></div>`;
+  const draw = () => {
+    let h = `<h2>${escapeHtml(emp.name)} — ${TE_DAY_NAMES[wd]}</h2><div class="sub">Poste verrouillé — « Auto » pour laisser le planning choisir</div>`;
+    if (off !== 'midi') h += picks('midi', '☀️');
+    if (off !== 'soir') h += picks('soir', '🌙');
+    if (prof.hours[wd]) {
+      h += `<p class="te-small">${off ? (off === 'midi' ? 'Midi' : 'Soir') + ' non travaillé : ' : ''}${kindLbl} ${prof.hours[wd]} (réglée dans le profil).</p>`;
+    }
+    h += '<div class="action-buttons" style="margin-top:16px;grid-template-columns:1fr 1fr">'
+      + '<button class="btn btn-green" id="tc-ok">Valider</button><button class="btn btn-ghost" id="tc-cancel">Annuler</button></div>';
+    tplCellModal.innerHTML = h;
+    tplCellModal.querySelectorAll('.po-pick').forEach((b) => b.addEventListener('click', () => { st[b.dataset.svc] = b.dataset.k; draw(); }));
+    tplCellModal.querySelector('#tc-cancel').addEventListener('click', () => tplCellOverlay.classList.remove('show'));
+    tplCellModal.querySelector('#tc-ok').addEventListener('click', () => {
+      const byWd = te.shifts[empId] || (te.shifts[empId] = {});
+      const entry = {};
+      if (off !== 'midi' && st.midi) entry.midi = st.midi;
+      if (off !== 'soir' && st.soir) entry.soir = st.soir;
+      if (Object.keys(entry).length) byWd[wd] = entry; else delete byWd[wd];
+      if (!Object.keys(byWd).length) delete te.shifts[empId];
+      te.dirty = true; te.confirmClose = false;
+      tplCellOverlay.classList.remove('show');
+      renderTplEditor();
+    });
+  };
+  draw();
+  tplCellOverlay.classList.add('show');
+}
+
+$('tpl-edit-btn').addEventListener('click', openTplEditor);
+tplOverlay.addEventListener('click', (e) => { if (e.target === tplOverlay && !(te && te.dirty)) tplOverlay.classList.remove('show'); });
+tplCellOverlay.addEventListener('click', (e) => { if (e.target === tplCellOverlay) tplCellOverlay.classList.remove('show'); });
+
 // --- Hors entreprise : statut sur toute la semaine (CP/AM/Absent/École) ----
 $('he-btn').addEventListener('click', openOffWork);
 
@@ -1251,7 +1579,7 @@ function openCellEditor(empId, day) {
     return `<div class="ce-poste-row" data-svc="${svc}">
       <span class="ce-poste-svc">${icon}</span>
       ${ALL_POSTE_KEYS.map((k) => `<button type="button" class="po-pick po-${k}${manual === k ? ' active' : ''}" data-svc="${svc}" data-k="${k}">${POSTE_LABELS[k]}</button>`).join('')}
-      <button type="button" class="po-pick po-pick-auto${manual ? '' : ' active'}" data-svc="${svc}" data-k="" title="Laisser l'affectation automatique (répartition habituelle, puis préférences)${autoTitle}">Auto${autoTitle}</button>
+      <button type="button" class="po-pick po-pick-auto${manual ? '' : ' active'}" data-svc="${svc}" data-k="" title="Laisser l'affectation automatique (semaine type, puis préférences)${autoTitle}">Auto${autoTitle}</button>
     </div>`;
   };
 

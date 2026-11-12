@@ -483,6 +483,8 @@ let planningReport = [];
 let statusMap = new Map(); // clé "empId|day" → 'cp'|'am'|…
 let virtualStatus = new Map(); // clé "empId|day" → 'demi'|'cont' : demi posée par le PROFIL (rien d'enregistré ce jour-là)
 let extraMap = {}; // clé "YYYY-MM-DD|midi" / "…|soir" → texte libre (ligne « Extra »)
+let weekInfo = {}; // "empId|lundiSemaine" → texte libre (colonne Infos)
+let weekNotes = {}; // "lundiSemaine" → texte libre (ligne Notes au-dessus des dates)
 const STATUS_SHORT = { cp: 'CP', am: 'AM', ecole: 'École', absent: 'Abs', repos: 'Repos' };
 const STATUS_FULL = { normal: 'Journée complète (demi / continue du profil annulée ce jour)', cp: 'Congés payés', am: 'Arrêt maladie', ecole: 'École', absent: 'Absent', repos: 'Repos', demi_midi: 'Demi midi (présent soir)', demi_soir: 'Demi soir (présent midi)', echange_midi: 'Échange midi', echange_soir: 'Échange soir', echange_both: 'Échange midi + soir', extra_midi: 'Extra midi', extra_soir: 'Extra soir', extra_both: 'Extra midi + soir' };
 const AWAY_STATUSES = ['cp', 'am', 'absent', 'ecole'];
@@ -494,13 +496,17 @@ async function loadPlanning() {
   const to = $('rep-to').value;
   if (!from || !to) { renderPlanning(); return; }
   const params = new URLSearchParams({ from, to });
-  const [rep, st, ex, pa, wt] = await Promise.all([
+  const [rep, st, ex, pa, wt, wi, wn] = await Promise.all([
     api('/api/admin/report?' + params.toString()),
     api('/api/admin/day-statuses?' + params.toString()),
     api('/api/admin/extra?' + params.toString()),
     api('/api/admin/poste-assigns?' + params.toString()),
     api('/api/admin/week-template'),
+    api('/api/admin/week-info'),
+    api('/api/admin/week-note'),
   ]);
+  weekInfo = (wi.ok && wi.data && typeof wi.data === 'object') ? wi.data : {};
+  weekNotes = (wn.ok && wn.data && typeof wn.data === 'object') ? wn.data : {};
   weekTemplates = (wt.ok && Array.isArray(wt.data)) ? wt.data : [];
   planningReport = (rep.ok && rep.data) ? rep.data : [];
   statusMap = new Map();
@@ -549,9 +555,19 @@ function renderPlanning() {
     + POSTES.map((p) => `<span class="po-chip"><i class="po-dot po-${p.key}"></i>${p.label}${p.slots > 1 ? ' ×' + p.slots : ''}</span>`).join('')
     + '<span class="po-chip"><i class="po-dot po-mise_en_place"></i>Mise en place</span>'
     + '<span class="poste-legend-note">postes verrouillés de la semaine type, puis préférences (Profil) — clic sur une case pour changer, ↻ en bas de colonne pour réaffecter le jour</span></div>';
-  html += '<table class="planning"><thead><tr><th class="pl-name">Salarié</th>';
+  // Largeurs fixées par colonne (la ligne « Notes », en tête, fusionne des cellules).
+  html += `<table class="planning pl-main" style="--plw:${88 + 86 * days.length + 62 + 170}px">`
+    + '<colgroup><col class="c-name">'
+    + days.map(() => '<col class="c-day">').join('') + '<col class="c-total"><col class="c-info"></colgroup><thead>';
+  // Ligne « Notes » de la semaine, AU-DESSUS des dates : toute la largeur du planning.
+  const weekNote = (weekNotes[from] || '').trim();
+  html += `<tr class="pl-notes-row${weekNote ? '' : ' pl-notes-empty'}"><td class="pl-name">Notes</td>`
+    + `<td class="pl-notes-cell pl-note-click" colspan="${days.length + 2}">`
+    + (weekNote ? `<span class="pl-wn-txt">${escapeHtml(weekNote)}</span>` : '<span class="pl-empty">+ Ajouter une note pour la semaine…</span>')
+    + '</td></tr>';
+  html += '<tr><th class="pl-name">Salarié</th>';
   for (const d of days) html += `<th class="pl-day-head" data-day="${d}" title="Cliquer pour copier les arrivées du jour">${planningDayLabel(d)}</th>`;
-  html += '<th style="text-align:right">Total</th></tr></thead><tbody>';
+  html += '<th class="pl-tcol" style="text-align:right">Total</th><th class="pl-info-head" title="Note libre par salarié pour la semaine affichée">Infos</th></tr></thead><tbody>';
 
   const dayTotals = {};
   const midiCount = {};
@@ -781,7 +797,9 @@ function renderPlanning() {
       const nameCell = `<td class="pl-name"><div class="pl-name-inner"><span class="pl-name-txt">${escapeHtml(emp.name)}</span>`
         + (demiCount ? `<span class="pl-demi-count" title="${demiCount} demi cette semaine">${demiCount}</span>` : '')
         + '</div></td>';
-      html += `<tr class="pl-emp-row">${nameCell}${dayCells}<td class="pl-total">${fmtH(tot)}</td></tr>`;
+      const infoTxt = (weekInfo[emp.id + '|' + from] || '').trim();
+      const infoCell = `<td class="pl-info pl-info-click" data-emp="${emp.id}">${infoTxt ? `<span class="pl-info-txt">${escapeHtml(infoTxt)}</span>` : '<span class="pl-empty">+</span>'}</td>`;
+      html += `<tr class="pl-emp-row">${nameCell}${dayCells}<td class="pl-total pl-tcol">${fmtH(tot)}</td>${infoCell}</tr>`;
   }
 
   // Ligne « Extra » : saisie libre par service ; chaque texte saisi compte +1 présent.
@@ -796,25 +814,25 @@ function renderPlanning() {
       + '</div>';
     html += `<td class="pl-extra-cell">${sub('midi', m)}${sub('soir', s)}</td>`;
   }
-  html += '<td></td></tr>';
+  html += '<td class="pl-tcol"></td><td class="pl-info-pad"></td></tr>';
 
   // Nombre de présents par service (par jour).
   html += '<tr class="pl-svc-row"><td class="pl-name">Pres. midi</td>';
   for (const d of days) html += `<td>${midiCount[d] || '—'}</td>`;
-  html += '<td></td></tr>';
+  html += '<td class="pl-tcol"></td><td class="pl-info-pad"></td></tr>';
   html += '<tr class="pl-svc-row"><td class="pl-name">Pres. soir</td>';
   for (const d of days) html += `<td>${soirCount[d] || '—'}</td>`;
-  html += '<td></td></tr>';
+  html += '<td class="pl-tcol"></td><td class="pl-info-pad"></td></tr>';
 
   html += '<tr class="pl-tot-row"><td class="pl-name">Total / jour</td>';
   for (const d of days) html += `<td>${dayTotals[d] ? fmtH(dayTotals[d]) : '—'}</td>`;
-  html += `<td class="pl-total">${fmtH(grand)}</td></tr>`;
+  html += `<td class="pl-total pl-tcol">${fmtH(grand)}</td><td class="pl-info-pad"></td></tr>`;
 
   // Boutons ↻ : réaffecte les postes du jour selon les préférences
   // (efface les affectations manuelles de la colonne).
   html += '<tr class="pl-reassign-row"><td class="pl-name">Postes</td>';
   for (const d of days) html += `<td><button class="pl-reassign" data-day="${d}" title="Réaffecter les postes de ce jour selon les préférences (efface les choix manuels du jour)">↻</button></td>`;
-  html += '<td></td></tr>';
+  html += '<td class="pl-tcol"></td><td class="pl-info-pad"></td></tr>';
 
   html += '</tbody></table>';
   out.innerHTML = html;
@@ -831,6 +849,80 @@ function renderPlanning() {
   out.querySelectorAll('.pl-reassign').forEach((btn) => {
     btn.addEventListener('click', () => openReassignModal(btn.dataset.day));
   });
+  out.querySelectorAll('.pl-info-click').forEach((td) => {
+    td.addEventListener('click', () => openInfoEditor(Number(td.dataset.emp)));
+  });
+  const noteCell = out.querySelector('.pl-note-click');
+  if (noteCell) noteCell.addEventListener('click', openWeekNoteEditor);
+}
+
+// Éditeur de la ligne « Notes » de la semaine affichée (texte libre).
+function openWeekNoteEditor() {
+  const week = $('rep-from').value;
+  if (!week) return;
+  const cur = (weekNotes[week] || '');
+  cellModal.innerHTML = `
+    <h2>Notes de la semaine</h2>
+    <div class="sub">Semaine du ${frDate(week)}</div>
+    <div class="field" style="margin-top:12px">
+      <textarea id="wn-text" style="width:100%;height:150px;font-family:inherit;font-size:.95rem;padding:10px;border:1px solid var(--border);border-radius:10px" placeholder="Note libre pour toute la semaine…">${escapeHtml(cur)}</textarea>
+    </div>
+    <div class="action-buttons" style="margin-top:12px;grid-template-columns:repeat(2,1fr)">
+      <button class="btn btn-green" id="wn-save">Enregistrer</button>
+      ${cur ? '<button class="btn btn-ghost" id="wn-clear">Effacer</button>' : ''}
+    </div>
+    <div class="msg error" id="wn-msg"></div>
+    <div style="margin-top:12px"><button class="btn btn-ghost" id="wn-close">Fermer</button></div>
+  `;
+  const save = async (text) => {
+    const { ok, data } = await api('/api/admin/week-note', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ week, text }),
+    });
+    if (!ok) { const m = $('wn-msg'); if (m) { m.textContent = (data && data.error) || 'Erreur'; m.classList.add('show'); } return; }
+    cellOverlay.classList.remove('show');
+    loadPlanning();
+  };
+  cellModal.querySelector('#wn-save').addEventListener('click', () => save(cellModal.querySelector('#wn-text').value));
+  const clr = cellModal.querySelector('#wn-clear');
+  if (clr) clr.addEventListener('click', () => save(''));
+  cellModal.querySelector('#wn-close').addEventListener('click', () => cellOverlay.classList.remove('show'));
+  cellOverlay.classList.add('show');
+}
+
+// Éditeur de la case « Infos » d'un salarié pour la semaine affichée (texte libre).
+function openInfoEditor(empId) {
+  const emp = allEmployees.find((e) => e.id === empId);
+  const week = $('rep-from').value;
+  if (!emp || !week) return;
+  const cur = (weekInfo[empId + '|' + week] || '');
+  cellModal.innerHTML = `
+    <h2>Infos — ${escapeHtml(emp.name)}</h2>
+    <div class="sub">Semaine du ${frDate(week)} (note propre à cette semaine)</div>
+    <div class="field" style="margin-top:12px">
+      <textarea id="wi-text" style="width:100%;height:100px;font-family:inherit;font-size:.95rem;padding:10px;border:1px solid var(--border);border-radius:10px" placeholder="Note libre…">${escapeHtml(cur)}</textarea>
+    </div>
+    <div class="action-buttons" style="margin-top:12px;grid-template-columns:repeat(2,1fr)">
+      <button class="btn btn-green" id="wi-save">Enregistrer</button>
+      ${cur ? '<button class="btn btn-ghost" id="wi-clear">Effacer</button>' : ''}
+    </div>
+    <div class="msg error" id="wi-msg"></div>
+    <div style="margin-top:12px"><button class="btn btn-ghost" id="wi-close">Fermer</button></div>
+  `;
+  const save = async (text) => {
+    const { ok, data } = await api('/api/admin/week-info', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employeeId: empId, week, text }),
+    });
+    if (!ok) { const m = $('wi-msg'); if (m) { m.textContent = (data && data.error) || 'Erreur'; m.classList.add('show'); } return; }
+    cellOverlay.classList.remove('show');
+    loadPlanning();
+  };
+  cellModal.querySelector('#wi-save').addEventListener('click', () => save(cellModal.querySelector('#wi-text').value));
+  const clr = cellModal.querySelector('#wi-clear');
+  if (clr) clr.addEventListener('click', () => save(''));
+  cellModal.querySelector('#wi-close').addEventListener('click', () => cellOverlay.classList.remove('show'));
+  cellOverlay.classList.add('show');
 }
 
 // Fenêtre de confirmation de la réaffectation d'un jour (boutons ↻).

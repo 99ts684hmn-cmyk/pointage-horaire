@@ -636,7 +636,10 @@ app.delete('/api/admin/entries/:id', requireAdmin, (req, res) => {
 
 // « normal » = journée complète : annule, pour ce jour seulement, la demi ou la
 // continue programmée dans le profil.
-const DAY_STATUSES = ['cp', 'am', 'ecole', 'absent', 'repos', 'demi_midi', 'demi_soir', 'echange_midi', 'echange_soir', 'echange_both', 'extra_midi', 'extra_soir', 'extra_both', 'normal'];
+// ½ CP : « demi_cp_midi / demi_cp_soir » = congé payé sur un service, l'autre est
+// travaillé ; « cp_midi_demi_soir / cp_soir_demi_midi » = congé payé sur un service
+// ET l'autre service non travaillé (jour de demi-journée ou de journée continue).
+const DAY_STATUSES = ['cp', 'am', 'ecole', 'absent', 'repos', 'demi_midi', 'demi_soir', 'demi_cp_midi', 'demi_cp_soir', 'cp_midi_demi_soir', 'cp_soir_demi_midi', 'echange_midi', 'echange_soir', 'echange_both', 'extra_midi', 'extra_soir', 'extra_both', 'normal'];
 
 app.get('/api/admin/day-statuses', requireAdmin, (req, res) => {
   const { from, to } = req.query;

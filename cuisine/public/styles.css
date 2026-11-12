@@ -379,6 +379,9 @@ td.num { font-variant-numeric: tabular-nums; }
 .st-absent { background: #e5e7eb; color: #374151; }
 /* Boutons de statut dans l'éditeur de case */
 .st-btn.st-cp { background: #dbeafe; color: #1e40af; }
+/* ½ CP : demi-case bleue (congé payé sur un service) + boutons de l'éditeur. */
+.pl-half.pl-cphalf { background: #dbeafe; color: #1e40af; font-weight: 700; font-size: .72rem; letter-spacing: .02em; }
+.cph-btn.st-cp { background: #dbeafe; color: #1e40af; }
 .st-btn.st-am { background: #fee2e2; color: #b91c1c; }
 .st-btn.st-ecole { background: #ede9fe; color: #6d28d9; }
 .st-btn.st-absent { background: #e5e7eb; color: #374151; }
@@ -574,3 +577,5 @@ td.num { font-variant-numeric: tabular-nums; }
   .te-foot .field { flex: 1 1 100%; }
   .te-foot .btn { flex: 1 1 auto; }
 }
+.cph-btn.active { box-shadow: inset 0 0 0 2.5px currentColor; font-weight: 800; }
+.cph-btn.active::after { content: ' ✓'; }

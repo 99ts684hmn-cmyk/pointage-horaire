@@ -486,7 +486,14 @@ let extraMap = {}; // clé "YYYY-MM-DD|midi" / "…|soir" → texte libre (ligne
 let weekInfo = {}; // "empId|lundiSemaine" → texte libre (colonne Infos)
 let weekNotes = {}; // "lundiSemaine" → texte libre (ligne Notes au-dessus des dates)
 const STATUS_SHORT = { cp: 'CP', am: 'AM', ecole: 'École', absent: 'Abs', repos: 'Repos' };
-const STATUS_FULL = { normal: 'Journée complète (demi / continue du profil annulée ce jour)', cp: 'Congés payés', am: 'Arrêt maladie', ecole: 'École', absent: 'Absent', repos: 'Repos', demi_midi: 'Demi midi (présent soir)', demi_soir: 'Demi soir (présent midi)', echange_midi: 'Échange midi', echange_soir: 'Échange soir', echange_both: 'Échange midi + soir', extra_midi: 'Extra midi', extra_soir: 'Extra soir', extra_both: 'Extra midi + soir' };
+// ½ CP : la personne ne travaille pas ce service (payé comme un CP). Midi = 3h, soir = 4h.
+const HALF_CP = { midi: 3 * 3600, soir: 4 * 3600 };
+// Lecture d'un statut : service en congé payé / service non travaillé (demi).
+const cpSvcOf = (st) => ((st === 'demi_cp_midi' || st === 'cp_midi_demi_soir') ? 'midi'
+  : ((st === 'demi_cp_soir' || st === 'cp_soir_demi_midi') ? 'soir' : null));
+const demiSvcOf = (st) => ((st === 'demi_midi' || st === 'cp_soir_demi_midi') ? 'midi'
+  : ((st === 'demi_soir' || st === 'cp_midi_demi_soir') ? 'soir' : null));
+const STATUS_FULL = { demi_cp_midi: '½ CP midi (3h) — présent soir', demi_cp_soir: '½ CP soir (4h) — présent midi', cp_midi_demi_soir: '½ CP midi (3h) + demi soir', cp_soir_demi_midi: '½ CP soir (4h) + demi midi', normal: 'Journée complète (demi / continue du profil annulée ce jour)', cp: 'Congés payés', am: 'Arrêt maladie', ecole: 'École', absent: 'Absent', repos: 'Repos', demi_midi: 'Demi midi (présent soir)', demi_soir: 'Demi soir (présent midi)', echange_midi: 'Échange midi', echange_soir: 'Échange soir', echange_both: 'Échange midi + soir', extra_midi: 'Extra midi', extra_soir: 'Extra soir', extra_both: 'Extra midi + soir' };
 const AWAY_STATUSES = ['cp', 'am', 'absent', 'ecole'];
 // Croix (X) en coin à coin, remplit la case (repos) ou la demi-case (demi).
 const CROSS_SVG = '<svg class="pl-cross" viewBox="0 0 10 10" preserveAspectRatio="none" aria-hidden="true"><line x1="0" y1="0" x2="10" y2="10"/><line x1="10" y1="0" x2="0" y2="10"/></svg>';
@@ -601,7 +608,8 @@ function renderPlanning() {
         const { cont, midi, soir } = hasHours ? classifyDay(dayData.segments) : { cont: [], midi: [], soir: [] };
         if (hasHours && (emp.continuous || cont.length)) { present.push(emp); continue; }
         const segs = svc === 'midi' ? midi : soir;
-        const demi = status === (svc === 'midi' ? 'demi_midi' : 'demi_soir');
+        // Service non travaillé : demi-journée, ou ½ CP posé sur ce service.
+        const demi = demiSvcOf(status) === svc || cpSvcOf(status) === svc;
         const ech = status === (svc === 'midi' ? 'echange_midi' : 'echange_soir') || status === 'echange_both';
         // Jour de repos sans extra sur ce service → pas présent sur ce service.
         if (segs.length || (!demi && !ech && (!isRest || ex))) present.push(emp);
@@ -692,13 +700,15 @@ function renderPlanning() {
       const rep = byId.get(emp.id);
       let dayCells = '';
       let demiCount = 0; // nombre de demi-journées (un seul service) sur la semaine
+      let cpBonusSec = 0; // heures créditées par les ½ CP de la semaine
       for (const d of days) {
         const day = rep && rep.days.find((x) => x.day === d);
         const hasHours = !!(day && day.segments.length);
         const status = statusMap.get(emp.id + '|' + d);
         const awayStatus = AWAY_STATUSES.includes(status) ? status : null; // cp/am/absent/ecole
         const isRest = restDaysOn(emp.restPeriods, d).includes(weekday[d]) || status === 'repos';
-        const demiMidi = status === 'demi_midi'; const demiSoir = status === 'demi_soir';
+        const demiMidi = demiSvcOf(status) === 'midi'; const demiSoir = demiSvcOf(status) === 'soir';
+        const cpMidi = cpSvcOf(status) === 'midi'; const cpSoir = cpSvcOf(status) === 'soir';
         const echMidi = status === 'echange_midi' || status === 'echange_both';
         const echSoir = status === 'echange_soir' || status === 'echange_both';
         const extraMidi = status === 'extra_midi' || status === 'extra_both';
@@ -728,7 +738,7 @@ function renderPlanning() {
           // couvrant les deux services, ou profil « continu » sans coupure visible
           // ni demi posée ce jour-là.
           const isCont = hasHours && (cont.length > 0
-            || (emp.continuous && !(midi.length && soir.length) && !demiMidi && !demiSoir));
+            || (emp.continuous && !(midi.length && soir.length) && !demiMidi && !demiSoir && !cpMidi && !cpSoir));
           const pmKey = posteOf[emp.id + '|' + d + '|midi'];
           const psKey = posteOf[emp.id + '|' + d + '|soir'];
           // Liseré sur les affectations manuelles (≠ automatiques).
@@ -748,6 +758,8 @@ function renderPlanning() {
             if (midi.length) {
               midiHalf = `<div class="pl-half${pmCls}">${exBadge(extraMidi)}${midi.map(fmt).join('<br>')}${pLbl(pmKey)}</div>`;
               midiCount[d]++;
+            } else if (cpMidi) {
+              midiHalf = '<div class="pl-half pl-cphalf" title="½ CP midi (3h)">½CP</div>'; // congé payé → non compté présent
             } else if (demiMidi) {
               midiHalf = `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;
             } else if (echMidi) {
@@ -765,6 +777,8 @@ function renderPlanning() {
             if (soir.length) {
               soirHalf = `<div class="pl-half${psCls}">${exBadge(extraSoir)}${soir.map(fmt).join('<br>')}${pLbl(psKey)}</div>`;
               soirCount[d]++;
+            } else if (cpSoir) {
+              soirHalf = '<div class="pl-half pl-cphalf" title="½ CP soir (4h)">½CP</div>'; // congé payé → non compté présent
             } else if (demiSoir) {
               soirHalf = `<div class="pl-half pl-demi">${CROSS_SVG}</div>`;
             } else if (echSoir) {
@@ -787,12 +801,16 @@ function renderPlanning() {
           inner = `<div class="pl-stack">${stack}</div>`;
           fillCls = ' pl-filled';
           if (hasHours) dayTotals[d] += day.seconds;
+          // ½ CP : crédite 3h (midi) / 4h (soir) au total du jour et de la semaine,
+          // seulement si le service n'a pas d'heures réelles (sinon double compte).
+          const cpSec = (cpMidi && !midi.length && !isCont ? HALF_CP.midi : 0) + (cpSoir && !soir.length && !isCont ? HALF_CP.soir : 0);
+          if (cpSec) { dayTotals[d] += cpSec; cpBonusSec += cpSec; }
           if (isRest && hasHours) exchangeMark = '<span class="pl-exchange" title="Échange — travaillé un jour de repos">E</span>';
         }
         const cls = 'pl-cell pl-click' + fillCls;
         dayCells += `<td class="${cls}" data-emp="${emp.id}" data-day="${d}">${exchangeMark}${inner}</td>`;
       }
-      const tot = rep ? rep.totalSeconds : 0;
+      const tot = (rep ? rep.totalSeconds : 0) + cpBonusSec;
       grand += tot;
       const nameCell = `<td class="pl-name"><div class="pl-name-inner"><span class="pl-name-txt">${escapeHtml(emp.name)}</span>`
         + (demiCount ? `<span class="pl-demi-count" title="${demiCount} demi cette semaine">${demiCount}</span>` : '')
@@ -1698,6 +1716,8 @@ function openCellEditor(empId, day) {
       ${isApprenti ? `<button class="btn btn-ghost st-btn st-ecole${status === 'ecole' ? ' active' : ''}" data-st="ecole">École</button>` : ''}
       <button class="btn btn-ghost st-btn st-demi${status === 'demi_midi' ? ' active' : ''}" data-st="demi_midi">Demi midi</button>
       <button class="btn btn-ghost st-btn st-demi${status === 'demi_soir' ? ' active' : ''}" data-st="demi_soir">Demi soir</button>
+      <button class="btn btn-ghost cph-btn st-cp${cpSvcOf(status) === 'midi' ? ' active' : ''}" data-svc="midi" title="Congé payé sur le service du midi : l'horaire du midi est supprimé">½ CP midi (3h)</button>
+      <button class="btn btn-ghost cph-btn st-cp${cpSvcOf(status) === 'soir' ? ' active' : ''}" data-svc="soir" title="Congé payé sur le service du soir : l'horaire du soir est supprimé">½ CP soir (4h)</button>
       <button class="btn btn-ghost ech-btn st-echange${(status === 'echange_midi' || status === 'echange_both') ? ' active' : ''}" data-ech="midi">Échange midi</button>
       <button class="btn btn-ghost ech-btn st-echange${(status === 'echange_soir' || status === 'echange_both') ? ' active' : ''}" data-ech="soir">Échange soir</button>
       <button class="btn btn-ghost exb-btn st-extra${(status === 'extra_midi' || status === 'extra_both') ? ' active' : ''}" data-exb="midi">Extra midi</button>
@@ -1788,6 +1808,9 @@ function openCellEditor(empId, day) {
     b.addEventListener('click', () => setCellStatus(empId, day,
       status === b.dataset.st ? (isProfSt ? 'normal' : null) : b.dataset.st));
   });
+  cellModal.querySelectorAll('.cph-btn').forEach((b) => {
+    b.addEventListener('click', () => toggleHalfCp(empId, day, b.dataset.svc));
+  });
   cellModal.querySelectorAll('.ech-btn').forEach((b) => {
     b.addEventListener('click', () => toggleEchange(empId, day, b.dataset.ech));
   });
@@ -1803,6 +1826,47 @@ function openCellEditor(empId, day) {
 }
 
 function cellMsg(m) { const el = $('ce-msg'); if (el) { el.textContent = m; el.classList.add('show'); } }
+
+// ½ CP sur un service (midi / soir). À la pose : les horaires ENREGISTRÉS sur ce
+// service sont supprimés (la personne est en congé), et si l'autre service était
+// déjà non travaillé (demi-journée / journée continue), il le reste.
+// Re-clic sur le bouton actif : on retire le ½ CP (l'éventuelle demi est conservée).
+async function toggleHalfCp(empId, day, svc) {
+  const emp = allEmployees.find((e) => e.id === empId);
+  const cur = statusMap.get(empId + '|' + day) || null;
+  const other = svc === 'midi' ? 'soir' : 'midi';
+  let next;
+  if (cpSvcOf(cur) === svc) {
+    if (demiSvcOf(cur) === other) {
+      // Si la demi venait du rythme du profil, effacer suffit : le profil la repose
+      // (avec son horaire). Sinon on remet une demi simple.
+      const prof = emp ? profileOffService(emp, day) : null;
+      next = prof === other ? null : 'demi_' + other;
+    } else next = null;
+  } else {
+    next = demiSvcOf(cur) === other ? `cp_${svc}_demi_${other}` : 'demi_cp_' + svc;
+    const rep = (planningReport || []).find((e) => e.employeeId === empId);
+    const dayData = rep && rep.days.find((x) => x.day === day);
+    const real = dayData ? dayData.segments.filter((s) => !s.virtual) : [];
+    const cls = classifyDay(real);
+    for (const s of (svc === 'midi' ? cls.midi : cls.soir)) {
+      const r = await api(`/api/admin/entries/${s.id}`, { method: 'DELETE' });
+      if (!r.ok) { cellMsg((r.data && r.data.error) || "Erreur : l'horaire n'a pas pu être supprimé"); return; }
+    }
+  }
+  await setCellStatus(empId, day, next);
+}
+// Service non travaillé ce jour-là d'après le rythme du PROFIL (demi / continue) ;
+// null s'il n'y en a pas (ou si c'est un jour de repos).
+function profileOffService(emp, day) {
+  const wd = new Date(day + 'T12:00:00').getDay();
+  if (restDaysOn(emp.restPeriods, day).includes(wd)) return null;
+  const p = scheduleOn(emp.schedulePeriods, day);
+  for (const k of ['demi', 'cont']) {
+    if (p && p[k] && p[k].day === wd) return teOffService(p[k]);
+  }
+  return null;
+}
 
 // Bascule le marquage « extra » d'un service (midi/soir), combinable (extra_both).
 function toggleExtra(empId, day, service) {

@@ -1127,6 +1127,12 @@ function shiftWeek(delta) {
 $('wk-prev').addEventListener('click', () => shiftWeek(-1));
 $('wk-next').addEventListener('click', () => shiftWeek(1));
 // Saut direct à une semaine via le calendrier : la date choisie est ramenée au lundi.
+// Un clic n'importe où sur le libellé « 📅 du … au … » ouvre le calendrier
+// (sans cela, sur ordinateur, seul le minuscule pictogramme du champ l'ouvrait).
+$('wk-date').addEventListener('click', (e) => {
+  const el = e.currentTarget;
+  if (typeof el.showPicker === 'function') { try { el.showPicker(); } catch { /* déjà ouvert / non géré */ } }
+});
 $('wk-date').addEventListener('change', () => {
   const v = $('wk-date').value;
   if (!v) return;

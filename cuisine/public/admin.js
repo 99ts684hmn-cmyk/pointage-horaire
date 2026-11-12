@@ -317,7 +317,7 @@ function openProfile(empId) {
     </div>
     <div class="field" style="margin-top:12px">
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-        <input type="checkbox" id="pf-continu" ${emp.continuous ? 'checked' : ''} style="width:auto">
+        <input type="checkbox" id="pf-continu" ${emp.continuous ? 'checked' : ''}>
         Service continu (les deux services sans coupure)
       </label>
     </div>

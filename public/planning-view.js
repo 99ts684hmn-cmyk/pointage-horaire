@@ -94,7 +94,13 @@
       .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
     if (!actives.length) { container.innerHTML = '<div class="empty">Aucun salarié.</div>'; return; }
 
-    let html = '<table class="planning"><thead><tr><th class="pl-name">Salarié</th>';
+    // Note de la semaine (lecture seule), AU-DESSUS des dates : légende du tableau,
+    // de la même largeur que lui. Rien n'est affiché s'il n'y a pas de note.
+    let html = '<table class="planning">'
+      + (weekNote
+        ? `<caption class="pl-notes-cap"><div class="pl-notes-band"><span class="pl-notes-lbl">Notes</span><span class="pl-notes-txt"><span class="pl-wn-txt">${escapeHtml(weekNote)}</span></span></div></caption>`
+        : '')
+      + '<thead><tr><th class="pl-name">Salarié</th>';
     for (const d of days) html += `<th>${planningDayLabel(d)}</th>`;
     html += '<th style="text-align:right">Total</th><th class="pl-info-head">Infos</th></tr></thead><tbody>';
 
@@ -257,14 +263,13 @@
     for (const d of days) html += `<td>${dayTotals[d] ? fmtH(dayTotals[d]) : '—'}</td>`;
     html += `<td class="pl-total">${fmtH(grand)}</td><td></td></tr>`;
 
-    // Grande case « Notes » de la semaine (lecture seule), sur la largeur des 7 jours.
-    html += '<tr class="pl-notes-row"><td class="pl-name">Notes</td>'
-      + `<td class="pl-notes-cell" colspan="${days.length}">${weekNote ? `<span class="pl-wn-txt">${escapeHtml(weekNote)}</span>` : ''}</td>`
-      + '<td></td><td></td></tr>';
-
     html += '</tbody></table>';
 
     container.innerHTML = html;
+    // Le libellé « Notes » prend la largeur de la colonne des noms (alignement).
+    const noteLbl = container.querySelector('.pl-notes-lbl');
+    const nameTh = container.querySelector('thead th.pl-name');
+    if (noteLbl && nameTh && nameTh.offsetWidth) noteLbl.style.width = nameTh.offsetWidth + 'px';
   }
 
   window.PlanningView = { render };

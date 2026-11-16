@@ -750,11 +750,12 @@ app.delete('/api/couts/:id', (req, res) => {
 const RIBS_PRICE_KEYS = {
   rub: 'ribs_prix_rub_kg', sauce: 'ribs_prix_sauce_kg', parures: 'ribs_prix_parures_kg',
   rubKg: 'ribs_qte_rub_kg', sauceKg: 'ribs_qte_sauce_kg',
+  achat: 'ribs_prix_achat_kg', // prix d'achat de la viande au kg (étiquette)
 };
 const RIBS_DEFAULTS = { rubKg: 0.35, sauceKg: 0.9 };
 const nonNeg = (v) => { const n = Number(v); return (v !== null && v !== '' && v !== undefined && Number.isFinite(n) && n >= 0) ? n : null; };
 function readRibsPrices() {
-  const out = { rub: null, sauce: null, parures: null, rubKg: RIBS_DEFAULTS.rubKg, sauceKg: RIBS_DEFAULTS.sauceKg, updatedAt: null };
+  const out = { achat: null, rub: null, sauce: null, parures: null, rubKg: RIBS_DEFAULTS.rubKg, sauceKg: RIBS_DEFAULTS.sauceKg, updatedAt: null };
   const get = db.prepare('SELECT value, updated_at AS u FROM cost_settings WHERE key = ?');
   for (const [k, key] of Object.entries(RIBS_PRICE_KEYS)) {
     const row = get.get(key);

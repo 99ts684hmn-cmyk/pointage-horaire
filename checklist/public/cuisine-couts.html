@@ -21,11 +21,19 @@
       font-size: 1.5rem; font-weight: 900; font-family: inherit; cursor: pointer; line-height: 1; }
     .sum { font-size: .85rem; font-weight: 800; color: var(--gold-dark); margin-top: 4px; }
     .sum:empty { display: none; }
-    /* Onglets Ratio viande / Pertes */
+    /* Onglets Ratio viande / Ratio ribs / Pertes */
     .tabs2 { display: flex; gap: 6px; margin: 16px 0 0; background: #eee7db; padding: 4px; border-radius: 12px; }
     .tabs2 .t2 { flex: 1; border: 0; border-radius: 9px; padding: 10px 8px; font: inherit; font-weight: 800; font-size: .95rem;
       background: transparent; color: var(--muted); cursor: pointer; }
     .tabs2 .t2.on { background: #fff; color: var(--dark); box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+    @media (max-width: 420px) { .tabs2 .t2 { font-size: .8rem; padding: 10px 2px; } }
+    /* Ratio ribs : prix de référence (constantes) */
+    .prixbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 14px; padding: 10px 12px;
+      background: #fbf3e3; border: 1.5px solid var(--gold); border-radius: 12px; font-size: .88rem; }
+    .prixbar .pb-t { font-weight: 900; text-transform: uppercase; letter-spacing: .05em; font-size: .72rem; color: var(--gold-dark); flex: 1 1 100%; }
+    .prixbar .pb-v { flex: 1 1 200px; min-width: 0; color: var(--dark); line-height: 1.5; }
+    .prixbar .btn { flex: 0 0 auto; padding: 7px 12px; }
+    .miss { color: #9e1f24 !important; font-weight: 800; }
     /* Fiche perte : unité et personne */
     select.unit, select.who { border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 10px; font-size: 1rem;
       font-weight: 700; font-family: inherit; color: var(--dark); background: #fff; }
@@ -127,6 +135,7 @@
 
     <div class="tabs2">
       <button type="button" class="t2 on" data-tab="mat">⚖️ Ratio viande</button>
+      <button type="button" class="t2" data-tab="ribs">🍖 Ratio ribs</button>
       <button type="button" class="t2" data-tab="pertes">🗑️ Pertes</button>
     </div>
 
@@ -163,6 +172,70 @@
         <h2>🗑️ Pertes enregistrées</h2>
         <div id="w-hist"><div class="hist-empty">Chargement…</div></div>
       </section>
+    </div>
+
+    <!-- ====== Onglet Ratio ribs : calculette ====== -->
+    <div id="tab-ribs" hidden>
+    <div class="editbar" id="rb-editbar" hidden>
+      <span id="rb-editbar-txt"></span>
+      <button type="button" class="btn btn-grey" id="rb-edit-cancel">Annuler</button>
+    </div>
+    <section class="calc">
+      <label for="rb-produit">Produit (facultatif)</label>
+      <input type="text" id="rb-produit" placeholder="Ex. Travers de porc — livraison du mardi" autocomplete="off" style="font-size:1rem;font-weight:600">
+
+      <div class="row2">
+        <div>
+          <label for="rb-etiquette">Poids étiquette (kg)</label>
+          <div class="addfield"><input type="text" id="rb-etiquette" inputmode="decimal" placeholder="18,600" autocomplete="off"><button type="button" class="plus" data-for="rb-etiquette" title="Ajouter un poids">+</button></div>
+          <div class="sum" id="sum-rb-etiquette"></div>
+        </div>
+        <div>
+          <label for="rb-pare">Poids après parage (kg)</label>
+          <div class="addfield"><input type="text" id="rb-pare" inputmode="decimal" placeholder="15,200" autocomplete="off"><button type="button" class="plus" data-for="rb-pare" title="Ajouter un poids">+</button></div>
+          <div class="sum" id="sum-rb-pare"></div>
+        </div>
+      </div>
+      <div class="row2">
+        <div>
+          <label for="rb-parures">Parures valorisées (kg)</label>
+          <div class="addfield"><input type="text" id="rb-parures" inputmode="decimal" placeholder="1,800" autocomplete="off"><button type="button" class="plus" data-for="rb-parures" title="Ajouter un poids">+</button></div>
+          <div class="sum" id="sum-rb-parures"></div>
+        </div>
+        <div>
+          <label for="rb-portions">Nombre de portions</label>
+          <input type="text" id="rb-portions" inputmode="decimal" placeholder="32" autocomplete="off">
+        </div>
+      </div>
+      <div class="row2">
+        <div>
+          <label for="rb-rub">Quantité de rub (kg)</label>
+          <input type="text" id="rb-rub" inputmode="decimal" placeholder="0,450" autocomplete="off">
+        </div>
+        <div>
+          <label for="rb-sauce">Poids de sauce ribs (kg)</label>
+          <input type="text" id="rb-sauce" inputmode="decimal" placeholder="2,400" autocomplete="off">
+        </div>
+      </div>
+
+      <label for="rb-prix">Prix d'achat au kg — étiquette (€)</label>
+      <input type="text" id="rb-prix" inputmode="decimal" placeholder="7,90" autocomplete="off">
+      <div class="hint">Plusieurs pièces : « + » entre chaque poids. Sans le prix d'achat, seuls les rendements sont calculés.</div>
+    </section>
+
+    <div class="prixbar" id="rb-prixbar"></div>
+
+    <section class="result empty" id="rb-result">Renseignez le poids étiquette et le poids après parage.</section>
+    <div class="actions">
+      <button class="btn btn-grey" id="rb-reset" type="button">Effacer</button>
+      <button class="btn btn-red" id="rb-save" type="button" disabled>💾 Enregistrer</button>
+      <span class="saved" id="rb-saved"></span>
+    </div>
+
+    <section class="hist">
+      <h2>📒 Enregistrements</h2>
+      <div id="rb-hist"><div class="hist-empty">Chargement…</div></div>
+    </section>
     </div>
 
     <!-- ====== Onglet Ratio viande : calculette ====== -->
@@ -213,6 +286,27 @@
   <!-- Fiche complète d'un enregistrement « Ratio viande » -->
   <div class="overlay" id="fiche-ov">
     <div class="modal" id="fiche" style="max-width:480px; max-height:88vh; overflow-y:auto"></div>
+  </div>
+
+  <!-- Prix de référence du ratio ribs (constantes modifiables) -->
+  <div class="overlay" id="prix-ov">
+    <div class="modal" id="prix-modal" style="max-width:420px">
+      <h2 style="margin:0 0 4px;font-size:1.15rem">Prix de référence — ribs</h2>
+      <div class="fdates">Ces prix servent à tous les nouveaux calculs. Les enregistrements déjà faits gardent les prix du jour où ils ont été faits.</div>
+      <div class="calc" style="border:0;padding:0;margin:0">
+        <label for="px-rub">Rub (€ / kg)</label>
+        <input type="text" id="px-rub" inputmode="decimal" placeholder="12,00" autocomplete="off">
+        <label for="px-sauce">Sauce ribs (€ / kg)</label>
+        <input type="text" id="px-sauce" inputmode="decimal" placeholder="6,50" autocomplete="off">
+        <label for="px-parures">Valorisation des parures (€ / kg)</label>
+        <input type="text" id="px-parures" inputmode="decimal" placeholder="3,00" autocomplete="off">
+      </div>
+      <div class="warn" id="px-msg" style="min-height:1.2em"></div>
+      <div class="factions">
+        <button class="btn btn-green" id="px-save" type="button">Enregistrer</button>
+        <button class="btn btn-grey" id="px-cancel" type="button">Annuler</button>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -314,7 +408,7 @@
         if (v && !v.endsWith('+')) inp.value = v + '+';
         inp.focus();
         const end = inp.value.length; try { inp.setSelectionRange(end, end); } catch (e) { /* ignore */ }
-        compute();
+        inp.dispatchEvent(new Event('input', { bubbles: true })); // recalcule la calculette du champ
       });
     });
 
@@ -445,18 +539,285 @@
     // =====================================================================
     const SUBS = {
       mat: 'Ratio viande : perte à la découpe et coût réel au kilo.',
+      ribs: 'Ratio ribs : perte au parage, parures valorisées et coût par portion.',
       pertes: 'Produits jetés : la date se met automatiquement.',
     };
     function showTab(t) {
       if (!SUBS[t]) t = 'mat';
       document.querySelectorAll('.t2').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
       $('tab-mat').hidden = t !== 'mat';
+      $('tab-ribs').hidden = t !== 'ribs';
       $('tab-pertes').hidden = t !== 'pertes';
       $('page-sub').textContent = SUBS[t];
       if (location.hash !== '#' + t) history.replaceState(null, '', '#' + t);
       if (t === 'pertes') loadPertes();
+      if (t === 'ribs') loadRibs();
     }
     document.querySelectorAll('.t2').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
+
+    // =====================================================================
+    //  Ratio ribs : parage, parures valorisées, rub, sauce → coût par portion
+    // =====================================================================
+    // Prix de référence (constantes modifiables, enregistrées sur le serveur).
+    let ribsPrix = { rub: null, sauce: null, parures: null };
+    let rbRecords = [];
+    let rbEditing = null; // enregistrement en cours de modification
+    const RB_FIELDS = ['rb-produit', 'rb-etiquette', 'rb-pare', 'rb-parures', 'rb-portions', 'rb-rub', 'rb-sauce', 'rb-prix'];
+    const pos = (n) => (Number.isFinite(n) && n > 0 ? n : 0);
+
+    // Prix utilisés par le calcul. En modification : ceux de l'enregistrement
+    // (pour retrouver le même résultat), complétés par les constantes s'il n'en avait pas.
+    function rbPrices() {
+      const r = rbEditing;
+      return {
+        rub: pos(r && r.prixRubKg) || pos(ribsPrix.rub),
+        sauce: pos(r && r.prixSauceKg) || pos(ribsPrix.sauce),
+        parures: pos(r && r.prixParuresKg) || pos(ribsPrix.parures),
+      };
+    }
+    function rbRead() {
+      return {
+        produit: $('rb-produit').value.trim(),
+        etiq: num($('rb-etiquette').value), pare: num($('rb-pare').value), parures: num($('rb-parures').value),
+        portions: num($('rb-portions').value), rub: num($('rb-rub').value), sauce: num($('rb-sauce').value),
+        prix: num($('rb-prix').value),
+      };
+    }
+    // Coûts d'un calcul ribs. total = viande − parures valorisées + rub + sauce.
+    function rbCosts(v, px) {
+      const cViande = pos(v.prix) ? v.prix * v.etiq : NaN;
+      const vPar = pos(v.parures) && px.parures ? v.parures * px.parures : 0;
+      const cRub = pos(v.rub) && px.rub ? v.rub * px.rub : 0;
+      const cSauce = pos(v.sauce) && px.sauce ? v.sauce * px.sauce : 0;
+      const total = Number.isFinite(cViande) ? cViande - vPar + cRub + cSauce : NaN;
+      const parPortion = Number.isFinite(total) && pos(v.portions) ? total / v.portions : NaN;
+      return { cViande, vPar, cRub, cSauce, total, parPortion };
+    }
+
+    // Récapitulatif complet (calculette ET fiche d'un enregistrement).
+    function ribsHTML(v, px) {
+      const { produit, etiq, pare } = v;
+      const parures = pos(v.parures); const rub = pos(v.rub); const sauce = pos(v.sauce); const portions = pos(v.portions);
+      const perteKg = etiq - pare;
+      const pertePct = (perteKg / etiq) * 100;
+      const c = rbCosts(v, px);
+      const miss = '<b class="miss">prix à renseigner</b>';
+      let html = `${produit ? `<div style="font-weight:800;margin-bottom:8px">${esc(produit)}</div>` : ''}
+        <div class="big"><span class="lbl">Perte au parage</span><span class="val">${fr(pertePct, 1)} %</span></div>
+        <div class="bar"><i style="width:${Math.max(0, Math.min(100, pertePct))}%"></i></div>
+        <div class="lines">
+          <div class="line"><span>Perte au parage (poids)</span><b>${fr(perteKg, 3)} kg</b></div>
+          <div class="line"><span>Rendement après parage</span><b>${fr((pare / etiq) * 100, 1)} %</b></div>`;
+      if (parures) {
+        html += `<div class="line"><span>Parures valorisées</span><b>${fr(parures, 3)} kg · ${fr((parures / etiq) * 100, 1)} %</b></div>`;
+        const seche = perteKg - parures;
+        if (seche >= -1e-9) html += `<div class="line"><span>Perte non valorisée</span><b>${fr(Math.max(0, seche), 3)} kg · ${fr((Math.max(0, seche) / etiq) * 100, 1)} %</b></div>`;
+      }
+      if (Number.isFinite(c.cViande)) html += `<div class="line"><span>Prix payé (viande)</span><b>${fr(c.cViande, 2)} €</b></div>`;
+      if (parures) html += `<div class="line"><span>Parures valorisées${px.parures ? ` (${fr(px.parures, 2)} €/kg)` : ''}</span>${px.parures ? `<b>− ${fr(c.vPar, 2)} €</b>` : miss}</div>`;
+      if (rub) html += `<div class="line"><span>Rub ${fr(rub, 3)} kg${px.rub ? ` (${fr(px.rub, 2)} €/kg)` : ''}</span>${px.rub ? `<b>+ ${fr(c.cRub, 2)} €</b>` : miss}</div>`;
+      if (sauce) html += `<div class="line"><span>Sauce ${fr(sauce, 3)} kg${px.sauce ? ` (${fr(px.sauce, 2)} €/kg)` : ''}</span>${px.sauce ? `<b>+ ${fr(c.cSauce, 2)} €</b>` : miss}</div>`;
+      let coefHtml = '';
+      if (Number.isFinite(c.total)) {
+        html += `<div class="line cost"><span>Coût matière total</span><b>${fr(c.total, 2)} €</b></div>`;
+        if (pare > 0) html += `<div class="line"><span>Coût de la viande au kg après parage</span><b>${fr((c.cViande - c.vPar) / pare, 2)} €/kg</b></div>`;
+      }
+      if (portions) {
+        if (pare > 0) html += `<div class="line"><span>Poids moyen par portion (viande parée)</span><b>${fr((pare * 1000) / portions, 0)} g</b></div>`;
+        if (Number.isFinite(c.parPortion)) {
+          html += `<div class="line cost"><span>Coût matière par portion (${fr(portions, portions % 1 ? 1 : 0)} portions)</span><b>${fr(c.parPortion, 2)} €</b></div>`;
+          // Prix de vente indicatifs : coût portion × coefficient.
+          coefHtml = `<table class="coefs"><thead><tr>${COEFS.map((k) => `<th>×${fr(k, k % 1 ? 1 : 0)}</th>`).join('')}</tr></thead>
+            <tbody><tr>${COEFS.map((k) => `<td>${fr(c.parPortion * k, 2)} €</td>`).join('')}</tr></tbody></table>`;
+        }
+      }
+      html += '</div>' + coefHtml;
+      if (pare > etiq) html += '<div class="warn">⚠️ Le poids après parage dépasse le poids étiquette : vérifiez la saisie.</div>';
+      else if (parures > perteKg + 1e-9) html += '<div class="warn">⚠️ Les parures dépassent la perte au parage : vérifiez la saisie.</div>';
+      // Un prix de référence manquant fausse le total : on le dit clairement.
+      if (Number.isFinite(c.total) && ((parures && !px.parures) || (rub && !px.rub) || (sauce && !px.sauce))) {
+        html += '<div class="warn">⚠️ Il manque un prix de référence : le coût total et le coût par portion sont incomplets.</div>';
+      }
+      return html;
+    }
+
+    function rbCompute() {
+      ['rb-etiquette', 'rb-pare', 'rb-parures'].forEach(showSum);
+      const v = rbRead();
+      const box = $('rb-result');
+      $('rb-saved').textContent = '';
+      const filled = v.etiq > 0 && v.pare >= 0 && $('rb-pare').value.trim() !== '';
+      // Un champ facultatif mal saisi (lettres…) bloque l'enregistrement plutôt que d'être ignoré.
+      const optOk = ['rb-parures', 'rb-portions', 'rb-rub', 'rb-sauce', 'rb-prix'].every((id) => $(id).value.trim() === '' || Number.isFinite(num($(id).value)));
+      $('rb-save').disabled = !(filled && v.pare <= v.etiq && optOk);
+      if (!filled) {
+        box.className = 'result empty';
+        box.textContent = 'Renseignez le poids étiquette et le poids après parage.';
+        return;
+      }
+      box.className = 'result';
+      box.innerHTML = ribsHTML(v, rbPrices()) + (optOk ? '' : '<div class="warn">⚠️ Une valeur saisie n\'est pas un nombre.</div>');
+    }
+    RB_FIELDS.forEach((id) => $(id).addEventListener('input', rbCompute));
+
+    function renderPrixBar() {
+      const px = rbPrices();
+      const f = (n) => (n ? `<b>${fr(n, 2)} €/kg</b>` : '<b class="miss">à renseigner</b>');
+      $('rb-prixbar').innerHTML = `<span class="pb-t">${rbEditing ? 'Prix de cet enregistrement' : 'Prix de référence'}</span>
+        <span class="pb-v">Rub ${f(px.rub)} · Sauce ${f(px.sauce)} · Parures ${f(px.parures)}</span>`
+        + (rbEditing ? '' : '<button type="button" class="btn btn-grey" id="rb-prix-edit">✏️ Modifier</button>');
+      const b = $('rb-prix-edit');
+      if (b) b.addEventListener('click', openPrix);
+    }
+
+    // --- Prix de référence : fenêtre de modification -------------------------
+    function openPrix() {
+      $('px-rub').value = ribsPrix.rub != null ? toField(ribsPrix.rub) : '';
+      $('px-sauce').value = ribsPrix.sauce != null ? toField(ribsPrix.sauce) : '';
+      $('px-parures').value = ribsPrix.parures != null ? toField(ribsPrix.parures) : '';
+      $('px-msg').textContent = '';
+      $('prix-ov').classList.add('show');
+    }
+    function closePrix() { $('prix-ov').classList.remove('show'); }
+    $('px-cancel').addEventListener('click', closePrix);
+    $('prix-ov').addEventListener('click', (e) => { if (e.target === $('prix-ov')) closePrix(); });
+    $('px-save').addEventListener('click', async () => {
+      const body = {};
+      for (const k of ['rub', 'sauce', 'parures']) {
+        const raw = $('px-' + k).value.trim();
+        if (raw === '') { body[k] = null; continue; }
+        const n = num(raw);
+        if (!Number.isFinite(n)) { $('px-msg').textContent = 'Un prix saisi n\'est pas un nombre.'; return; }
+        body[k] = n;
+      }
+      try {
+        const r = await fetch('api/ribs/prix', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(data.error || 'Erreur');
+        ribsPrix = data.prix || ribsPrix;
+        closePrix(); renderPrixBar(); rbCompute();
+      } catch (e) { $('px-msg').textContent = 'Enregistrement impossible : ' + e.message; }
+    });
+
+    // --- Enregistrements ------------------------------------------------------
+    const rbOf = (r) => ({ produit: '', etiq: r.etiquetteKg, pare: r.pareKg, parures: r.paruresKg || NaN, portions: r.portions || NaN,
+      rub: r.rubKg || NaN, sauce: r.sauceKg || NaN, prix: r.prixKg || NaN });
+    const rbPxOf = (r) => ({ rub: pos(r.prixRubKg), sauce: pos(r.prixSauceKg), parures: pos(r.prixParuresKg) });
+    function rbLine(r) {
+      const perte = (r.etiquetteKg - r.pareKg) / r.etiquetteKg * 100;
+      const c = rbCosts(rbOf(r), rbPxOf(r));
+      const parts = [`${fr(r.etiquetteKg, 3)} → ${fr(r.pareKg, 3)} kg${r.paruresKg ? ` · parures ${fr(r.paruresKg, 3)} kg` : ''}`];
+      if (Number.isFinite(c.total)) parts.push(`<b>${fr(c.total, 2)} € de matière</b>`);
+      if (r.portions) parts.push(`${fr(r.portions, r.portions % 1 ? 1 : 0)} portion${r.portions > 1 ? 's' : ''}${Number.isFinite(c.parPortion) ? ` · <b>${fr(c.parPortion, 2)} €/portion</b>` : ''}`);
+      return `<button type="button" class="rec rec-btn" data-rbopen="${esc(r.id)}">
+          <span class="rp">${fr(perte, 1)} %</span>
+          <span class="rd"><b>${esc(r.produit || 'Ribs')}</b> · ${heure(r.createdAt)}${r.updatedAt ? ' <span class="modif">· modifié</span>' : ''}<br>${parts.join('<br>')}</span>
+          <span class="rgo">›</span>
+        </button>`;
+    }
+    async function loadRibs() {
+      const box = $('rb-hist');
+      try {
+        const [px, list] = await Promise.all([fetch('api/ribs/prix').then((r) => r.json()), fetch('api/ribs').then((r) => r.json())]);
+        if (px && typeof px === 'object') ribsPrix = px;
+        rbRecords = Array.isArray(list) ? list : [];
+      } catch (e) { box.innerHTML = '<div class="hist-empty">Impossible de charger les enregistrements.</div>'; renderPrixBar(); return; }
+      renderPrixBar(); rbCompute();
+      if (!rbRecords.length) { box.innerHTML = '<div class="hist-empty">Aucun enregistrement pour l\'instant.</div>'; return; }
+      const byDate = new Map();
+      for (const r of rbRecords) { if (!byDate.has(r.date)) byDate.set(r.date, []); byDate.get(r.date).push(r); }
+      box.innerHTML = [...byDate.entries()].map(([d, recs]) => `<div class="hist-day"><div class="hist-date">${longDate(d)}</div>${recs.map(rbLine).join('')}</div>`).join('');
+      box.querySelectorAll('[data-rbopen]').forEach((b) => b.addEventListener('click', () => openRibsFiche(b.dataset.rbopen)));
+    }
+
+    // Fiche complète d'un enregistrement ribs (même fenêtre que le ratio viande).
+    function openRibsFiche(id) {
+      const r = rbRecords.find((x) => x.id === id);
+      if (!r) return;
+      const px = rbPxOf(r);
+      const li = (lbl, val) => `<div class="line"><span>${lbl}</span><b>${val}</b></div>`;
+      $('fiche').innerHTML = `
+        <h2>${esc(r.produit || 'Ribs')}</h2>
+        <div class="fdates">Créé le ${dateHeure(r.createdAt)}${r.updatedAt ? `<br>Modifié le ${dateHeure(r.updatedAt)}` : ''}</div>
+        <div class="flines">
+          ${li('Poids étiquette', fr(r.etiquetteKg, 3) + ' kg')}
+          ${li('Poids après parage', fr(r.pareKg, 3) + ' kg')}
+          ${r.paruresKg ? li('Parures valorisées', fr(r.paruresKg, 3) + ' kg') : ''}
+          ${r.rubKg ? li('Quantité de rub', fr(r.rubKg, 3) + ' kg') : ''}
+          ${r.sauceKg ? li('Poids de sauce ribs', fr(r.sauceKg, 3) + ' kg') : ''}
+          ${r.portions ? li('Nombre de portions', fr(r.portions, r.portions % 1 ? 1 : 0)) : ''}
+          ${r.prixKg ? li("Prix d'achat au kg", fr(r.prixKg, 2) + ' €/kg') : ''}
+        </div>
+        <div class="result">${ribsHTML(rbOf(r), px)}</div>
+        <div class="factions">
+          <button class="btn btn-green" id="f-close" type="button">Fermer</button>
+          <button class="btn btn-blue" id="f-edit" type="button">✏️ Modifier</button>
+          <button class="btn btn-grey" id="f-del" type="button">Supprimer</button>
+        </div>`;
+      $('f-close').addEventListener('click', closeFiche);
+      $('f-edit').addEventListener('click', () => { closeFiche(); rbStartEdit(r); });
+      $('f-del').addEventListener('click', async () => {
+        if (!confirm('Supprimer définitivement cet enregistrement ?')) return;
+        await fetch('api/ribs/' + encodeURIComponent(r.id), { method: 'DELETE' });
+        if (rbEditing && rbEditing.id === r.id) { rbStopEdit(); rbClear(); }
+        closeFiche(); loadRibs();
+      });
+      $('fiche-ov').classList.add('show');
+    }
+
+    // Mode modification : l'enregistrement est rechargé dans la calculette.
+    function rbStartEdit(r) {
+      rbEditing = r;
+      $('rb-produit').value = r.produit || '';
+      $('rb-etiquette').value = toField(r.etiquetteKg);
+      $('rb-pare').value = toField(r.pareKg);
+      $('rb-parures').value = r.paruresKg ? toField(r.paruresKg) : '';
+      $('rb-portions').value = r.portions ? toField(r.portions) : '';
+      $('rb-rub').value = r.rubKg ? toField(r.rubKg) : '';
+      $('rb-sauce').value = r.sauceKg ? toField(r.sauceKg) : '';
+      $('rb-prix').value = r.prixKg ? toField(r.prixKg) : '';
+      $('rb-editbar-txt').textContent = `✏️ Modification de l'enregistrement du ${longDate(r.date)}`;
+      $('rb-editbar').hidden = false;
+      $('rb-save').textContent = '💾 Enregistrer les modifications';
+      renderPrixBar(); rbCompute();
+      $('rb-editbar').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    function rbStopEdit() {
+      rbEditing = null;
+      $('rb-editbar').hidden = true;
+      $('rb-save').textContent = '💾 Enregistrer';
+      renderPrixBar();
+    }
+    function rbClear() { RB_FIELDS.forEach((id) => { $(id).value = ''; }); rbCompute(); }
+    $('rb-edit-cancel').addEventListener('click', () => { rbStopEdit(); rbClear(); });
+    $('rb-reset').addEventListener('click', () => { rbStopEdit(); rbClear(); $('rb-etiquette').focus(); });
+
+    $('rb-save').addEventListener('click', async () => {
+      const btn = $('rb-save');
+      btn.disabled = true;
+      const v = rbRead(); const px = rbPrices();
+      const body = {
+        produit: v.produit, etiquetteKg: v.etiq, pareKg: v.pare,
+        paruresKg: pos(v.parures) || null, rubKg: pos(v.rub) || null, sauceKg: pos(v.sauce) || null, portions: pos(v.portions) || null,
+        prixKg: pos(v.prix) || null,
+        // Prix utilisés pour ce calcul : conservés avec l'enregistrement.
+        prixRubKg: px.rub || null, prixSauceKg: px.sauce || null, prixParuresKg: px.parures || null,
+      };
+      const wasEditing = !!rbEditing;
+      try {
+        const r = wasEditing
+          ? await fetch('api/ribs/' + encodeURIComponent(rbEditing.id), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+          : await fetch('api/ribs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Erreur');
+        if (wasEditing) { rbStopEdit(); rbClear(); }
+        await loadRibs(); // recalcule l'écran (et efface le message) : on l'affiche donc après
+        $('rb-saved').textContent = wasEditing ? '✅ Modifications enregistrées' : '✅ Enregistré';
+        btn.disabled = true; // pas de doublon : le bouton se réactive à la prochaine saisie
+      } catch (e) {
+        alert('Enregistrement impossible : ' + e.message);
+        btn.disabled = false;
+      }
+    });
 
     // =====================================================================
     //  Pertes : produits jetés

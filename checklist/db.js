@@ -168,6 +168,33 @@ if (!db.prepare('PRAGMA table_info(templates)').all().some((c) => c.name === 'ca
 if (!db.prepare('PRAGMA table_info(templates)').all().some((c) => c.name === 'grp')) {
   db.exec('ALTER TABLE templates ADD COLUMN grp TEXT');
 }
+// Coûts matière — Ratio ribs : calculs enregistrés + prix de référence (constantes
+// modifiables : rub, sauce, valorisation des parures). Chaque enregistrement garde
+// les prix utilisés le jour du calcul : changer une constante ne modifie pas le passé.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS ribs_records (
+    id              TEXT PRIMARY KEY,
+    date            TEXT NOT NULL,   -- jour du calcul (AAAA-MM-JJ, heure de Paris)
+    created_at      TEXT NOT NULL,
+    updated_at      TEXT,
+    produit         TEXT,
+    etiquette_kg    REAL NOT NULL,   -- poids étiquette
+    pare_kg         REAL NOT NULL,   -- poids après parage
+    parures_kg      REAL,            -- parures valorisées
+    rub_kg          REAL,            -- quantité de rub
+    sauce_kg        REAL,            -- poids de sauce ribs
+    portions        REAL,            -- nombre de portions
+    prix_kg         REAL,            -- prix d'achat au kg (étiquette)
+    prix_rub_kg     REAL,            -- prix du rub au kg, le jour du calcul
+    prix_sauce_kg   REAL,            -- prix de la sauce au kg, le jour du calcul
+    prix_parures_kg REAL             -- prix de valorisation des parures au kg, le jour du calcul
+  );
+  CREATE TABLE IF NOT EXISTS cost_settings (
+    key        TEXT PRIMARY KEY,
+    value      REAL,
+    updated_at TEXT NOT NULL
+  );
+`);
 // Coûts matière : date de dernière modification d'un enregistrement (NULL = jamais).
 if (!db.prepare('PRAGMA table_info(cost_records)').all().some((c) => c.name === 'updated_at')) {
   db.exec('ALTER TABLE cost_records ADD COLUMN updated_at TEXT');

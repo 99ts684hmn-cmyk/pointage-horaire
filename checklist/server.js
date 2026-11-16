@@ -743,6 +743,86 @@ app.delete('/api/couts/:id', (req, res) => {
   res.json({ ok: true, deleted: info.changes });
 });
 
+// --- Ratio ribs : calculs enregistrés + prix de référence --------------------
+const RIBS_PRICE_KEYS = { rub: 'ribs_prix_rub_kg', sauce: 'ribs_prix_sauce_kg', parures: 'ribs_prix_parures_kg' };
+const nonNeg = (v) => { const n = Number(v); return (v !== null && v !== '' && v !== undefined && Number.isFinite(n) && n >= 0) ? n : null; };
+function readRibsPrices() {
+  const out = { rub: null, sauce: null, parures: null, updatedAt: null };
+  const get = db.prepare('SELECT value, updated_at AS u FROM cost_settings WHERE key = ?');
+  for (const [k, key] of Object.entries(RIBS_PRICE_KEYS)) {
+    const row = get.get(key);
+    if (row) { out[k] = row.value; if (!out.updatedAt || row.u > out.updatedAt) out.updatedAt = row.u; }
+  }
+  return out;
+}
+
+// Prix de référence (constantes) : rub, sauce, valorisation des parures, en €/kg.
+// À déclarer AVANT les routes « /api/ribs/:id ».
+app.get('/api/ribs/prix', (req, res) => { res.json(readRibsPrices()); });
+app.put('/api/ribs/prix', (req, res) => {
+  const b = req.body || {};
+  const up = db.prepare(`INSERT INTO cost_settings (key, value, updated_at) VALUES (?, ?, ?)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`);
+  const now = nowISO();
+  db.transaction(() => {
+    for (const [k, key] of Object.entries(RIBS_PRICE_KEYS)) {
+      if (b[k] === undefined) continue;
+      up.run(key, nonNeg(b[k]), now); // vide = prix non renseigné
+    }
+  })();
+  res.json({ ok: true, prix: readRibsPrices() });
+});
+
+const RIBS_COLS = `id, date, created_at AS createdAt, updated_at AS updatedAt, produit, etiquette_kg AS etiquetteKg,
+  pare_kg AS pareKg, parures_kg AS paruresKg, rub_kg AS rubKg, sauce_kg AS sauceKg, portions,
+  prix_kg AS prixKg, prix_rub_kg AS prixRubKg, prix_sauce_kg AS prixSauceKg, prix_parures_kg AS prixParuresKg`;
+// Champs d'un calcul ribs à partir du corps de la requête (null si invalide).
+function ribsFields(b) {
+  const etiq = posNum(b.etiquetteKg);
+  const pare = Number(b.pareKg);
+  if (!etiq || !(Number.isFinite(pare) && pare >= 0) || b.pareKg === null || b.pareKg === '') return null;
+  return {
+    produit: String(b.produit || '').trim().slice(0, 120) || null,
+    etiq, pare,
+    parures: posNum(b.paruresKg), rub: posNum(b.rubKg), sauce: posNum(b.sauceKg), portions: posNum(b.portions),
+    prix: posNum(b.prixKg), prixRub: posNum(b.prixRubKg), prixSauce: posNum(b.prixSauceKg), prixParures: posNum(b.prixParuresKg),
+  };
+}
+
+// Liste des calculs ribs, du plus récent au plus ancien (400 derniers).
+app.get('/api/ribs', (req, res) => {
+  res.json(db.prepare(`SELECT ${RIBS_COLS} FROM ribs_records ORDER BY created_at DESC LIMIT 400`).all());
+});
+
+// Enregistre un calcul à la date du jour (heure de Paris), avec les prix utilisés.
+app.post('/api/ribs', (req, res) => {
+  const f = ribsFields(req.body || {});
+  if (!f) return res.status(400).json({ error: 'Poids étiquette et poids après parage requis' });
+  const id = uid();
+  db.prepare(`INSERT INTO ribs_records (id, date, created_at, produit, etiquette_kg, pare_kg, parures_kg, rub_kg, sauce_kg,
+    portions, prix_kg, prix_rub_kg, prix_sauce_kg, prix_parures_kg) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run(id, todayParis(), nowISO(), f.produit, f.etiq, f.pare, f.parures, f.rub, f.sauce, f.portions,
+      f.prix, f.prixRub, f.prixSauce, f.prixParures);
+  res.status(201).json({ ok: true, id });
+});
+
+// Modifier / compléter un calcul : la date de création est conservée.
+app.put('/api/ribs/:id', (req, res) => {
+  const f = ribsFields(req.body || {});
+  if (!f) return res.status(400).json({ error: 'Poids étiquette et poids après parage requis' });
+  const info = db.prepare(`UPDATE ribs_records SET produit = ?, etiquette_kg = ?, pare_kg = ?, parures_kg = ?, rub_kg = ?,
+    sauce_kg = ?, portions = ?, prix_kg = ?, prix_rub_kg = ?, prix_sauce_kg = ?, prix_parures_kg = ?, updated_at = ? WHERE id = ?`)
+    .run(f.produit, f.etiq, f.pare, f.parures, f.rub, f.sauce, f.portions, f.prix, f.prixRub, f.prixSauce, f.prixParures,
+      nowISO(), req.params.id);
+  if (!info.changes) return res.status(404).json({ error: 'Enregistrement introuvable' });
+  res.json({ ok: true });
+});
+
+app.delete('/api/ribs/:id', (req, res) => {
+  const info = db.prepare('DELETE FROM ribs_records WHERE id = ?').run(req.params.id);
+  res.json({ ok: true, deleted: info.changes });
+});
+
 // --- Pertes : produits jetés ------------------------------------------------
 const WASTE_UNITS = ['kg', 'g', 'L', 'pièce(s)', 'portion(s)'];
 

@@ -199,6 +199,10 @@ db.exec(`
 if (!db.prepare('PRAGMA table_info(cost_records)').all().some((c) => c.name === 'updated_at')) {
   db.exec('ALTER TABLE cost_records ADD COLUMN updated_at TEXT');
 }
+// Coûts matière — Ratio viande : cuisinier qui a fait la découpe (facultatif).
+if (!db.prepare('PRAGMA table_info(cost_records)').all().some((c) => c.name === 'decoupeur')) {
+  db.exec('ALTER TABLE cost_records ADD COLUMN decoupeur TEXT');
+}
 // Colonne « days » (jours d'une tâche pour le mode WEEKLY_CARRY_OVER, ex. "1,3,5").
 // Si NULL, on retombe sur day_of_week (compat. tâches hebdo salle existantes).
 if (!db.prepare('PRAGMA table_info(tasks)').all().some((c) => c.name === 'days')) {

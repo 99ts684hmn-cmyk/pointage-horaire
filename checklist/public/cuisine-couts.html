@@ -255,6 +255,9 @@
 
       <label for="portion">Poids par portion (g, facultatif)</label>
       <input type="text" id="portion" inputmode="decimal" placeholder="350" autocomplete="off">
+
+      <label for="decoupeur">Découpeur</label>
+      <select id="decoupeur" class="who"><option value="">— Choisir —</option></select>
     </section>
 
     <section class="result empty" id="result">Renseignez le poids étiquette et le poids réel détaillé.</section>
@@ -414,8 +417,31 @@
 
     function clearForm() {
       ['produit', 'etiquette', 'reel', 'prix', 'portion'].forEach((id) => { $(id).value = ''; });
+      setDecoupeur('');
       compute();
     }
+    // Découpeur : équipe de cuisine active, dans l'ordre du planning.
+    function setDecoupeur(name) {
+      const sel = $('decoupeur');
+      // Un ancien enregistrement peut porter quelqu'un qui n'est plus dans l'équipe : on le garde proposé.
+      if (name && ![...sel.options].some((o) => o.value === name)) {
+        const o = document.createElement('option'); o.value = name; o.textContent = name; sel.appendChild(o);
+      }
+      sel.value = name;
+    }
+    fetch('/cuisine/api/cooks').then((r) => r.json()).then((list) => {
+      const sel = $('decoupeur');
+      const keep = sel.value;
+      (Array.isArray(list) ? list : [])
+        .slice().sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || String(a.name).localeCompare(String(b.name), 'fr'))
+        .forEach((c) => {
+          if ([...sel.options].some((o) => o.value === c.name)) return;
+          const o = document.createElement('option'); o.value = c.name; o.textContent = c.name; sel.appendChild(o);
+        });
+      if (keep) sel.value = keep;
+    }).catch(() => {});
+    // Le choix du découpeur compte comme une saisie : le bouton Enregistrer se réactive.
+    $('decoupeur').addEventListener('change', compute);
     $('reset').addEventListener('click', () => { stopEdit(); clearForm(); $('etiquette').focus(); });
 
     // --- Enregistrement daté + historique ---------------------------------
@@ -435,7 +461,7 @@
       }
       return `<button type="button" class="rec rec-btn" data-open="${esc(r.id)}">
           <span class="rp">${fr(perte, 1)} %</span>
-          <span class="rd"><b>${esc(r.produit || 'Sans nom')}</b> · ${heure(r.createdAt)}${r.updatedAt ? ' <span class="modif">· modifié</span>' : ''}<br>${parts.join('<br>')}</span>
+          <span class="rd"><b>${esc(r.produit || 'Sans nom')}</b> · ${heure(r.createdAt)}${r.decoupeur ? ` · découpe : ${esc(r.decoupeur)}` : ''}${r.updatedAt ? ' <span class="modif">· modifié</span>' : ''}<br>${parts.join('<br>')}</span>
           <span class="rgo">›</span>
         </button>`;
     }
@@ -466,6 +492,7 @@
           <div class="line"><span>Poids réel détaillé</span><b>${fr(r.reelKg, 3)} kg</b></div>
           ${r.prixKg ? `<div class="line"><span>Prix d'achat au kg</span><b>${fr(r.prixKg, 2)} €/kg</b></div>` : ''}
           ${r.portionG ? `<div class="line"><span>Poids par portion</span><b>${fr(r.portionG, 0)} g</b></div>` : ''}
+          ${r.decoupeur ? `<div class="line"><span>Découpeur</span><b>${esc(r.decoupeur)}</b></div>` : ''}
         </div>
         <div class="result">${calcHTML({ produit: '', etiq: r.etiquetteKg, reel: r.reelKg, prix: r.prixKg || NaN, portionG: r.portionG || NaN })}</div>
         <div class="factions">
@@ -496,6 +523,7 @@
       $('reel').value = toField(r.reelKg);
       $('prix').value = r.prixKg ? toField(r.prixKg) : '';
       $('portion').value = r.portionG ? toField(r.portionG) : '';
+      setDecoupeur(r.decoupeur || '');
       $('editbar-txt').textContent = `✏️ Modification de l'enregistrement du ${longDate(r.date)}`;
       $('editbar').hidden = false;
       $('save').textContent = '💾 Enregistrer les modifications';
@@ -516,6 +544,7 @@
         produit: $('produit').value.trim(),
         etiquetteKg: num($('etiquette').value), reelKg: num($('reel').value),
         prixKg: num($('prix').value) || null, portionG: num($('portion').value) || null,
+        decoupeur: $('decoupeur').value || null,
       };
       const wasEditing = !!editing;
       try {

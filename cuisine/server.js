@@ -408,7 +408,9 @@ function parsePostes(raw) {
 // Liste publique des cuisiniers ACTIFS (noms seuls) — sert au sélecteur de
 // clôture des check-lists cuisine. Pas de données sensibles.
 app.get('/api/cooks', (req, res) => {
-  res.json(db.prepare('SELECT id, name FROM employees WHERE active = 1 ORDER BY name COLLATE NOCASE').all());
+  // « sortOrder » = rang dans le planning (la liste reste triée par nom pour les
+  // écrans existants ; ceux qui veulent l'ordre du planning trient sur ce rang).
+  res.json(db.prepare('SELECT id, name, sort_order AS sortOrder FROM employees WHERE active = 1 ORDER BY name COLLATE NOCASE').all());
 });
 
 app.get('/api/admin/employees', requireAdmin, (req, res) => {

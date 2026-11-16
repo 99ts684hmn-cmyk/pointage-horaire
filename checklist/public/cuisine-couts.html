@@ -27,7 +27,7 @@
       background: transparent; color: var(--muted); cursor: pointer; }
     .tabs2 .t2.on { background: #fff; color: var(--dark); box-shadow: 0 2px 8px rgba(0,0,0,.08); }
     @media (max-width: 420px) { .tabs2 .t2 { font-size: .8rem; padding: 10px 2px; } }
-    /* Ratio ribs : prix de référence (constantes) */
+    /* Ratio ribs : bandeau des constantes (quantités + prix) */
     .prixbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 14px; padding: 10px 12px;
       background: #fbf3e3; border: 1.5px solid var(--gold); border-radius: 12px; font-size: .88rem; }
     .prixbar .pb-t { font-weight: 900; text-transform: uppercase; letter-spacing: .05em; font-size: .72rem; color: var(--gold-dark); flex: 1 1 100%; }
@@ -207,16 +207,6 @@
           <input type="text" id="rb-portions" inputmode="decimal" placeholder="32" autocomplete="off">
         </div>
       </div>
-      <div class="row2">
-        <div>
-          <label for="rb-rub">Quantité de rub (kg)</label>
-          <input type="text" id="rb-rub" inputmode="decimal" placeholder="0,450" autocomplete="off">
-        </div>
-        <div>
-          <label for="rb-sauce">Poids de sauce ribs (kg)</label>
-          <input type="text" id="rb-sauce" inputmode="decimal" placeholder="2,400" autocomplete="off">
-        </div>
-      </div>
 
       <label for="rb-prix">Prix d'achat au kg — étiquette (€)</label>
       <input type="text" id="rb-prix" inputmode="decimal" placeholder="7,90" autocomplete="off">
@@ -288,12 +278,22 @@
     <div class="modal" id="fiche" style="max-width:480px; max-height:88vh; overflow-y:auto"></div>
   </div>
 
-  <!-- Prix de référence du ratio ribs (constantes modifiables) -->
+  <!-- Constantes du ratio ribs : quantités de rub et de sauce + prix au kg -->
   <div class="overlay" id="prix-ov">
     <div class="modal" id="prix-modal" style="max-width:420px">
-      <h2 style="margin:0 0 4px;font-size:1.15rem">Prix de référence — ribs</h2>
-      <div class="fdates">Ces prix servent à tous les nouveaux calculs. Les enregistrements déjà faits gardent les prix du jour où ils ont été faits.</div>
+      <h2 style="margin:0 0 4px;font-size:1.15rem">Constantes — ribs</h2>
+      <div class="fdates">Ces valeurs servent à tous les nouveaux calculs. Les enregistrements déjà faits gardent celles du jour où ils ont été faits.</div>
       <div class="calc" style="border:0;padding:0;margin:0">
+        <div class="row2">
+          <div>
+            <label for="px-rubkg">Quantité de rub (kg)</label>
+            <input type="text" id="px-rubkg" inputmode="decimal" placeholder="0,350" autocomplete="off">
+          </div>
+          <div>
+            <label for="px-saucekg">Quantité de sauce ribs (kg)</label>
+            <input type="text" id="px-saucekg" inputmode="decimal" placeholder="0,900" autocomplete="off">
+          </div>
+        </div>
         <label for="px-rub">Rub (€ / kg)</label>
         <input type="text" id="px-rub" inputmode="decimal" placeholder="12,00" autocomplete="off">
         <label for="px-sauce">Sauce ribs (€ / kg)</label>
@@ -539,7 +539,7 @@
     // =====================================================================
     const SUBS = {
       mat: 'Ratio viande : perte à la découpe et coût réel au kilo.',
-      ribs: 'Ratio ribs : perte au parage, parures valorisées et coût par portion.',
+      ribs: 'Ratio ribs : perte au parage, parures valorisées, rub, sauce et coût par portion.',
       pertes: 'Produits jetés : la date se met automatiquement.',
     };
     function showTab(t) {
@@ -558,28 +558,32 @@
     // =====================================================================
     //  Ratio ribs : parage, parures valorisées, rub, sauce → coût par portion
     // =====================================================================
-    // Prix de référence (constantes modifiables, enregistrées sur le serveur).
-    let ribsPrix = { rub: null, sauce: null, parures: null };
+    // Constantes modifiables, enregistrées sur le serveur : prix au kg (rub, sauce,
+    // parures) et quantités fixes par calcul (rub, sauce).
+    let ribsPrix = { rub: null, sauce: null, parures: null, rubKg: 0.35, sauceKg: 0.9 };
     let rbRecords = [];
     let rbEditing = null; // enregistrement en cours de modification
-    const RB_FIELDS = ['rb-produit', 'rb-etiquette', 'rb-pare', 'rb-parures', 'rb-portions', 'rb-rub', 'rb-sauce', 'rb-prix'];
+    const RB_FIELDS = ['rb-produit', 'rb-etiquette', 'rb-pare', 'rb-parures', 'rb-portions', 'rb-prix'];
     const pos = (n) => (Number.isFinite(n) && n > 0 ? n : 0);
 
-    // Prix utilisés par le calcul. En modification : ceux de l'enregistrement
-    // (pour retrouver le même résultat), complétés par les constantes s'il n'en avait pas.
+    // Constantes utilisées par le calcul. En modification : celles de l'enregistrement
+    // (pour retrouver le même résultat), complétées par les constantes actuelles s'il n'en avait pas.
     function rbPrices() {
       const r = rbEditing;
       return {
         rub: pos(r && r.prixRubKg) || pos(ribsPrix.rub),
         sauce: pos(r && r.prixSauceKg) || pos(ribsPrix.sauce),
         parures: pos(r && r.prixParuresKg) || pos(ribsPrix.parures),
+        rubKg: pos(r && r.rubKg) || pos(ribsPrix.rubKg),
+        sauceKg: pos(r && r.sauceKg) || pos(ribsPrix.sauceKg),
       };
     }
     function rbRead() {
+      const k = rbPrices(); // rub et sauce : quantités fixes (constantes)
       return {
         produit: $('rb-produit').value.trim(),
         etiq: num($('rb-etiquette').value), pare: num($('rb-pare').value), parures: num($('rb-parures').value),
-        portions: num($('rb-portions').value), rub: num($('rb-rub').value), sauce: num($('rb-sauce').value),
+        portions: num($('rb-portions').value), rub: k.rubKg || NaN, sauce: k.sauceKg || NaN,
         prix: num($('rb-prix').value),
       };
     }
@@ -648,7 +652,7 @@
       $('rb-saved').textContent = '';
       const filled = v.etiq > 0 && v.pare >= 0 && $('rb-pare').value.trim() !== '';
       // Un champ facultatif mal saisi (lettres…) bloque l'enregistrement plutôt que d'être ignoré.
-      const optOk = ['rb-parures', 'rb-portions', 'rb-rub', 'rb-sauce', 'rb-prix'].every((id) => $(id).value.trim() === '' || Number.isFinite(num($(id).value)));
+      const optOk = ['rb-parures', 'rb-portions', 'rb-prix'].every((id) => $(id).value.trim() === '' || Number.isFinite(num($(id).value)));
       $('rb-save').disabled = !(filled && v.pare <= v.etiq && optOk);
       if (!filled) {
         box.className = 'result empty';
@@ -663,15 +667,19 @@
     function renderPrixBar() {
       const px = rbPrices();
       const f = (n) => (n ? `<b>${fr(n, 2)} €/kg</b>` : '<b class="miss">à renseigner</b>');
-      $('rb-prixbar').innerHTML = `<span class="pb-t">${rbEditing ? 'Prix de cet enregistrement' : 'Prix de référence'}</span>
-        <span class="pb-v">Rub ${f(px.rub)} · Sauce ${f(px.sauce)} · Parures ${f(px.parures)}</span>`
+      const q = (n) => `<b>${fr(n || 0, 3)} kg</b>`;
+      $('rb-prixbar').innerHTML = `<span class="pb-t">${rbEditing ? 'Constantes de cet enregistrement' : 'Constantes'}</span>
+        <span class="pb-v">Rub ${q(px.rubKg)} à ${f(px.rub)} · Sauce ${q(px.sauceKg)} à ${f(px.sauce)} · Parures ${f(px.parures)}</span>`
         + (rbEditing ? '' : '<button type="button" class="btn btn-grey" id="rb-prix-edit">✏️ Modifier</button>');
       const b = $('rb-prix-edit');
       if (b) b.addEventListener('click', openPrix);
     }
 
-    // --- Prix de référence : fenêtre de modification -------------------------
+    // --- Constantes : fenêtre de modification ---------------------------------
+    const PX_INPUTS = [['rubKg', 'px-rubkg'], ['sauceKg', 'px-saucekg'], ['rub', 'px-rub'], ['sauce', 'px-sauce'], ['parures', 'px-parures']];
     function openPrix() {
+      $('px-rubkg').value = ribsPrix.rubKg != null ? toField(ribsPrix.rubKg) : '';
+      $('px-saucekg').value = ribsPrix.sauceKg != null ? toField(ribsPrix.sauceKg) : '';
       $('px-rub').value = ribsPrix.rub != null ? toField(ribsPrix.rub) : '';
       $('px-sauce').value = ribsPrix.sauce != null ? toField(ribsPrix.sauce) : '';
       $('px-parures').value = ribsPrix.parures != null ? toField(ribsPrix.parures) : '';
@@ -683,11 +691,11 @@
     $('prix-ov').addEventListener('click', (e) => { if (e.target === $('prix-ov')) closePrix(); });
     $('px-save').addEventListener('click', async () => {
       const body = {};
-      for (const k of ['rub', 'sauce', 'parures']) {
-        const raw = $('px-' + k).value.trim();
+      for (const [k, id] of PX_INPUTS) {
+        const raw = $(id).value.trim();
         if (raw === '') { body[k] = null; continue; }
         const n = num(raw);
-        if (!Number.isFinite(n)) { $('px-msg').textContent = 'Un prix saisi n\'est pas un nombre.'; return; }
+        if (!Number.isFinite(n)) { $('px-msg').textContent = 'Une valeur saisie n\'est pas un nombre.'; return; }
         body[k] = n;
       }
       try {
@@ -773,8 +781,6 @@
       $('rb-pare').value = toField(r.pareKg);
       $('rb-parures').value = r.paruresKg ? toField(r.paruresKg) : '';
       $('rb-portions').value = r.portions ? toField(r.portions) : '';
-      $('rb-rub').value = r.rubKg ? toField(r.rubKg) : '';
-      $('rb-sauce').value = r.sauceKg ? toField(r.sauceKg) : '';
       $('rb-prix').value = r.prixKg ? toField(r.prixKg) : '';
       $('rb-editbar-txt').textContent = `✏️ Modification de l'enregistrement du ${longDate(r.date)}`;
       $('rb-editbar').hidden = false;
@@ -800,7 +806,7 @@
         produit: v.produit, etiquetteKg: v.etiq, pareKg: v.pare,
         paruresKg: pos(v.parures) || null, rubKg: pos(v.rub) || null, sauceKg: pos(v.sauce) || null, portions: pos(v.portions) || null,
         prixKg: pos(v.prix) || null,
-        // Prix utilisés pour ce calcul : conservés avec l'enregistrement.
+        // Quantités (ci-dessus) et prix utilisés pour ce calcul : conservés avec l'enregistrement.
         prixRubKg: px.rub || null, prixSauceKg: px.sauce || null, prixParuresKg: px.parures || null,
       };
       const wasEditing = !!rbEditing;

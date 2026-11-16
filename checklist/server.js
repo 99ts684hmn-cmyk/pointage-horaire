@@ -744,10 +744,17 @@ app.delete('/api/couts/:id', (req, res) => {
 });
 
 // --- Ratio ribs : calculs enregistrés + prix de référence --------------------
-const RIBS_PRICE_KEYS = { rub: 'ribs_prix_rub_kg', sauce: 'ribs_prix_sauce_kg', parures: 'ribs_prix_parures_kg' };
+// Constantes du ratio ribs : prix au kg (rub, sauce, valorisation des parures) et
+// quantités fixes par calcul (rub, sauce). Quantités par défaut tant qu'elles
+// n'ont jamais été modifiées : 0,35 kg de rub et 0,9 kg de sauce.
+const RIBS_PRICE_KEYS = {
+  rub: 'ribs_prix_rub_kg', sauce: 'ribs_prix_sauce_kg', parures: 'ribs_prix_parures_kg',
+  rubKg: 'ribs_qte_rub_kg', sauceKg: 'ribs_qte_sauce_kg',
+};
+const RIBS_DEFAULTS = { rubKg: 0.35, sauceKg: 0.9 };
 const nonNeg = (v) => { const n = Number(v); return (v !== null && v !== '' && v !== undefined && Number.isFinite(n) && n >= 0) ? n : null; };
 function readRibsPrices() {
-  const out = { rub: null, sauce: null, parures: null, updatedAt: null };
+  const out = { rub: null, sauce: null, parures: null, rubKg: RIBS_DEFAULTS.rubKg, sauceKg: RIBS_DEFAULTS.sauceKg, updatedAt: null };
   const get = db.prepare('SELECT value, updated_at AS u FROM cost_settings WHERE key = ?');
   for (const [k, key] of Object.entries(RIBS_PRICE_KEYS)) {
     const row = get.get(key);
@@ -756,7 +763,7 @@ function readRibsPrices() {
   return out;
 }
 
-// Prix de référence (constantes) : rub, sauce, valorisation des parures, en €/kg.
+// Constantes : prix en €/kg (rub, sauce, parures) et quantités en kg (rub, sauce).
 // À déclarer AVANT les routes « /api/ribs/:id ».
 app.get('/api/ribs/prix', (req, res) => { res.json(readRibsPrices()); });
 app.put('/api/ribs/prix', (req, res) => {
@@ -767,7 +774,7 @@ app.put('/api/ribs/prix', (req, res) => {
   db.transaction(() => {
     for (const [k, key] of Object.entries(RIBS_PRICE_KEYS)) {
       if (b[k] === undefined) continue;
-      up.run(key, nonNeg(b[k]), now); // vide = prix non renseigné
+      up.run(key, nonNeg(b[k]), now); // vide = non renseigné (quantité : aucune)
     }
   })();
   res.json({ ok: true, prix: readRibsPrices() });

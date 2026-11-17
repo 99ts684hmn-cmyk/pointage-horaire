@@ -80,6 +80,8 @@
     .big .val { font-size: 2.4rem; font-weight: 900; color: #9e1f24; line-height: 1; }
     .bar { height: 12px; border-radius: 999px; background: #e8f3ec; overflow: hidden; margin: 0 0 12px; }
     .bar i { display: block; height: 100%; background: #c0392b; }
+    .big.ratio { margin-bottom: 12px; }
+    .big.ratio .val { color: #1e7a45; }
     .lines { display: flex; flex-direction: column; gap: 6px; }
     .line { display: flex; justify-content: space-between; gap: 10px; padding: 8px 10px; background: #faf7f1; border-radius: 9px; font-size: .95rem; }
     .line b { color: var(--dark); }
@@ -371,9 +373,9 @@
       let html = `${produit ? `<div style="font-weight:800;margin-bottom:8px">${esc(produit)}</div>` : ''}
         <div class="big"><span class="lbl">Perte</span><span class="val">${fr(pertePct, 1)} %</span></div>
         <div class="bar"><i style="width:${Math.max(0, Math.min(100, pertePct))}%"></i></div>
+        <div class="big ratio"><span class="lbl">Ratio réel</span><span class="val">${fr(rendement, 1)} %</span></div>
         <div class="lines">
-          <div class="line"><span>Perte en poids</span><b>${fr(perteKg, 3)} kg</b></div>
-          <div class="line"><span>Rendement (vendable)</span><b>${fr(rendement, 1)} %</b></div>`;
+          <div class="line"><span>Perte en poids</span><b>${fr(perteKg, 3)} kg</b></div>`;
       let coefHtml = '';
       const coutReel = (prix > 0 && reel > 0) ? (prix * etiq) / reel : NaN; // prix payé réparti sur le seul poids vendable
       if (Number.isFinite(coutReel)) {

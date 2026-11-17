@@ -71,6 +71,26 @@
       td.n{font-size:.98rem}
       td.d{font-size:.78rem}
     }
+    /* Chiffres cliquables du récapitulatif : ouvrent la saisie rapide */
+    td.n .cell{display:block; width:100%; border:0; background:transparent; font:inherit; color:inherit; cursor:pointer;
+      padding:6px 2px; margin:-6px 0; border-radius:8px}
+    td.n .cell:hover, td.n .cell:focus-visible{background:#f6efe2; outline:0}
+    .tip{font-size:.8rem; color:var(--muted); margin:8px 2px 0}
+    /* Fenêtre de saisie rapide : croix en haut à gauche, Enregistrer en bas à droite */
+    .ov{position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; padding:16px; z-index:60}
+    .ov.show{display:flex}
+    .qm{position:relative; background:#fff; border-radius:16px; width:100%; max-width:380px; padding:18px 18px 16px; box-shadow:0 8px 28px rgba(0,0,0,.25)}
+    .qm .qx{position:absolute; top:10px; left:10px; width:36px; height:36px; border:0; border-radius:50%; background:#efe9dc; color:var(--dark);
+      font-size:1.05rem; font-weight:800; line-height:1; cursor:pointer; font-family:inherit}
+    .qm h3{margin:2px 0 2px 46px; font-size:1.1rem; font-weight:800; line-height:1.25}
+    .qm .qsub{margin:0 0 14px 46px; font-size:.85rem; color:var(--muted)}
+    .qm .choice{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+    .qm .choice button{border:2px solid var(--border); background:#fff; border-radius:12px; padding:16px 8px; font:inherit; font-weight:800; font-size:1.05rem;
+      color:var(--dark); cursor:pointer}
+    .qm .choice button.on{border-color:var(--gold-dark); background:#f6efe2}
+    .qm .qtimes{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+    .qm .qmsg{min-height:1.3em; margin-top:10px; font-size:.86rem; font-weight:700; color:var(--primary)}
+    .qm .qfoot{display:flex; justify-content:flex-end; margin-top:8px}
     .empty{color:var(--muted); font-size:.9rem; padding:6px 0}
     details{margin-top:12px}
     summary{cursor:pointer; font-weight:800; font-size:.9rem; color:var(--gold-dark); padding:6px 0}
@@ -137,6 +157,7 @@
         <h2>Récapitulatif</h2>
         <div class="period" id="period"></div>
         <div class="tw"><table id="recap"></table></div>
+        <div class="tip">Astuce : cliquez sur un chiffre pour ajouter directement cet avantage à ce cuisinier.</div>
 
         <details id="detail">
           <summary id="detail-sum">Détail des saisies</summary>
@@ -162,6 +183,25 @@
         <div id="archives"></div>
       </section>
     </main>
+  </div>
+
+  <!-- Saisie rapide ouverte par un clic sur un chiffre du récapitulatif -->
+  <div class="ov" id="q-ov">
+    <div class="qm" role="dialog" aria-modal="true" aria-labelledby="q-title">
+      <button type="button" class="qx" id="q-close" aria-label="Fermer" title="Fermer">✕</button>
+      <h3 id="q-title"></h3>
+      <div class="qsub" id="q-sub"></div>
+      <div class="choice" id="q-svc" hidden>
+        <button type="button" data-svc="midi">Midi</button>
+        <button type="button" data-svc="soir">Soir</button>
+      </div>
+      <div class="qtimes" id="q-times" hidden>
+        <div><label for="q-leave">Heure de départ</label><input type="time" id="q-leave"></div>
+        <div><label for="q-planned">Au lieu de</label><input type="time" id="q-planned"></div>
+      </div>
+      <div class="qmsg" id="q-msg"></div>
+      <div class="qfoot"><button type="button" class="btn btn-gold" id="q-save">Enregistrer</button></div>
+    </div>
   </div>
 
   <script>
@@ -192,11 +232,13 @@
     function say(text, isErr) { const m = $('msg'); m.textContent = text; m.className = isErr ? 'msg err' : 'msg'; }
 
     // Tableau récapitulatif (période en cours ou archive) : une ligne par cuisinier.
-    function recapHTML(rows) {
-      const n = (v) => `<td class="n${v ? '' : ' z'}">${v || 0}</td>`;
+    function recapHTML(rows, clickable) {
+      const n = (v, r, k) => `<td class="n${v ? '' : ' z'}">${clickable
+        ? `<button type="button" class="cell" data-emp="${r.employeeId}" data-type="${k}" title="Ajouter : ${esc(TYPE_LABEL[k])} — ${esc(r.name)}">${v || 0}</button>`
+        : (v || 0)}</td>`;
       const tot = (k) => rows.reduce((t, r) => t + (r[k] || 0), 0);
       return `<thead><tr><th>Cuisinier</th>${TYPES.map(([, l]) => `<th>${l}</th>`).join('')}<th>Dernier avantage</th></tr></thead>
-        <tbody>${rows.map((r) => `<tr><td>${esc(r.name)}</td>${TYPES.map(([k]) => n(r[k])).join('')}<td class="d">${frDate(r.last)}</td></tr>`).join('')
+        <tbody>${rows.map((r) => `<tr><td>${esc(r.name)}</td>${TYPES.map(([k]) => n(r[k], r, k)).join('')}<td class="d">${frDate(r.last)}</td></tr>`).join('')
           || '<tr><td colspan="5" class="empty">Aucun cuisinier.</td></tr>'}</tbody>
         <tfoot><tr><td>Total</td>${TYPES.map(([k]) => `<td>${tot(k)}</td>`).join('')}<td></td></tr></tfoot>`;
     }
@@ -208,7 +250,8 @@
       sel.value = keep;
 
       $('period').textContent = `Depuis le ${frDate(data.periodStart)} — ${data.entries.length} avantage${data.entries.length > 1 ? 's' : ''} enregistré${data.entries.length > 1 ? 's' : ''}.`;
-      $('recap').innerHTML = recapHTML(data.rows);
+      $('recap').innerHTML = recapHTML(data.rows, true);
+      $('recap').querySelectorAll('.cell').forEach((b) => b.addEventListener('click', () => openQuick(Number(b.dataset.emp), b.dataset.type)));
 
       $('detail-sum').textContent = `Détail des saisies (${data.entries.length})`;
       $('entries').innerHTML = data.entries.map((e) => `<div class="entry" data-id="${e.id}">
@@ -294,6 +337,51 @@
       $('svc-box').hidden = !svc;
       if (on) $('leave').focus();
       if (svc) $('svc').focus();
+    });
+
+    // --- Saisie rapide : clic sur un chiffre → fenêtre pour ce cuisinier et cette colonne.
+    let quick = null; // { employeeId, name, type, service }
+    function openQuick(employeeId, type) {
+      const row = data.rows.find((r) => r.employeeId === employeeId);
+      if (!row || !TYPE_LABEL[type]) return;
+      quick = { employeeId, name: row.name, type, service: '' };
+      const depart = type === 'depart_anticipe';
+      $('q-title').textContent = `${TYPE_LABEL[type]} — ${row.name}`;
+      $('q-sub').textContent = `${depart ? 'Nouveau départ anticipé' : 'Nouvelle ' + TYPE_LABEL[type].toLowerCase()} du ${frDate(todayISO())}`;
+      $('q-svc').hidden = depart; $('q-times').hidden = !depart;
+      $('q-svc').querySelectorAll('button').forEach((b) => b.classList.remove('on'));
+      $('q-leave').value = ''; $('q-planned').value = '';
+      $('q-msg').textContent = ''; $('q-save').disabled = false;
+      $('q-ov').classList.add('show');
+      if (depart) $('q-leave').focus();
+    }
+    function closeQuick() { $('q-ov').classList.remove('show'); quick = null; }
+    $('q-close').addEventListener('click', closeQuick);
+    $('q-ov').addEventListener('click', (e) => { if (e.target === $('q-ov')) closeQuick(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && quick) closeQuick(); });
+    $('q-svc').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+      if (!quick) return;
+      quick.service = b.dataset.svc;
+      $('q-svc').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+      $('q-msg').textContent = '';
+    }));
+    $('q-save').addEventListener('click', async () => {
+      if (!quick) return;
+      const body = { employeeId: quick.employeeId, type: quick.type, day: todayISO() };
+      if (quick.type === 'depart_anticipe') {
+        if (!$('q-leave').value) { $('q-msg').textContent = "Indiquez l'heure de départ."; $('q-leave').focus(); return; }
+        if (!$('q-planned').value) { $('q-msg').textContent = "Indiquez l'heure prévue (« au lieu de »)."; $('q-planned').focus(); return; }
+        body.leaveTime = $('q-leave').value; body.plannedTime = $('q-planned').value;
+      } else {
+        if (!quick.service) { $('q-msg').textContent = 'Choisissez midi ou soir.'; return; }
+        body.service = quick.service;
+      }
+      $('q-save').disabled = true;
+      try {
+        await api('api/admin/perks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const txt = `✅ ${TYPE_LABEL[quick.type]}${body.service ? ' ' + body.service : ''} ajouté pour ${quick.name}.`;
+        closeQuick(); say(txt); await load();
+      } catch (e) { $('q-msg').textContent = e.message; $('q-save').disabled = false; }
     });
 
     $('day').value = todayISO();

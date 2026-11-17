@@ -81,6 +81,15 @@
     .bar { height: 12px; border-radius: 999px; background: #e8f3ec; overflow: hidden; margin: 0 0 12px; }
     .bar i { display: block; height: 100%; background: #c0392b; }
     .big.ratio { margin-bottom: 12px; }
+    /* Ratio viande : options à cocher (garniture / sauce, flambage) */
+    .opts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 14px 0 2px; padding: 10px 12px;
+      border: 1.5px solid var(--border); border-radius: 10px; background: #fbf8f1; }
+    .opts .opts-t { flex: 1 1 100%; font-weight: 900; text-transform: uppercase; letter-spacing: .05em; font-size: .72rem; color: var(--gold-dark); }
+    .calc label.opt { display: inline-flex; align-items: center; gap: 8px; margin: 0; font-size: .95rem; font-weight: 700; color: var(--dark); cursor: pointer; }
+    .calc label.opt input[type="checkbox"] { width: 22px; height: 22px; padding: 0; margin: 0; flex: 0 0 auto; border: 0;
+      -webkit-appearance: checkbox; appearance: auto; accent-color: var(--gold-dark); cursor: pointer; }
+    .opt .oc { font-weight: 600; color: var(--muted); }
+    .opts .btn { margin-left: auto; padding: 7px 12px; }
     .big.ratio .val { color: #1e7a45; text-align: right; }
     .big.ratio .val small { display: block; font-size: .95rem; font-weight: 800; margin-top: 4px; white-space: nowrap; }
     .lines { display: flex; flex-direction: column; gap: 6px; }
@@ -270,6 +279,14 @@
         <input type="text" id="vente" inputmode="decimal" placeholder="55,00" autocomplete="off">
       </div>
 
+      <!-- Options : coût par portion ajouté au coût matière (constantes communes à toutes les viandes) -->
+      <div class="opts" id="mat-opts">
+        <span class="opts-t">Options (facultatif)</span>
+        <label class="opt"><input type="checkbox" id="opt-garniture"> Garniture / sauce <span class="oc" id="opt-garniture-c"></span></label>
+        <label class="opt"><input type="checkbox" id="opt-flambage"> Flambage <span class="oc" id="opt-flambage-c"></span></label>
+        <button type="button" class="btn btn-grey" id="mat-opts-edit">✏️ Modifier</button>
+      </div>
+
       <label for="decoupeur">Découpeur</label>
       <select id="decoupeur" class="who"><option value="">— Choisir —</option></select>
     </section>
@@ -388,18 +405,20 @@
       const mv = matValues();
       box.innerHTML = calcHTML({
         produit: prod.nom, etiq, reel,
-        prix: mv.prix, portionG: mv.portionG, vente: mv.vente,
+        prix: mv.prix, portionG: mv.portionG, vente: mv.vente, extras: matExtras(),
       }) + (prod.nom ? '' : `<div class="warn">⚠️ ${prod.key === 'autre' ? 'Saisissez le nom du produit' : 'Choisissez le produit'} pour pouvoir enregistrer.</div>`);
     }
 
     // Récapitulatif complet d'un calcul (utilisé par la calculette ET par la
     // fiche d'un enregistrement) : perte, ratio réel, coût réel, portions, marge.
-    function calcHTML({ produit, etiq, reel, prix, portionG, vente }) {
+    function calcHTML({ produit, etiq, reel, prix, portionG, vente, extras }) {
+      const ex = extras || []; // options cochées : [{ label, cout }] (cout NaN = à renseigner)
+      const exSum = ex.reduce((t, x) => t + (Number.isFinite(x.cout) ? x.cout : 0), 0);
       const perteKg = etiq - reel;
       const pertePct = (perteKg / etiq) * 100;
       const coutReel = (prix > 0 && reel > 0) ? (prix * etiq) / reel : NaN; // prix payé réparti sur le seul poids vendable
-      // Ratio réel : prix de vente de la portion ÷ coût matière de la portion (multiple).
-      const coutPortion = (Number.isFinite(coutReel) && portionG > 0) ? coutReel * portionG / 1000 : NaN;
+      // Ratio réel : prix de vente de la portion ÷ coût de la portion, options comprises (multiple).
+      const coutPortion = (Number.isFinite(coutReel) && portionG > 0) ? coutReel * portionG / 1000 + exSum : NaN;
       const ratio = (vente > 0 && coutPortion > 0) ? vente / coutPortion : NaN;
       let html = `${produit ? `<div style="font-weight:800;margin-bottom:8px">${esc(produit)}</div>` : ''}
         <div class="big"><span class="lbl">Perte</span><span class="val">${fr(pertePct, 1)} %</span></div>
@@ -416,8 +435,13 @@
         const nb = Math.floor(reel * 1000 / portionG + 1e-9);
         html += `<div class="line cost"><span>Portions de ${fr(portionG, 0)} g</span><b>${nb} portion${nb > 1 ? 's' : ''}</b></div>`;
         if (Number.isFinite(coutReel)) {
-          const cp = coutReel * portionG / 1000;
-          html += `<div class="line cost"><span>Coût matière par portion</span><b>${fr(cp, 2)} €</b></div>`;
+          const cpViande = coutReel * portionG / 1000;
+          const cp = cpViande + exSum; // coût de la portion, options comprises
+          html += `<div class="line cost"><span>${ex.length ? 'Coût viande par portion' : 'Coût matière par portion'}</span><b>${fr(cpViande, 2)} €</b></div>`;
+          if (ex.length) {
+            html += ex.map((x) => `<div class="line"><span>+ ${esc(x.label)}</span><b>${Number.isFinite(x.cout) ? `${fr(x.cout, 2)} €` : '<span class="miss">à renseigner</span>'}</b></div>`).join('')
+              + `<div class="line cost"><span>Coût matière par portion (total)</span><b>${fr(cp, 2)} €</b></div>`;
+          }
           if (vente > 0) html += `<div class="line"><span>Prix de vente de la portion</span><b>${fr(vente, 2)} €</b></div>
             <div class="line cost"><span>Marge brute par portion</span><b>${fr(vente - cp, 2)} €</b></div>
             <div class="line"><span>Taux de marge (marge ÷ prix de vente)</span><b>${fr((vente - cp) / vente * 100, 1)} %</b></div>`;
@@ -445,6 +469,7 @@
     function clearForm() {
       ['produit', 'etiquette', 'reel', 'prix', 'portion', 'vente'].forEach((id) => { $(id).value = ''; });
       $('produit-sel').value = '';
+      MAT_OPTS.forEach((o) => { $(o.chk).checked = false; });
       setDecoupeur('');
       updateMatProduit();
     }
@@ -510,22 +535,49 @@
       const b = $('mat-const-edit');
       if (b) b.addEventListener('click', openMatConst);
     }
+    // --- Options à cocher : coût par portion, constantes communes à toutes les viandes.
+    let matOptions = { garniture: null, flambage: null };
+    const MAT_OPTS = [
+      { key: 'garniture', label: 'Garniture / sauce', chk: 'opt-garniture', rec: 'coutGarniture' },
+      { key: 'flambage', label: 'Flambage', chk: 'opt-flambage', rec: 'coutFlambage' },
+    ];
+    // Coût d'une option : celui de l'enregistrement s'il en a un, sinon la constante actuelle (NaN = à renseigner).
+    const optCost = (o, r) => matPos(r && r[o.rec]) || matPos(matOptions[o.key]);
+    // Options cochées dans la calculette / dans un enregistrement : [{ key, label, cout }].
+    const matExtras = () => MAT_OPTS.filter((o) => $(o.chk).checked).map((o) => ({ key: o.key, label: o.label, cout: optCost(o, editing) }));
+    const recExtras = (r) => MAT_OPTS.filter((o) => r[o.key]).map((o) => ({ key: o.key, label: o.label, cout: optCost(o, r) }));
+    const exTotal = (ex) => ex.reduce((t, x) => t + (Number.isFinite(x.cout) ? x.cout : 0), 0);
+    function renderMatOpts() {
+      for (const o of MAT_OPTS) {
+        const c = optCost(o, editing);
+        $(o.chk + '-c').innerHTML = Number.isFinite(c) ? `(+ ${fr(c, 2)} €)` : '<span class="miss">(à renseigner)</span>';
+      }
+    }
+    MAT_OPTS.forEach((o) => $(o.chk).addEventListener('change', compute));
+    $('mat-opts-edit').addEventListener('click', () => openMatConst());
+
     function updateMatProduit() {
       const key = $('produit-sel').value;
       $('produit-autre').hidden = key !== 'autre';
       $('mat-libre').hidden = key !== 'autre';
       renderMatBar();
+      renderMatOpts();
       compute();
     }
     fillMatSelect();
     $('produit-sel').addEventListener('change', () => { updateMatProduit(); if ($('produit-sel').value === 'autre') $('produit').focus(); });
     fetch('api/couts/produits').then((r) => r.json()).then((d) => {
-      if (d && Array.isArray(d.produits) && d.produits.length) { matProduits = d.produits; fillMatSelect(); updateMatProduit(); loadHist(); }
+      if (d && d.options && typeof d.options === 'object') matOptions = d.options;
+      if (d && Array.isArray(d.produits) && d.produits.length) { matProduits = d.produits; fillMatSelect(); }
+      updateMatProduit(); loadHist();
     }).catch(() => {});
 
     // Fenêtre de modification des constantes (poids de portion + prix de vente par produit).
     function openMatConst() {
-      $('mc-fields').innerHTML = matProduits.map((p) => `<div style="font-weight:800;margin:12px 0 2px">${esc(p.nom)}</div>
+      $('mc-fields').innerHTML = `<div style="font-weight:800;margin:0 0 2px">Options — toutes les viandes</div>
+        <div class="row2">${MAT_OPTS.map((o) => `<div><label for="mc-o-${o.key}">${esc(o.label)} (€ par portion)</label>
+          <input type="text" id="mc-o-${o.key}" inputmode="decimal" autocomplete="off" value="${matOptions[o.key] != null ? esc(toField(matOptions[o.key])) : ''}"></div>`).join('')}</div>`
+        + matProduits.map((p) => `<div style="font-weight:800;margin:12px 0 2px">${esc(p.nom)}</div>
         <label for="mc-a-${esc(p.key)}">Prix d'achat (€ / kg, étiquette)</label>
         <input type="text" id="mc-a-${esc(p.key)}" inputmode="decimal" autocomplete="off" value="${p.achat != null ? esc(toField(p.achat)) : ''}">
         <div class="row2">
@@ -553,11 +605,20 @@
         }
         produits[p.key] = o;
       }
+      const options = {};
+      for (const o of MAT_OPTS) {
+        const raw = $('mc-o-' + o.key).value.trim();
+        if (raw === '') { options[o.key] = null; continue; }
+        const n = num(raw);
+        if (!Number.isFinite(n) || n <= 0) { $('mc-msg').textContent = 'Une valeur saisie n\'est pas un nombre.'; return; }
+        options[o.key] = n;
+      }
       try {
-        const r = await fetch('api/couts/produits', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ produits }) });
+        const r = await fetch('api/couts/produits', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ produits, options }) });
         const data = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(data.error || 'Erreur');
         if (Array.isArray(data.produits)) matProduits = data.produits;
+        if (data.options && typeof data.options === 'object') matOptions = data.options;
         closeMatConst(); updateMatProduit(); loadHist();
       } catch (e) { $('mc-msg').textContent = 'Enregistrement impossible : ' + e.message; }
     });
@@ -599,9 +660,11 @@
       if (r.prixKg) parts.push(`${fr(r.prixKg, 2)} €/kg → <b>${fr(cout, 2)} €/kg réel</b>`);
       if (r.portionG && r.reelKg > 0) {
         const nb = Math.floor(r.reelKg * 1000 / r.portionG + 1e-9);
-        parts.push(`${nb} portion${nb > 1 ? 's' : ''} de ${fr(r.portionG, 0)} g${cout ? ` · <b>${fr(cout * r.portionG / 1000, 2)} €/portion</b>` : ''}`);
+        const ex = recExtras(r); // options cochées : leur coût s'ajoute à celui de la portion
+        const cp = cout ? cout * r.portionG / 1000 + exTotal(ex) : null;
+        parts.push(`${nb} portion${nb > 1 ? 's' : ''} de ${fr(r.portionG, 0)} g${cp ? ` · <b>${fr(cp, 2)} €/portion</b>` : ''}${ex.length ? ` · avec ${ex.map((x) => esc(x.label.toLowerCase())).join(' + ')}` : ''}`);
         const pv = recVente(r);
-        if (cout && pv) parts.push(`vendu ${fr(pv, 2)} € → <b>ratio réel × ${fr(pv / (cout * r.portionG / 1000), 2)}</b> · marge ${fr(pv - cout * r.portionG / 1000, 2)} € (${fr((1 - cout * r.portionG / 1000 / pv) * 100, 1)} %)`);
+        if (cp && pv) parts.push(`vendu ${fr(pv, 2)} € → <b>ratio réel × ${fr(pv / cp, 2)}</b> · marge ${fr(pv - cp, 2)} € (${fr((1 - cp / pv) * 100, 1)} %)`);
       }
       return `<button type="button" class="rec rec-btn" data-open="${esc(r.id)}">
           <span class="rp">${fr(perte, 1)} %</span>
@@ -637,9 +700,10 @@
           ${r.prixKg ? `<div class="line"><span>Prix d'achat au kg</span><b>${fr(r.prixKg, 2)} €/kg</b></div>` : ''}
           ${r.portionG ? `<div class="line"><span>Poids par portion</span><b>${fr(r.portionG, 0)} g</b></div>` : ''}
           ${recVente(r) ? `<div class="line"><span>Prix de vente de la portion</span><b>${fr(recVente(r), 2)} €</b></div>` : ''}
+          ${recExtras(r).length ? `<div class="line"><span>Options</span><b>${recExtras(r).map((x) => esc(x.label)).join(', ')}</b></div>` : ''}
           ${r.decoupeur ? `<div class="line"><span>Découpeur</span><b>${esc(r.decoupeur)}</b></div>` : ''}
         </div>
-        <div class="result">${calcHTML({ produit: '', etiq: r.etiquetteKg, reel: r.reelKg, prix: r.prixKg || NaN, portionG: r.portionG || NaN, vente: recVente(r) || NaN })}</div>
+        <div class="result">${calcHTML({ produit: '', etiq: r.etiquetteKg, reel: r.reelKg, prix: r.prixKg || NaN, portionG: r.portionG || NaN, vente: recVente(r) || NaN, extras: recExtras(r) })}</div>
         <div class="factions">
           <button class="btn btn-green" id="f-close" type="button">Fermer</button>
           <button class="btn btn-blue" id="f-edit" type="button">✏️ Modifier</button>
@@ -671,6 +735,7 @@
       $('prix').value = r.prixKg ? toField(r.prixKg) : '';
       $('portion').value = r.portionG ? toField(r.portionG) : '';
       $('vente').value = r.prixVente ? toField(r.prixVente) : '';
+      MAT_OPTS.forEach((o) => { $(o.chk).checked = !!r[o.key]; });
       setDecoupeur(r.decoupeur || '');
       $('editbar-txt').textContent = `✏️ Modification de l'enregistrement du ${longDate(r.date)}`;
       $('editbar').hidden = false;
@@ -696,6 +761,12 @@
         prixVente: mv.vente || null,
         decoupeur: $('decoupeur').value || null,
       };
+      // Options cochées : leur coût du moment est conservé avec l'enregistrement.
+      for (const o of MAT_OPTS) {
+        const on = $(o.chk).checked;
+        body[o.key] = on;
+        body[o.rec] = on ? (optCost(o, editing) || null) : null;
+      }
       const wasEditing = !!editing;
       try {
         const r = wasEditing

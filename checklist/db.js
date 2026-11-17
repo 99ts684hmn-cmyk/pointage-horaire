@@ -208,6 +208,15 @@ if (!db.prepare('PRAGMA table_info(cost_records)').all().some((c) => c.name === 
 if (!db.prepare('PRAGMA table_info(cost_records)').all().some((c) => c.name === 'prix_vente')) {
   db.exec('ALTER TABLE cost_records ADD COLUMN prix_vente REAL');
 }
+// Coûts matière — Ratio viande : options cochées (garniture / sauce, flambage) et leur
+// coût par portion le jour du calcul (ajouté au coût matière de la portion).
+{
+  const cols = db.prepare('PRAGMA table_info(cost_records)').all().map((c) => c.name);
+  if (!cols.includes('garniture')) db.exec('ALTER TABLE cost_records ADD COLUMN garniture INTEGER NOT NULL DEFAULT 0');
+  if (!cols.includes('flambage')) db.exec('ALTER TABLE cost_records ADD COLUMN flambage INTEGER NOT NULL DEFAULT 0');
+  if (!cols.includes('cout_garniture')) db.exec('ALTER TABLE cost_records ADD COLUMN cout_garniture REAL');
+  if (!cols.includes('cout_flambage')) db.exec('ALTER TABLE cost_records ADD COLUMN cout_flambage REAL');
+}
 // Colonne « days » (jours d'une tâche pour le mode WEEKLY_CARRY_OVER, ex. "1,3,5").
 // Si NULL, on retombe sur day_of_week (compat. tâches hebdo salle existantes).
 if (!db.prepare('PRAGMA table_info(tasks)').all().some((c) => c.name === 'days')) {

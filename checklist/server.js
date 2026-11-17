@@ -708,7 +708,8 @@ const posNum = (v) => { const n = Number(v); return Number.isFinite(n) && n > 0 
 // Liste des calculs enregistrés, du plus récent au plus ancien (400 derniers).
 app.get('/api/couts', (req, res) => {
   res.json(db.prepare(`SELECT id, date, created_at AS createdAt, updated_at AS updatedAt, produit, etiquette_kg AS etiquetteKg,
-    reel_kg AS reelKg, prix_kg AS prixKg, portion_g AS portionG, decoupeur, prix_vente AS prixVente
+    reel_kg AS reelKg, prix_kg AS prixKg, portion_g AS portionG, decoupeur, prix_vente AS prixVente,
+    garniture, flambage, cout_garniture AS coutGarniture, cout_flambage AS coutFlambage
     FROM cost_records ORDER BY created_at DESC LIMIT 400`).all());
 });
 
@@ -734,10 +735,21 @@ function readViandeProduits() {
     return { key: p.key, nom: p.nom, achat: a ? a.value : null, vente: v ? v.value : p.vente, portionG: g ? g.value : p.portionG };
   });
 }
+// Options à cocher, communes à toutes les viandes : coût par portion (€, à renseigner).
+const VIANDE_OPTIONS = { garniture: 'viande_opt_garniture', flambage: 'viande_opt_flambage' };
+function readViandeOptions() {
+  const get = db.prepare('SELECT value FROM cost_settings WHERE key = ?');
+  const out = {};
+  for (const [k, key] of Object.entries(VIANDE_OPTIONS)) { const row = get.get(key); out[k] = row ? row.value : null; }
+  return out;
+}
+// Options d'un calcul : case cochée (0/1) + coût retenu (null si non cochée).
+const optFields = (b) => [b.garniture ? 1 : 0, b.flambage ? 1 : 0, b.garniture ? posNum(b.coutGarniture) : null, b.flambage ? posNum(b.coutFlambage) : null];
 // À déclarer AVANT les routes « /api/couts/:id ».
-app.get('/api/couts/produits', (req, res) => { res.json({ produits: readViandeProduits() }); });
+app.get('/api/couts/produits', (req, res) => { res.json({ produits: readViandeProduits(), options: readViandeOptions() }); });
 app.put('/api/couts/produits', (req, res) => {
   const b = (req.body && req.body.produits) || {};
+  const opts = (req.body && req.body.options) || {};
   const up = db.prepare(`INSERT INTO cost_settings (key, value, updated_at) VALUES (?, ?, ?)
     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`);
   const now = nowISO();
@@ -749,8 +761,11 @@ app.put('/api/couts/produits', (req, res) => {
       if (v.vente !== undefined) up.run(`viande_${p.key}_vente`, posNum(v.vente), now); // vide = non renseigné
       if (v.portionG !== undefined) up.run(`viande_${p.key}_portion_g`, posNum(v.portionG), now);
     }
+    for (const [k, key] of Object.entries(VIANDE_OPTIONS)) {
+      if (opts[k] !== undefined) up.run(key, posNum(opts[k]), now);
+    }
   })();
-  res.json({ ok: true, produits: readViandeProduits() });
+  res.json({ ok: true, produits: readViandeProduits(), options: readViandeOptions() });
 });
 
 // Modifier / compléter un calcul : la date de création (classement) est conservée,
@@ -761,9 +776,10 @@ app.put('/api/couts/:id', (req, res) => {
   const reel = Number(b.reelKg);
   if (!etiq || !(Number.isFinite(reel) && reel >= 0)) return res.status(400).json({ error: 'Poids étiquette et poids réel requis' });
   if (!String(b.produit || '').trim()) return res.status(400).json({ error: 'Le produit est obligatoire' });
-  const info = db.prepare(`UPDATE cost_records SET produit = ?, etiquette_kg = ?, reel_kg = ?, prix_kg = ?, portion_g = ?, decoupeur = ?, prix_vente = ?, updated_at = ?
+  const info = db.prepare(`UPDATE cost_records SET produit = ?, etiquette_kg = ?, reel_kg = ?, prix_kg = ?, portion_g = ?, decoupeur = ?, prix_vente = ?,
+    garniture = ?, flambage = ?, cout_garniture = ?, cout_flambage = ?, updated_at = ?
     WHERE id = ?`).run(String(b.produit || '').trim().slice(0, 120) || null, etiq, reel, posNum(b.prixKg), posNum(b.portionG),
-    String(b.decoupeur || '').trim().slice(0, 60) || null, posNum(b.prixVente), nowISO(), req.params.id);
+    String(b.decoupeur || '').trim().slice(0, 60) || null, posNum(b.prixVente), ...optFields(b), nowISO(), req.params.id);
   if (!info.changes) return res.status(404).json({ error: 'Enregistrement introuvable' });
   res.json({ ok: true });
 });
@@ -776,10 +792,11 @@ app.post('/api/couts', (req, res) => {
   if (!etiq || !(Number.isFinite(reel) && reel >= 0)) return res.status(400).json({ error: 'Poids étiquette et poids réel requis' });
   if (!String(b.produit || '').trim()) return res.status(400).json({ error: 'Le produit est obligatoire' });
   const id = uid();
-  db.prepare(`INSERT INTO cost_records (id, date, created_at, produit, etiquette_kg, reel_kg, prix_kg, portion_g, decoupeur, prix_vente)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, todayParis(), nowISO(),
+  db.prepare(`INSERT INTO cost_records (id, date, created_at, produit, etiquette_kg, reel_kg, prix_kg, portion_g, decoupeur, prix_vente,
+    garniture, flambage, cout_garniture, cout_flambage)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, todayParis(), nowISO(),
     String(b.produit || '').trim().slice(0, 120) || null, etiq, reel, posNum(b.prixKg), posNum(b.portionG),
-    String(b.decoupeur || '').trim().slice(0, 60) || null, posNum(b.prixVente));
+    String(b.decoupeur || '').trim().slice(0, 60) || null, posNum(b.prixVente), ...optFields(b));
   res.status(201).json({ ok: true, id });
 });
 

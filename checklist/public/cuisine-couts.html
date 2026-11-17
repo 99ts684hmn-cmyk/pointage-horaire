@@ -257,11 +257,11 @@
       </div>
       <div class="hint">Poids réel = vendable après parage. Plusieurs pièces : « + » entre chaque poids.</div>
 
-      <label for="prix">Prix d'achat au kg — étiquette (€, facultatif)</label>
-      <input type="text" id="prix" inputmode="decimal" placeholder="38,50" autocomplete="off">
-
-      <!-- Portion et prix de vente : saisis seulement pour « Autres » (constantes pour les autres produits) -->
+      <!-- Prix d'achat, portion et prix de vente : saisis seulement pour « Autres » (constantes pour les autres produits) -->
       <div id="mat-libre" hidden>
+        <label for="prix">Prix d'achat au kg — étiquette (€, facultatif)</label>
+        <input type="text" id="prix" inputmode="decimal" placeholder="38,50" autocomplete="off">
+
         <label for="portion">Poids par portion (g, facultatif)</label>
         <input type="text" id="portion" inputmode="decimal" placeholder="350" autocomplete="off">
 
@@ -292,7 +292,7 @@
     <div class="modal" id="fiche" style="max-width:480px; max-height:88vh; overflow-y:auto"></div>
   </div>
 
-  <!-- Constantes du ratio viande : poids de portion et prix de vente par produit -->
+  <!-- Constantes du ratio viande : prix d'achat, poids de portion et prix de vente par produit -->
   <div class="overlay" id="mat-ov">
     <div class="modal" style="max-width:420px; max-height:88vh; overflow-y:auto">
       <h2 style="margin:0 0 4px;font-size:1.15rem">Constantes — ratio viande</h2>
@@ -387,7 +387,7 @@
       const mv = matValues();
       box.innerHTML = calcHTML({
         produit: prod.nom, etiq, reel,
-        prix: num($('prix').value), portionG: mv.portionG, vente: mv.vente,
+        prix: mv.prix, portionG: mv.portionG, vente: mv.vente,
       }) + (prod.nom ? '' : `<div class="warn">⚠️ ${prod.key === 'autre' ? 'Saisissez le nom du produit' : 'Choisissez le produit'} pour pouvoir enregistrer.</div>`);
     }
 
@@ -455,12 +455,12 @@
       setDecoupeur('');
       updateMatProduit();
     }
-    // --- Produit : obligatoire, au choix. Les produits de la liste ont un poids de
-    // portion et un prix de vente constants (modifiables) ; « Autres » = nom saisi.
+    // --- Produit : obligatoire, au choix. Les produits de la liste ont un prix d'achat,
+    // un poids de portion et un prix de vente constants (modifiables) ; « Autres » = nom saisi.
     let matProduits = [
-      { key: 'lesage', nom: 'Entrecôte Lesage', vente: 30, portionG: 350 },
-      { key: 'chaiseronne', nom: 'Entrecôte Chaiseronne', vente: 32, portionG: 350 },
-      { key: 'matu45', nom: 'Matu 45 J', vente: 42, portionG: 350 },
+      { key: 'lesage', nom: 'Entrecôte Lesage', achat: null, vente: 30, portionG: 350 },
+      { key: 'chaiseronne', nom: 'Entrecôte Chaiseronne', achat: null, vente: 32, portionG: 350 },
+      { key: 'matu45', nom: 'Matu 45 J', achat: null, vente: 42, portionG: 350 },
     ];
     const matNorm = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, '');
     const matByKey = (key) => matProduits.find((p) => p.key === key) || null;
@@ -491,9 +491,10 @@
     function matValues() {
       const key = $('produit-sel').value;
       const p = matByKey(key);
-      if (!p) return key === 'autre' ? { portionG: num($('portion').value), vente: num($('vente').value) } : { portionG: NaN, vente: NaN };
+      if (!p) return key === 'autre' ? { prix: num($('prix').value), portionG: num($('portion').value), vente: num($('vente').value) } : { prix: NaN, portionG: NaN, vente: NaN };
       const r = matRec(key);
       return {
+        prix: matPos(r && r.prixKg) || matPos(p.achat),
         portionG: matPos(r && r.portionG) || matPos(p.portionG),
         vente: matPos(r && r.prixVente) || matPos(p.vente),
       };
@@ -505,8 +506,9 @@
       const v = matValues(); const rec = matRec(key);
       const g = Number.isFinite(v.portionG) ? `<b>${fr(v.portionG, 0)} g</b>` : '<b class="miss">à renseigner</b>';
       const e = Number.isFinite(v.vente) ? `<b>${fr(v.vente, 2)} €</b>` : '<b class="miss">à renseigner</b>';
+      const a = Number.isFinite(v.prix) ? `<b>${fr(v.prix, 2)} €/kg</b>` : '<b class="miss">à renseigner</b>';
       bar.innerHTML = `<span class="pb-t">${rec ? 'Constantes de cet enregistrement' : 'Constantes'} — ${esc(p.nom)}</span>
-        <span class="pb-v">Portion ${g} · Prix de vente ${e}</span>`
+        <span class="pb-v">Achat ${a} · Portion ${g} · Prix de vente ${e}</span>`
         + (rec ? '' : '<button type="button" class="btn btn-grey" id="mat-const-edit">✏️ Modifier</button>');
       const b = $('mat-const-edit');
       if (b) b.addEventListener('click', openMatConst);
@@ -527,6 +529,8 @@
     // Fenêtre de modification des constantes (poids de portion + prix de vente par produit).
     function openMatConst() {
       $('mc-fields').innerHTML = matProduits.map((p) => `<div style="font-weight:800;margin:12px 0 2px">${esc(p.nom)}</div>
+        <label for="mc-a-${esc(p.key)}">Prix d'achat (€ / kg, étiquette)</label>
+        <input type="text" id="mc-a-${esc(p.key)}" inputmode="decimal" autocomplete="off" value="${p.achat != null ? esc(toField(p.achat)) : ''}">
         <div class="row2">
           <div><label for="mc-g-${esc(p.key)}">Poids par portion (g)</label>
             <input type="text" id="mc-g-${esc(p.key)}" inputmode="decimal" autocomplete="off" value="${p.portionG != null ? esc(toField(p.portionG)) : ''}"></div>
@@ -543,7 +547,7 @@
       const produits = {};
       for (const p of matProduits) {
         const o = {};
-        for (const [k, id] of [['portionG', 'mc-g-' + p.key], ['vente', 'mc-v-' + p.key]]) {
+        for (const [k, id] of [['achat', 'mc-a-' + p.key], ['portionG', 'mc-g-' + p.key], ['vente', 'mc-v-' + p.key]]) {
           const raw = $(id).value.trim();
           if (raw === '') { o[k] = null; continue; }
           const n = num(raw);
@@ -691,7 +695,7 @@
       const body = {
         produit: matProduit().nom,
         etiquetteKg: num($('etiquette').value), reelKg: num($('reel').value),
-        prixKg: num($('prix').value) || null, portionG: mv.portionG || null,
+        prixKg: mv.prix || null, portionG: mv.portionG || null,
         prixVente: mv.vente || null,
         decoupeur: $('decoupeur').value || null,
       };

@@ -712,9 +712,10 @@ app.get('/api/couts', (req, res) => {
     FROM cost_records ORDER BY created_at DESC LIMIT 400`).all());
 });
 
-// Ratio viande : produits au choix. Pour chacun, deux constantes modifiables :
-// prix de vente de la portion (€) et poids de la portion (g). Valeurs par défaut
-// tant qu'elles n'ont jamais été modifiées. « Autres » = nom saisi librement.
+// Ratio viande : produits au choix. Pour chacun, trois constantes modifiables :
+// prix d'achat au kg (€, à renseigner), prix de vente de la portion (€) et poids
+// de la portion (g). Valeurs par défaut tant qu'elles n'ont jamais été modifiées.
+// « Autres » = nom saisi librement.
 const VIANDE_PRODUITS = [
   { key: 'lesage', nom: 'Entrecôte Lesage', vente: 30, portionG: 350 },
   { key: 'chaiseronne', nom: 'Entrecôte Chaiseronne', vente: 32, portionG: 350 },
@@ -725,7 +726,8 @@ function readViandeProduits() {
   return VIANDE_PRODUITS.map((p) => {
     const v = get.get(`viande_${p.key}_vente`);
     const g = get.get(`viande_${p.key}_portion_g`);
-    return { key: p.key, nom: p.nom, vente: v ? v.value : p.vente, portionG: g ? g.value : p.portionG };
+    const a = get.get(`viande_${p.key}_achat_kg`);
+    return { key: p.key, nom: p.nom, achat: a ? a.value : null, vente: v ? v.value : p.vente, portionG: g ? g.value : p.portionG };
   });
 }
 // À déclarer AVANT les routes « /api/couts/:id ».
@@ -739,6 +741,7 @@ app.put('/api/couts/produits', (req, res) => {
     for (const p of VIANDE_PRODUITS) {
       const v = b[p.key];
       if (!v || typeof v !== 'object') continue;
+      if (v.achat !== undefined) up.run(`viande_${p.key}_achat_kg`, posNum(v.achat), now);
       if (v.vente !== undefined) up.run(`viande_${p.key}_vente`, posNum(v.vente), now); // vide = non renseigné
       if (v.portionG !== undefined) up.run(`viande_${p.key}_portion_g`, posNum(v.portionG), now);
     }

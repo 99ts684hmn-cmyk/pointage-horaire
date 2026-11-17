@@ -4,7 +4,7 @@
 // présente sur toutes les pages du site. Son contenu dépend de la SECTION :
 //   accueil  → Accueil · Planning · Salle · Cuisine · Charlène
 //   salle    → Accueil · Salle · Planning · Check-lists · Managers · Admin
-//   cuisine  → Accueil · Cuisine · Check-lists · Coûts · Groupes · Menu
+//   cuisine  → Cuisine · Check-lists · Coûts · Groupes · Menu · Responsable
 // L'onglet actif est déduit de l'adresse de la page.
 (function () {
   const path = location.pathname;
@@ -36,12 +36,13 @@
       { icon: '⚙️', label: 'Admin', href: '/admin.html', active: (p) => p === '/admin.html' || p === '/checklist/admin.html' },
     ],
     cuisine: [
-      HOME,
-      { icon: '🧑‍🍳', label: 'Cuisine', href: '/checklist/cuisine-accueil.html', active: (p) => p === '/checklist/cuisine-accueil.html' || p === '/responsable-cuisine.html' },
+      { icon: '🧑‍🍳', label: 'Cuisine', href: '/checklist/cuisine-accueil.html', active: (p) => p === '/checklist/cuisine-accueil.html' },
       { icon: '✅', label: 'Check-lists', href: '/checklist/cuisine.html', active: (p) => is('/checklist/cuisine.html', '/checklist/resp-cuisine.html', '/checklist/session.html') },
       { icon: '⚖️', label: 'Coûts', href: '/checklist/cuisine-couts.html', active: (p) => p === '/checklist/cuisine-couts.html' },
       { icon: '👥', label: 'Groupes', href: '/checklist/cuisine-groupes.html', active: (p) => p === '/checklist/cuisine-groupes.html' },
       { icon: '📋', label: 'Menu', href: '/checklist/cuisine-menudujour.html', active: (p) => p === '/checklist/cuisine-menudujour.html' },
+      // Espace Responsables Cuisine (protégé) : planning cuisine, avantages staff, rapports, admin.
+      { icon: '🔑', label: 'Responsable', href: '/responsable-cuisine.html', active: (p) => p === '/responsable-cuisine.html' || p.startsWith('/cuisine/') },
     ],
   };
   const TABS = SETS[section];
@@ -58,6 +59,10 @@
         color: #6f6961; font-family: inherit; font-size: .62rem; font-weight: 700; padding: 4px 1px; border-radius: 10px; white-space: nowrap; }
       .tabbar a .ti { font-size: 1.3rem; line-height: 1; }
       .tabbar a.on { color: #8a6b32; background: #f6efe2; }
+      /* Barre « serrée » (section cuisine, libellé long « Responsable ») : texte un peu plus petit. */
+      .tabbar.tc { padding-left: 2px; padding-right: 2px; }
+      .tabbar.tc a { font-size: .55rem; letter-spacing: -.01em; padding: 4px 0; }
+      .tabbar.tc a > span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
       /* Les toasts remontent au-dessus de la barre. */
       .toast { bottom: calc(80px + env(safe-area-inset-bottom)) !important; }
     }`;
@@ -66,7 +71,7 @@
   document.head.appendChild(style);
 
   const bar = document.createElement('nav');
-  bar.className = 'tabbar';
+  bar.className = 'tabbar' + (section === 'cuisine' ? ' tc' : '');
   bar.setAttribute('aria-label', 'Navigation');
   bar.innerHTML = TABS.map((t) => `<a href="${t.href}" class="${t.active(path) ? 'on' : ''}"><span class="ti">${t.icon}</span><span>${t.label}</span></a>`).join('');
   document.body.appendChild(bar);

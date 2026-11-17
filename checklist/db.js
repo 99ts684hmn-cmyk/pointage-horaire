@@ -203,6 +203,11 @@ if (!db.prepare('PRAGMA table_info(cost_records)').all().some((c) => c.name === 
 if (!db.prepare('PRAGMA table_info(cost_records)').all().some((c) => c.name === 'decoupeur')) {
   db.exec('ALTER TABLE cost_records ADD COLUMN decoupeur TEXT');
 }
+// Coûts matière — Ratio viande : prix de vente de la portion (facultatif), pour le
+// ratio réel = prix de vente ÷ coût matière de la portion.
+if (!db.prepare('PRAGMA table_info(cost_records)').all().some((c) => c.name === 'prix_vente')) {
+  db.exec('ALTER TABLE cost_records ADD COLUMN prix_vente REAL');
+}
 // Colonne « days » (jours d'une tâche pour le mode WEEKLY_CARRY_OVER, ex. "1,3,5").
 // Si NULL, on retombe sur day_of_week (compat. tâches hebdo salle existantes).
 if (!db.prepare('PRAGMA table_info(tasks)').all().some((c) => c.name === 'days')) {

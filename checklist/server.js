@@ -708,7 +708,7 @@ const posNum = (v) => { const n = Number(v); return Number.isFinite(n) && n > 0 
 // Liste des calculs enregistrés, du plus récent au plus ancien (400 derniers).
 app.get('/api/couts', (req, res) => {
   res.json(db.prepare(`SELECT id, date, created_at AS createdAt, updated_at AS updatedAt, produit, etiquette_kg AS etiquetteKg,
-    reel_kg AS reelKg, prix_kg AS prixKg, portion_g AS portionG, decoupeur
+    reel_kg AS reelKg, prix_kg AS prixKg, portion_g AS portionG, decoupeur, prix_vente AS prixVente
     FROM cost_records ORDER BY created_at DESC LIMIT 400`).all());
 });
 
@@ -719,9 +719,9 @@ app.put('/api/couts/:id', (req, res) => {
   const etiq = posNum(b.etiquetteKg);
   const reel = Number(b.reelKg);
   if (!etiq || !(Number.isFinite(reel) && reel >= 0)) return res.status(400).json({ error: 'Poids étiquette et poids réel requis' });
-  const info = db.prepare(`UPDATE cost_records SET produit = ?, etiquette_kg = ?, reel_kg = ?, prix_kg = ?, portion_g = ?, decoupeur = ?, updated_at = ?
+  const info = db.prepare(`UPDATE cost_records SET produit = ?, etiquette_kg = ?, reel_kg = ?, prix_kg = ?, portion_g = ?, decoupeur = ?, prix_vente = ?, updated_at = ?
     WHERE id = ?`).run(String(b.produit || '').trim().slice(0, 120) || null, etiq, reel, posNum(b.prixKg), posNum(b.portionG),
-    String(b.decoupeur || '').trim().slice(0, 60) || null, nowISO(), req.params.id);
+    String(b.decoupeur || '').trim().slice(0, 60) || null, posNum(b.prixVente), nowISO(), req.params.id);
   if (!info.changes) return res.status(404).json({ error: 'Enregistrement introuvable' });
   res.json({ ok: true });
 });
@@ -733,10 +733,10 @@ app.post('/api/couts', (req, res) => {
   const reel = Number(b.reelKg);
   if (!etiq || !(Number.isFinite(reel) && reel >= 0)) return res.status(400).json({ error: 'Poids étiquette et poids réel requis' });
   const id = uid();
-  db.prepare(`INSERT INTO cost_records (id, date, created_at, produit, etiquette_kg, reel_kg, prix_kg, portion_g, decoupeur)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, todayParis(), nowISO(),
+  db.prepare(`INSERT INTO cost_records (id, date, created_at, produit, etiquette_kg, reel_kg, prix_kg, portion_g, decoupeur, prix_vente)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, todayParis(), nowISO(),
     String(b.produit || '').trim().slice(0, 120) || null, etiq, reel, posNum(b.prixKg), posNum(b.portionG),
-    String(b.decoupeur || '').trim().slice(0, 60) || null);
+    String(b.decoupeur || '').trim().slice(0, 60) || null, posNum(b.prixVente));
   res.status(201).json({ ok: true, id });
 });
 

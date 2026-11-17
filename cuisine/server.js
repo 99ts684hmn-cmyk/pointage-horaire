@@ -426,7 +426,8 @@ function perkPeriodStart() {
   const days = [s && ISO_RE.test(s) ? s : null, first && first.d].filter(Boolean).sort();
   return days[0] || localDay(Date.now());
 }
-const perkEntries = () => db.prepare(`SELECT id, employee_id AS employeeId, employee_name AS name, type, day
+const perkEntries = () => db.prepare(`SELECT id, employee_id AS employeeId, employee_name AS name, type, day,
+  leave_time AS leaveTime, planned_time AS plannedTime
   FROM staff_perks ORDER BY day DESC, id DESC`).all();
 // Cuisiniers en poste aujourd'hui, dans l'ordre du planning.
 function perkEmployees() {
@@ -469,8 +470,16 @@ app.post('/api/admin/perks', requireAdmin, (req, res) => {
   if (!emp) return res.status(400).json({ error: 'Choisissez un cuisinier' });
   if (!PERK_TYPES.includes(b.type)) return res.status(400).json({ error: "Choisissez un type d'avantage" });
   const day = ISO_RE.test(b.day || '') ? b.day : localDay(Date.now());
-  const info = db.prepare('INSERT INTO staff_perks (employee_id, employee_name, type, day, created_at) VALUES (?, ?, ?, ?, ?)')
-    .run(emp.id, emp.name, b.type, day, Date.now());
+  // Départ anticipé : heure de départ et heure prévue obligatoires.
+  let leave = null; let planned = null;
+  if (b.type === 'depart_anticipe') {
+    if (!HM_RE.test(b.leaveTime || '') || !HM_RE.test(b.plannedTime || '')) {
+      return res.status(400).json({ error: "Départ anticipé : indiquez l'heure de départ et l'heure prévue" });
+    }
+    leave = b.leaveTime; planned = b.plannedTime;
+  }
+  const info = db.prepare(`INSERT INTO staff_perks (employee_id, employee_name, type, day, created_at, leave_time, planned_time)
+    VALUES (?, ?, ?, ?, ?, ?, ?)`).run(emp.id, emp.name, b.type, day, Date.now(), leave, planned);
   res.status(201).json({ ok: true, id: info.lastInsertRowid });
 });
 

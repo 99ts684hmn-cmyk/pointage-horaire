@@ -141,6 +141,13 @@ db.exec(`
   );
 `);
 
+// Départ anticipé : heure de départ et heure prévue (« parti à 21:30 au lieu de 23:00 »).
+{
+  const cols = db.prepare('PRAGMA table_info(staff_perks)').all().map((c) => c.name);
+  if (!cols.includes('leave_time')) db.exec('ALTER TABLE staff_perks ADD COLUMN leave_time TEXT');
+  if (!cols.includes('planned_time')) db.exec('ALTER TABLE staff_perks ADD COLUMN planned_time TEXT');
+}
+
 // --- Hachage des secrets (mot de passe admin) ------------------------------
 function hashSecret(secret) {
   const salt = crypto.randomBytes(16);

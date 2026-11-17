@@ -30,6 +30,11 @@
     .card h2{margin:0 0 12px; font-size:.82rem; font-weight:900; letter-spacing:.07em; text-transform:uppercase; color:var(--gold-dark)}
     .form{display:grid; grid-template-columns:1.2fr 1.2fr .9fr auto; gap:10px; align-items:end}
     @media (max-width:640px){ .form{grid-template-columns:1fr 1fr} .form .btn{grid-column:1 / -1} }
+    .times{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; max-width:420px}
+    input[type="time"]{
+      width:100%; border:1.5px solid var(--border); border-radius:10px; padding:11px 10px; font-size:1rem;
+      font-family:inherit; font-weight:600; color:var(--dark); background:#fff; min-height:46px;
+    }
     label{display:block; font-size:.78rem; font-weight:800; color:var(--muted); margin:0 0 4px}
     select, input[type="date"]{
       width:100%; border:1.5px solid var(--border); border-radius:10px; padding:11px 10px; font-size:1rem;
@@ -110,6 +115,11 @@
           <div><label for="day">Date</label><input type="date" id="day"></div>
           <button class="btn btn-gold" id="add" type="button">Ajouter</button>
         </div>
+        <!-- Départ anticipé : heure de départ et heure prévue -->
+        <div class="times" id="times" hidden>
+          <div><label for="leave">Heure de départ</label><input type="time" id="leave"></div>
+          <div><label for="planned">Au lieu de</label><input type="time" id="planned"></div>
+        </div>
         <div class="msg" id="msg"></div>
       </section>
 
@@ -153,6 +163,15 @@
     const frDate = (iso) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : '—');
     const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
     let data = null;
+    // « 21:30 au lieu de 23:00 (1 h 30) » pour un départ anticipé.
+    const hm = (t) => { const [h, m] = String(t).split(':').map(Number); return h * 60 + m; };
+    function timesText(e) {
+      if (!e.leaveTime || !e.plannedTime) return '';
+      let d = hm(e.plannedTime) - hm(e.leaveTime);
+      if (d < 0) d += 24 * 60; // fin de service après minuit
+      const dur = d ? ` (${Math.floor(d / 60) ? Math.floor(d / 60) + ' h' : ''}${d % 60 ? (Math.floor(d / 60) ? ' ' : '') + String(d % 60).padStart(Math.floor(d / 60) ? 2 : 1, '0') + (Math.floor(d / 60) ? '' : ' min') : ''})` : '';
+      return ` · ${e.leaveTime} au lieu de ${e.plannedTime}${dur}`;
+    }
 
     async function api(url, opts) {
       const r = await fetch(url, opts);
@@ -185,7 +204,7 @@
       $('detail-sum').textContent = `Détail des saisies (${data.entries.length})`;
       $('entries').innerHTML = data.entries.map((e) => `<div class="entry" data-id="${e.id}">
           <span class="ed">${frDate(e.day)}</span>
-          <span class="en"><b>${esc(e.name)}</b> · ${esc(TYPE_LABEL[e.type] || e.type)}</span>
+          <span class="en"><b>${esc(e.name)}</b> · ${esc(TYPE_LABEL[e.type] || e.type)}${esc(timesText(e))}</span>
           <button type="button" class="x" data-del="${e.id}" title="Supprimer cette saisie" aria-label="Supprimer cette saisie">✕</button>
         </div>`).join('') || '<div class="empty">Aucune saisie pour l\'instant.</div>';
       // Suppression d'une saisie : confirmation sur la ligne elle-même.
@@ -219,13 +238,19 @@
       const employeeId = $('emp').value; const type = $('type').value;
       if (!employeeId) { say('Choisissez un cuisinier.', true); return; }
       if (!type) { say('Choisissez un avantage.', true); return; }
+      const body = { employeeId: Number(employeeId), type, day: $('day').value || todayISO() };
+      if (type === 'depart_anticipe') {
+        if (!$('leave').value) { say("Indiquez l'heure de départ.", true); $('leave').focus(); return; }
+        if (!$('planned').value) { say("Indiquez l'heure prévue (« au lieu de »).", true); $('planned').focus(); return; }
+        body.leaveTime = $('leave').value; body.plannedTime = $('planned').value;
+      }
       $('add').disabled = true;
       try {
         await api('api/admin/perks', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ employeeId: Number(employeeId), type, day: $('day').value || todayISO() }) });
+          body: JSON.stringify(body) });
         const name = $('emp').selectedOptions[0].textContent;
         say(`✅ ${TYPE_LABEL[type]} ajouté pour ${name}.`);
-        $('type').value = '';
+        $('type').value = ''; $('leave').value = ''; $('planned').value = ''; $('times').hidden = true;
         $('day').value = todayISO(); // la date revient à aujourd'hui pour la saisie suivante
         await load();
       } catch (e) { say(e.message, true); }
@@ -244,6 +269,13 @@
       try { await api('api/admin/perks/reset', { method: 'POST' }); say('Tableau remis à zéro. L\'ancien tableau est dans l\'historique.'); await load(); }
       catch (e) { say(e.message, true); $('raz-confirm').hidden = true; $('raz-bar').hidden = false; }
       $('raz-yes').disabled = false;
+    });
+
+    // Les deux heures ne sont demandées que pour un départ anticipé.
+    $('type').addEventListener('change', () => {
+      const on = $('type').value === 'depart_anticipe';
+      $('times').hidden = !on;
+      if (on) $('leave').focus();
     });
 
     $('day').value = todayISO();

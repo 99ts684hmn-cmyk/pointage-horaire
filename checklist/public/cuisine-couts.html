@@ -424,7 +424,8 @@
         if (Number.isFinite(coutReel)) {
           const cp = coutReel * portionG / 1000;
           html += `<div class="line cost"><span>Coût matière par portion</span><b>${fr(cp, 2)} €</b></div>`;
-          if (vente > 0) html += `<div class="line"><span>Prix de vente de la portion</span><b>${fr(vente, 2)} €</b></div>`;
+          if (vente > 0) html += `<div class="line"><span>Prix de vente de la portion</span><b>${fr(vente, 2)} €</b></div>
+            <div class="line cost"><span>Marge brute par portion</span><b>${fr(vente - cp, 2)} €</b></div>`;
           // Prix de vente indicatifs : coût portion × coefficient.
           coefHtml = `<table class="coefs"><thead><tr>${COEFS.map((k) => `<th>×${fr(k, k % 1 ? 1 : 0)}</th>`).join('')}</tr></thead>
             <tbody><tr>${COEFS.map((k) => `<td>${fr(cp * k, 2)} €</td>`).join('')}</tr></tbody></table>`;
@@ -608,7 +609,7 @@
         const nb = Math.floor(r.reelKg * 1000 / r.portionG + 1e-9);
         parts.push(`${nb} portion${nb > 1 ? 's' : ''} de ${fr(r.portionG, 0)} g${cout ? ` · <b>${fr(cout * r.portionG / 1000, 2)} €/portion</b>` : ''}`);
         const pv = recVente(r);
-        if (cout && pv) parts.push(`vendu ${fr(pv, 2)} € → <b>ratio réel × ${fr(pv / (cout * r.portionG / 1000), 2)}</b>`);
+        if (cout && pv) parts.push(`vendu ${fr(pv, 2)} € → <b>ratio réel × ${fr(pv / (cout * r.portionG / 1000), 2)}</b> · marge ${fr(pv - cout * r.portionG / 1000, 2)} €`);
       }
       return `<button type="button" class="rec rec-btn" data-open="${esc(r.id)}">
           <span class="rp">${fr(perte, 1)} %</span>

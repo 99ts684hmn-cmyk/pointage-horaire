@@ -452,6 +452,7 @@ function openGroup(date, index, edit) {
     const lines = GROUP_VIEW.filter(([k]) => g[k] && String(g[k]).trim())
       .map(([k, label, fmt]) => `<div class="gv-line"><span class="gv-lbl">${label}</span><span class="gv-val">${fmt ? fmt(g[k]) : esc(g[k])}</span></div>`).join('');
     modal.innerHTML = `
+      <button type="button" class="g-x" id="g-x" title="Fermer" aria-label="Fermer">✕</button>
       <button type="button" class="g-cam" id="g-cam" title="Prendre l'addition en photo" aria-label="Prendre l'addition en photo">📷</button>
       <input type="file" id="g-cam-input" accept="image/*" capture="environment" hidden>
       <h2>${g.annule ? '<span class="g-annule-badge">ANNULÉ</span> ' : ''}${esc(g.nom || '(groupe)')}</h2>
@@ -466,6 +467,7 @@ function openGroup(date, index, edit) {
       </div>`;
     const byId = (id) => modal.querySelector('#' + id);
     byId('g-close').addEventListener('click', closeGroup);
+    byId('g-x').addEventListener('click', closeGroup);
     bindGroupPhotos(date, gIndex, g);
     byId('g-edit').addEventListener('click', () => openGroup(date, gIndex, true));
     if (byId('g-annuler')) byId('g-annuler').addEventListener('click', () => saveGroup('annuler'));
@@ -476,6 +478,7 @@ function openGroup(date, index, edit) {
     return;
   }
   modal.innerHTML = `
+    <button type="button" class="g-x" id="g-x" title="Fermer" aria-label="Fermer">✕</button>
     <h2>${gIndex != null ? 'Groupe' : 'Nouveau groupe'} — ${dayHead(date)}</h2>
     <div class="gform">
       ${GROUP_FIELDS.map(([k, label, type]) => (type === 'textarea'
@@ -489,6 +492,7 @@ function openGroup(date, index, edit) {
       <button class="btn btn-red" id="g-save">Enregistrer</button>
     </div>`;
   const byId = (id) => modal.querySelector('#' + id);
+  byId('g-x').addEventListener('click', closeGroup);
   if (byId('g-cancel')) byId('g-cancel').addEventListener('click', closeGroup);
   if (byId('g-back')) byId('g-back').addEventListener('click', () => openGroup(date, gIndex, false));
   byId('g-save').addEventListener('click', () => saveGroup('save'));
@@ -509,6 +513,9 @@ function closeGroup() { ov.classList.remove('show'); gDate = null; gIndex = null
     .g-cam { float: right; width: 46px; height: 46px; margin: -6px -6px 6px 10px; padding: 0; border: 0; border-radius: 50%;
       background: #f6efe2; font-size: 1.4rem; line-height: 1; cursor: pointer; }
     .g-cam:disabled { opacity: .5; }
+    .g-x { float: right; width: 46px; height: 46px; margin: -6px -6px 6px 8px; padding: 0; border: 0; border-radius: 50%;
+      background: #efe9dc; color: var(--dark); font-size: 1.1rem; font-weight: 800; line-height: 1; cursor: pointer; font-family: inherit; }
+    .g-x + .g-cam { margin-right: 0; }
     .g-photos { margin-top: 12px; }
     .g-photos .gp-t { font-weight: 800; font-size: .8rem; color: var(--gold-dark); margin-bottom: 6px; }
     .gp-grid { display: flex; flex-wrap: wrap; gap: 8px; }

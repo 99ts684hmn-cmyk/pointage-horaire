@@ -461,8 +461,12 @@
       { key: 'lesage', nom: 'Entrecôte Lesage', achat: null, vente: 30, portionG: 350 },
       { key: 'chaiseronne', nom: 'Entrecôte Chaiseronne', achat: null, vente: 32, portionG: 350 },
       { key: 'matu45', nom: 'Matu 45 J', achat: null, vente: 42, portionG: 350 },
+      { key: 'uruguay', nom: 'Entrecôte Uruguay', achat: null, vente: null, portionG: null },
+      { key: 'fauxfiletusa', nom: 'Faux-filet USA', achat: null, vente: null, portionG: null },
+      { key: 'wagyuaus', nom: 'Wagyu australien', achat: null, vente: null, portionG: null },
+      { key: 'kagoshima', nom: 'Kagoshima', achat: null, vente: null, portionG: null },
     ];
-    const matNorm = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, '');
+    const matNorm = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const matByKey = (key) => matProduits.find((p) => p.key === key) || null;
     const matKeyOfName = (name) => { const n = matNorm(name); const p = n && matProduits.find((x) => matNorm(x.nom) === n); return p ? p.key : ''; };
     const matPos = (n) => (Number.isFinite(n) && n > 0 ? n : NaN);

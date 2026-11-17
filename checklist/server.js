@@ -720,6 +720,10 @@ const VIANDE_PRODUITS = [
   { key: 'lesage', nom: 'Entrecôte Lesage', vente: 30, portionG: 350 },
   { key: 'chaiseronne', nom: 'Entrecôte Chaiseronne', vente: 32, portionG: 350 },
   { key: 'matu45', nom: 'Matu 45 J', vente: 42, portionG: 350 },
+  { key: 'uruguay', nom: 'Entrecôte Uruguay', vente: null, portionG: null },   // constantes à renseigner
+  { key: 'fauxfiletusa', nom: 'Faux-filet USA', vente: null, portionG: null }, // constantes à renseigner
+  { key: 'wagyuaus', nom: 'Wagyu australien', vente: null, portionG: null },   // constantes à renseigner
+  { key: 'kagoshima', nom: 'Kagoshima', vente: null, portionG: null },         // constantes à renseigner
 ];
 function readViandeProduits() {
   const get = db.prepare('SELECT value FROM cost_settings WHERE key = ?');

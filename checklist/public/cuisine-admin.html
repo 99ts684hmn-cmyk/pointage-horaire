@@ -6,6 +6,12 @@
   <title>Bœuf & Cow — Cuisine · Admin</title>
   <link rel="stylesheet" href="styles.css?v=28">
   <style>
+    /* Onglets : check-lists cuisine / check-lists responsables */
+    .tabs2 { display: flex; gap: 6px; margin: 16px 0 18px; background: #eee7db; padding: 4px; border-radius: 12px; }
+    .tabs2 .t2 { flex: 1; border-radius: 9px; padding: 10px 8px; font-weight: 800; font-size: .95rem; text-align: center;
+      text-decoration: none; background: transparent; color: var(--muted); }
+    .tabs2 .t2.on { background: #fff; color: var(--dark); box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+    @media (max-width: 420px) { .tabs2 .t2 { font-size: .8rem; padding: 10px 2px; } }
     .dayrow{display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:4px 10px 10px 30px}
     .daylbl{color:var(--muted);font-size:.74rem;margin-right:2px}
     .daypill{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--border);background:#fff;
@@ -37,15 +43,32 @@
   <main class="wrap">
     <div>
       <h1 class="page-title">Administration Cuisine</h1>
-      <p class="page-sub">Gérez les tâches des check-lists cuisine</p>
+      <p class="page-sub" id="page-sub">Gérez les tâches des check-lists cuisine</p>
     </div>
+
+    <!-- Les deux familles de check-lists s'administrent ici : la page se recharge sur l'onglet choisi. -->
+    <div class="tabs2">
+      <a class="t2" id="tab-cuisine" href="cuisine-admin.html">🍳 Check-lists cuisine</a>
+      <a class="t2" id="tab-resp" href="cuisine-admin.html?cat=resp_cuisine">🔑 Check-lists responsables</a>
+    </div>
+    <script>
+      // Catégorie gérée par l'outil d'administration (lu avant le chargement de cuisine-admin.js).
+      (function () {
+        var resp = /[?&]cat=resp_cuisine(&|$)/.test(location.search);
+        if (resp) {
+          window.CL_CATEGORY = 'resp_cuisine';
+          document.getElementById('page-sub').textContent = 'Gérez les tâches des check-lists responsables (Ménage, Commande, Hygiène)';
+        }
+        document.getElementById(resp ? 'tab-resp' : 'tab-cuisine').classList.add('on');
+      })();
+    </script>
 
     <div id="content"><div class="loading pulse">Chargement…</div></div>
   </main>
   <script src="admin-guard.js?v=1"></script>
 
   <script src="sortable.min.js?v=10"></script>
-  <script src="cuisine-admin.js?v=20"></script>
+  <script src="cuisine-admin.js?v=21"></script>
   <script src="/tabbar.js?v=7"></script>
 </body>
 </html>

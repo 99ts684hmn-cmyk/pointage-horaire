@@ -206,7 +206,7 @@ async function renameTemplate(id, current) {
 
 function createFormHTML() {
   return `<div class="card" style="padding:16px">
-    <div class="nm" style="margin-bottom:10px">➕ Nouvelle check-list cuisine</div>
+    <div class="nm" style="margin-bottom:10px">➕ Nouvelle check-list ${CATEGORY === 'resp_cuisine' ? 'responsables' : 'cuisine'}</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <input type="text" id="new-cl-icon" placeholder="🔥" maxlength="2" style="width:56px;text-align:center;border:1.5px solid var(--border);border-radius:9px;padding:10px;font-size:1rem;font-family:inherit">
       <input type="text" id="new-cl-name" placeholder="Nom de la check-list…" style="flex:1;min-width:160px;border:1.5px solid var(--border);border-radius:9px;padding:10px 14px;font-size:.9rem;color:var(--dark);font-family:inherit">

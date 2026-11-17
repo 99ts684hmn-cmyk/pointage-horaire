@@ -146,6 +146,8 @@ db.exec(`
   const cols = db.prepare('PRAGMA table_info(staff_perks)').all().map((c) => c.name);
   if (!cols.includes('leave_time')) db.exec('ALTER TABLE staff_perks ADD COLUMN leave_time TEXT');
   if (!cols.includes('planned_time')) db.exec('ALTER TABLE staff_perks ADD COLUMN planned_time TEXT');
+  // Demi sup / continue sup : service concerné ('midi' | 'soir').
+  if (!cols.includes('service')) db.exec('ALTER TABLE staff_perks ADD COLUMN service TEXT');
 }
 
 // --- Hachage des secrets (mot de passe admin) ------------------------------

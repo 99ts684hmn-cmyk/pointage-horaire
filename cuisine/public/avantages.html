@@ -115,6 +115,15 @@
           <div><label for="day">Date</label><input type="date" id="day"></div>
           <button class="btn btn-gold" id="add" type="button">Ajouter</button>
         </div>
+        <!-- Demi sup / continue sup : service concerné -->
+        <div class="times" id="svc-box" hidden>
+          <div><label for="svc">Service</label>
+            <select id="svc">
+              <option value="">— Midi ou soir —</option>
+              <option value="midi">Midi</option>
+              <option value="soir">Soir</option>
+            </select></div>
+        </div>
         <!-- Départ anticipé : heure de départ et heure prévue -->
         <div class="times" id="times" hidden>
           <div><label for="leave">Heure de départ</label><input type="time" id="leave"></div>
@@ -204,7 +213,7 @@
       $('detail-sum').textContent = `Détail des saisies (${data.entries.length})`;
       $('entries').innerHTML = data.entries.map((e) => `<div class="entry" data-id="${e.id}">
           <span class="ed">${frDate(e.day)}</span>
-          <span class="en"><b>${esc(e.name)}</b> · ${esc(TYPE_LABEL[e.type] || e.type)}${esc(timesText(e))}</span>
+          <span class="en"><b>${esc(e.name)}</b> · ${esc(TYPE_LABEL[e.type] || e.type)}${e.service ? ` · ${esc(e.service)}` : ''}${esc(timesText(e))}</span>
           <button type="button" class="x" data-del="${e.id}" title="Supprimer cette saisie" aria-label="Supprimer cette saisie">✕</button>
         </div>`).join('') || '<div class="empty">Aucune saisie pour l\'instant.</div>';
       // Suppression d'une saisie : confirmation sur la ligne elle-même.
@@ -244,13 +253,18 @@
         if (!$('planned').value) { say("Indiquez l'heure prévue (« au lieu de »).", true); $('planned').focus(); return; }
         body.leaveTime = $('leave').value; body.plannedTime = $('planned').value;
       }
+      if (type === 'demi_sup' || type === 'continue_sup') {
+        if (!$('svc').value) { say('Indiquez le service : midi ou soir.', true); $('svc').focus(); return; }
+        body.service = $('svc').value;
+      }
       $('add').disabled = true;
       try {
         await api('api/admin/perks', { method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body) });
         const name = $('emp').selectedOptions[0].textContent;
-        say(`✅ ${TYPE_LABEL[type]} ajouté pour ${name}.`);
+        say(`✅ ${TYPE_LABEL[type]}${body.service ? ' ' + body.service : ''} ajouté pour ${name}.`);
         $('type').value = ''; $('leave').value = ''; $('planned').value = ''; $('times').hidden = true;
+        $('svc').value = ''; $('svc-box').hidden = true;
         $('day').value = todayISO(); // la date revient à aujourd'hui pour la saisie suivante
         await load();
       } catch (e) { say(e.message, true); }
@@ -271,11 +285,15 @@
       $('raz-yes').disabled = false;
     });
 
-    // Les deux heures ne sont demandées que pour un départ anticipé.
+    // Départ anticipé : les deux heures. Demi sup / continue sup : midi ou soir.
     $('type').addEventListener('change', () => {
-      const on = $('type').value === 'depart_anticipe';
+      const t = $('type').value;
+      const on = t === 'depart_anticipe';
+      const svc = t === 'demi_sup' || t === 'continue_sup';
       $('times').hidden = !on;
+      $('svc-box').hidden = !svc;
       if (on) $('leave').focus();
+      if (svc) $('svc').focus();
     });
 
     $('day').value = todayISO();

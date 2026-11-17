@@ -427,7 +427,7 @@ function perkPeriodStart() {
   return days[0] || localDay(Date.now());
 }
 const perkEntries = () => db.prepare(`SELECT id, employee_id AS employeeId, employee_name AS name, type, day,
-  leave_time AS leaveTime, planned_time AS plannedTime
+  leave_time AS leaveTime, planned_time AS plannedTime, service
   FROM staff_perks ORDER BY day DESC, id DESC`).all();
 // Cuisiniers en poste aujourd'hui, dans l'ordre du planning.
 function perkEmployees() {
@@ -478,8 +478,14 @@ app.post('/api/admin/perks', requireAdmin, (req, res) => {
     }
     leave = b.leaveTime; planned = b.plannedTime;
   }
-  const info = db.prepare(`INSERT INTO staff_perks (employee_id, employee_name, type, day, created_at, leave_time, planned_time)
-    VALUES (?, ?, ?, ?, ?, ?, ?)`).run(emp.id, emp.name, b.type, day, Date.now(), leave, planned);
+  // Demi sup / continue sup : service obligatoire (midi ou soir).
+  let service = null;
+  if (b.type === 'demi_sup' || b.type === 'continue_sup') {
+    if (b.service !== 'midi' && b.service !== 'soir') return res.status(400).json({ error: 'Indiquez le service : midi ou soir' });
+    service = b.service;
+  }
+  const info = db.prepare(`INSERT INTO staff_perks (employee_id, employee_name, type, day, created_at, leave_time, planned_time, service)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(emp.id, emp.name, b.type, day, Date.now(), leave, planned, service);
   res.status(201).json({ ok: true, id: info.lastInsertRowid });
 });
 

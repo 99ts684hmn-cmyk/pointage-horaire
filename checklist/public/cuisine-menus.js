@@ -532,6 +532,9 @@ function closeGroup() { ov.classList.remove('show'); gDate = null; gIndex = null
     .gp-msg.err { color: #bf272d; font-weight: 700; }
     .gp-view { position: fixed; inset: 0; z-index: 300; background: rgba(0,0,0,.94); display: flex; align-items: center; justify-content: center; }
     .gp-view img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .gp-view .gp-dl { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 22px);
+      background: rgba(255,255,255,.95); color: #1f2120; text-decoration: none; font-weight: 800; font-size: 1rem; padding: 12px 22px; border-radius: 999px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.4); white-space: nowrap; }
     .gp-view button { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 12px); right: 12px; width: 44px; height: 44px; border: 0;
       border-radius: 50%; background: rgba(255,255,255,.92); color: #1f2120; font-size: 1.1rem; font-weight: 800; cursor: pointer; }`;
   document.head.appendChild(st);
@@ -561,11 +564,33 @@ async function putGroups(date, arr) {
   recap = null;
 }
 
-function showPhoto(id) {
+// Photo en plein écran : un toucher la referme ; « Télécharger » l'enregistre.
+// Sur téléphone / tablette, on passe par le menu de partage de l'appareil (il
+// propose « Enregistrer l'image ») ; ailleurs, téléchargement direct.
+function showPhoto(id, name) {
+  const url = `api/groupes/photos/${encodeURIComponent(id)}/file`;
+  const fileName = (name || 'addition') + '.jpg';
   const v = document.createElement('div');
   v.className = 'gp-view';
-  v.innerHTML = `<img src="api/groupes/photos/${encodeURIComponent(id)}/file" alt="Addition"><button type="button" aria-label="Fermer">✕</button>`;
+  v.innerHTML = `<img src="${url}" alt="Addition"><button type="button" class="gp-close" aria-label="Fermer">✕</button>
+    <a class="gp-dl" href="${url}?dl=1" download="${esc(fileName)}">⬇️ Télécharger</a>`;
   v.addEventListener('click', () => v.remove());
+  const dl = v.querySelector('.gp-dl');
+  dl.addEventListener('click', async (e) => {
+    e.stopPropagation(); // ne referme pas la photo
+    const touch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    if (!touch || !navigator.canShare) return; // ordinateur : le lien télécharge directement
+    e.preventDefault();
+    try {
+      const blob = await fetch(url).then((r) => r.blob());
+      const file = new File([blob], fileName, { type: blob.type || 'image/jpeg' });
+      if (!navigator.canShare({ files: [file] })) throw new Error('partage indisponible');
+      await navigator.share({ files: [file], title: fileName });
+    } catch (err) {
+      if (err && err.name === 'AbortError') return; // menu de partage refermé sans rien faire
+      window.location.href = url + '?dl=1'; // repli : téléchargement direct
+    }
+  });
   document.body.appendChild(v);
 }
 
@@ -575,6 +600,9 @@ function bindGroupPhotos(date, index, g) {
   const cam = modal.querySelector('#g-cam');
   const input = modal.querySelector('#g-cam-input');
   let key = g.photoKey || '';
+  // Nom du fichier téléchargé : addition-nom-du-groupe-date.
+  const photoName = ['addition', String(g.nom || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase(), date]
+    .filter(Boolean).join('-');
   const msg = (t, err) => { const m = box.querySelector('.gp-msg'); if (m) { m.textContent = t; m.className = err ? 'gp-msg err' : 'gp-msg'; } };
   // Le nombre de photos est gardé dans la fiche du groupe (petit 📷 sur sa pastille).
   async function saveCount(n) {
@@ -592,7 +620,7 @@ function bindGroupPhotos(date, index, g) {
         <button type="button" class="gp-del" title="Supprimer cette photo" aria-label="Supprimer cette photo">✕</button></div>`).join('')}</div>` : ''}
       <div class="gp-msg"></div>`;
     box.querySelectorAll('.gp-item').forEach((it) => {
-      it.querySelector('img').addEventListener('click', () => showPhoto(it.dataset.id));
+      it.querySelector('img').addEventListener('click', () => showPhoto(it.dataset.id, photoName));
       it.querySelector('.gp-del').addEventListener('click', () => {
         if (it.querySelector('.gp-conf')) return;
         it.insertAdjacentHTML('beforeend', '<div class="gp-conf">Supprimer ?<span><button type="button" class="y">Oui</button> <button type="button" class="n">Non</button></span></div>');

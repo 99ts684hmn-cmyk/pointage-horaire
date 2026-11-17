@@ -741,6 +741,8 @@ app.get('/api/groupes/photos/:id/file', (req, res) => {
   res.setHeader('Content-Type', row.mime);
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Cache-Control', 'private, max-age=86400');
+  // ?dl=1 : le navigateur enregistre l'image au lieu de l'afficher.
+  if (req.query.dl) res.setHeader('Content-Disposition', `attachment; filename="addition.${path.extname(row.file).slice(1) || 'jpg'}"`);
   fs.createReadStream(fp).pipe(res);
 });
 

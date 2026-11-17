@@ -50,6 +50,14 @@
     .fdates { color: var(--muted); font-size: .82rem; margin-bottom: 12px; line-height: 1.45; }
     .flines { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
     .factions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+    .factions[hidden], .fconfirm[hidden] { display: none; }
+    /* Fiche : croix de fermeture (reste visible quand la fiche défile) + confirmation de suppression */
+    .modal .fx { position: sticky; top: 0; float: right; z-index: 2; width: 36px; height: 36px; margin: -8px -8px 0 10px; padding: 0;
+      border: 0; border-radius: 50%; background: #efe9dc; color: var(--dark); font-size: 1.05rem; font-weight: 800; line-height: 1; cursor: pointer; }
+    .modal .fx:hover { background: #e3dbc9; }
+    .fconfirm { margin-top: 14px; padding: 12px; border: 2px solid #c0392b; border-radius: 12px; background: #fdf1ef; }
+    .fconfirm .fc-q { font-weight: 800; color: #9e1f24; }
+    .fconfirm .factions { margin-top: 10px; }
     .btn-green { background: #2e8b57; color: #fff; }
     .btn-blue { background: #2f6fb5; color: #fff; }
     /* Bandeau « modification en cours » */
@@ -690,10 +698,35 @@
 
     // --- Fiche complète d'un enregistrement (au clic) -----------------------
     const dateHeure = (iso) => { const d = new Date(iso); return `${longDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)} à ${heure(iso)}`; };
+    // Éléments communs aux fiches (ratio viande et ratio ribs) : croix de fermeture en haut
+    // à droite, boutons Modifier / Supprimer, confirmation dans la fenêtre avant suppression.
+    const FICHE_CLOSE = '<button type="button" class="fx" id="f-close" aria-label="Fermer" title="Fermer">✕</button>';
+    const FICHE_ACTIONS = `<div class="factions" id="f-actions">
+          <button class="btn btn-blue" id="f-edit" type="button">✏️ Modifier</button>
+          <button class="btn btn-grey" id="f-del" type="button">Supprimer</button>
+        </div>
+        <div class="fconfirm" id="f-confirm" hidden>
+          <div class="fc-q">Supprimer définitivement cet enregistrement ?</div>
+          <div class="factions">
+            <button class="btn btn-red" id="f-del-yes" type="button">Oui, supprimer</button>
+            <button class="btn btn-grey" id="f-del-no" type="button">Annuler</button>
+          </div>
+        </div>`;
+    function wireFiche(onEdit, onDelete) {
+      setTimeout(() => { $('fiche').scrollTop = 0; }, 0); // une fiche s'ouvre toujours en haut (une fois affichée)
+      $('f-close').addEventListener('click', closeFiche);
+      $('f-edit').addEventListener('click', onEdit);
+      $('f-del').addEventListener('click', () => {
+        $('f-actions').hidden = true; $('f-confirm').hidden = false;
+        $('f-confirm').scrollIntoView({ block: 'nearest' });
+      });
+      $('f-del-no').addEventListener('click', () => { $('f-confirm').hidden = true; $('f-actions').hidden = false; });
+      $('f-del-yes').addEventListener('click', async () => { $('f-del-yes').disabled = true; await onDelete(); });
+    }
     function openFiche(id) {
       const r = records.find((x) => x.id === id);
       if (!r) return;
-      $('fiche').innerHTML = `
+      $('fiche').innerHTML = `${FICHE_CLOSE}
         <h2>${esc((r.produit || 'Sans nom') + optSuffix(recExtras(r)))}</h2>
         <div class="fdates">Créé le ${dateHeure(r.createdAt)}${r.updatedAt ? `<br>Modifié le ${dateHeure(r.updatedAt)}` : ''}</div>
         <div class="flines">
@@ -706,15 +739,8 @@
           ${r.decoupeur ? `<div class="line"><span>Découpeur</span><b>${esc(r.decoupeur)}</b></div>` : ''}
         </div>
         <div class="result">${calcHTML({ produit: '', etiq: r.etiquetteKg, reel: r.reelKg, prix: r.prixKg || NaN, portionG: r.portionG || NaN, vente: recVente(r) || NaN, extras: recExtras(r) })}</div>
-        <div class="factions">
-          <button class="btn btn-green" id="f-close" type="button">Fermer</button>
-          <button class="btn btn-blue" id="f-edit" type="button">✏️ Modifier</button>
-          <button class="btn btn-grey" id="f-del" type="button">Supprimer</button>
-        </div>`;
-      $('f-close').addEventListener('click', closeFiche);
-      $('f-edit').addEventListener('click', () => { closeFiche(); startEdit(r); });
-      $('f-del').addEventListener('click', async () => {
-        if (!confirm('Supprimer définitivement cet enregistrement ?')) return;
+        ${FICHE_ACTIONS}`;
+      wireFiche(() => { closeFiche(); startEdit(r); }, async () => {
         await fetch('api/couts/' + encodeURIComponent(r.id), { method: 'DELETE' });
         if (editing && editing.id === r.id) { stopEdit(); clearForm(); }
         closeFiche(); loadHist();
@@ -999,7 +1025,7 @@
       if (!r) return;
       const px = rbPxOf(r);
       const li = (lbl, val) => `<div class="line"><span>${lbl}</span><b>${val}</b></div>`;
-      $('fiche').innerHTML = `
+      $('fiche').innerHTML = `${FICHE_CLOSE}
         <h2>${esc(r.produit || 'Ribs')}</h2>
         <div class="fdates">Créé le ${dateHeure(r.createdAt)}${r.updatedAt ? `<br>Modifié le ${dateHeure(r.updatedAt)}` : ''}</div>
         <div class="flines">
@@ -1012,15 +1038,8 @@
           ${r.prixKg ? li("Prix d'achat au kg", fr(r.prixKg, 2) + ' €/kg') : ''}
         </div>
         <div class="result">${ribsHTML(rbOf(r), px)}</div>
-        <div class="factions">
-          <button class="btn btn-green" id="f-close" type="button">Fermer</button>
-          <button class="btn btn-blue" id="f-edit" type="button">✏️ Modifier</button>
-          <button class="btn btn-grey" id="f-del" type="button">Supprimer</button>
-        </div>`;
-      $('f-close').addEventListener('click', closeFiche);
-      $('f-edit').addEventListener('click', () => { closeFiche(); rbStartEdit(r); });
-      $('f-del').addEventListener('click', async () => {
-        if (!confirm('Supprimer définitivement cet enregistrement ?')) return;
+        ${FICHE_ACTIONS}`;
+      wireFiche(() => { closeFiche(); rbStartEdit(r); }, async () => {
         await fetch('api/ribs/' + encodeURIComponent(r.id), { method: 'DELETE' });
         if (rbEditing && rbEditing.id === r.id) { rbStopEdit(); rbClear(); }
         closeFiche(); loadRibs();

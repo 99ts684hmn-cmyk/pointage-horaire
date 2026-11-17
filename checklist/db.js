@@ -217,6 +217,21 @@ if (!db.prepare('PRAGMA table_info(cost_records)').all().some((c) => c.name === 
   if (!cols.includes('cout_garniture')) db.exec('ALTER TABLE cost_records ADD COLUMN cout_garniture REAL');
   if (!cols.includes('cout_flambage')) db.exec('ALTER TABLE cost_records ADD COLUMN cout_flambage REAL');
 }
+// Groupes : photos de l'addition. La table ne garde que la fiche de chaque photo ;
+// l'image elle-même est un fichier, rangé à côté de la base (voir server.js), pour
+// ne pas alourdir la base ni ses sauvegardes horaires.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS group_photos (
+    id         TEXT PRIMARY KEY,
+    group_key  TEXT NOT NULL,   -- identifiant du groupe (champ photoKey de sa fiche)
+    date       TEXT,            -- jour du groupe (AAAA-MM-JJ)
+    file       TEXT NOT NULL,   -- nom du fichier image
+    mime       TEXT NOT NULL,
+    size       INTEGER NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_group_photos_key ON group_photos(group_key);
+`);
 // Colonne « days » (jours d'une tâche pour le mode WEEKLY_CARRY_OVER, ex. "1,3,5").
 // Si NULL, on retombe sur day_of_week (compat. tâches hebdo salle existantes).
 if (!db.prepare('PRAGMA table_info(tasks)').all().some((c) => c.name === 'days')) {

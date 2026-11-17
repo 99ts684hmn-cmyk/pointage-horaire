@@ -1,6 +1,7 @@
 node_modules/
 data.db*
 backups/
+group-photos/
 *.log
 .DS_Store
 cloudflared

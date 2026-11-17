@@ -218,7 +218,7 @@ function chipSize(g) {
 function chipHTML(g, date, i) {
   const pers = g.pers ? `<span class="cp">${esc(g.pers)}</span>` : '';
   const heure = g.heure ? `<span class="ch">${esc(fmtHeure(g.heure))}</span>` : '';
-  return `<button type="button" class="chip-g sz-${chipSize(g)}${g.annule ? ' annule' : ''}" data-date="${date}" data-index="${i}" title="${g.heure ? esc(fmtHeure(g.heure)) + ' · ' : ''}${esc(g.nom || '')}${g.pers ? ' · ' + esc(g.pers) + ' pers' : ''}${g.annule ? ' (annulé)' : ''}"><span class="cn">${heure}${esc(g.nom || '(groupe)')}</span>${pers}</button>`;
+  return `<button type="button" class="chip-g sz-${chipSize(g)}${g.annule ? ' annule' : ''}" data-date="${date}" data-index="${i}" title="${g.heure ? esc(fmtHeure(g.heure)) + ' · ' : ''}${esc(g.nom || '')}${g.pers ? ' · ' + esc(g.pers) + ' pers' : ''}${g.annule ? ' (annulé)' : ''}"><span class="cn">${heure}${esc(g.nom || '(groupe)')}${g.photos ? ' 📷' : ''}</span>${pers}</button>`;
 }
 function groupsCalendarHTML() {
   const today = data.today || '';
@@ -452,9 +452,12 @@ function openGroup(date, index, edit) {
     const lines = GROUP_VIEW.filter(([k]) => g[k] && String(g[k]).trim())
       .map(([k, label, fmt]) => `<div class="gv-line"><span class="gv-lbl">${label}</span><span class="gv-val">${fmt ? fmt(g[k]) : esc(g[k])}</span></div>`).join('');
     modal.innerHTML = `
+      <button type="button" class="g-cam" id="g-cam" title="Prendre l'addition en photo" aria-label="Prendre l'addition en photo">📷</button>
+      <input type="file" id="g-cam-input" accept="image/*" capture="environment" hidden>
       <h2>${g.annule ? '<span class="g-annule-badge">ANNULÉ</span> ' : ''}${esc(g.nom || '(groupe)')}</h2>
       <div class="sub">${dayHead(date)}</div>
       <div class="gview">${lines || '<div class="gv-line"><span class="gv-val" style="color:var(--muted)">Aucune information complémentaire.</span></div>'}</div>
+      <div class="g-photos" id="g-photos"></div>
       <div class="actions" style="flex-wrap:wrap">
         <button class="btn btn-green" id="g-close">Fermer</button>
         <button class="btn btn-blue" id="g-edit">✏️ Modifier</button>
@@ -463,6 +466,7 @@ function openGroup(date, index, edit) {
       </div>`;
     const byId = (id) => modal.querySelector('#' + id);
     byId('g-close').addEventListener('click', closeGroup);
+    bindGroupPhotos(date, gIndex, g);
     byId('g-edit').addEventListener('click', () => openGroup(date, gIndex, true));
     if (byId('g-annuler')) byId('g-annuler').addEventListener('click', () => saveGroup('annuler'));
     if (byId('g-react')) byId('g-react').addEventListener('click', () => saveGroup('reactiver'));
@@ -496,12 +500,145 @@ function openGroup(date, index, edit) {
 }
 function closeGroup() { ov.classList.remove('show'); gDate = null; gIndex = null; }
 
+// --- Groupes : photos de l'addition -------------------------------------------
+// Bouton appareil photo de la fiche : ouvre l'appareil photo du téléphone ou de la
+// tablette (sur ordinateur : choix d'un fichier). La photo est réduite avant envoi.
+(function () {
+  const st = document.createElement('style');
+  st.textContent = `
+    .g-cam { float: right; width: 46px; height: 46px; margin: -6px -6px 6px 10px; padding: 0; border: 0; border-radius: 50%;
+      background: #f6efe2; font-size: 1.4rem; line-height: 1; cursor: pointer; }
+    .g-cam:disabled { opacity: .5; }
+    .g-photos { margin-top: 12px; }
+    .g-photos .gp-t { font-weight: 800; font-size: .8rem; color: var(--gold-dark); margin-bottom: 6px; }
+    .gp-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .gp-item { position: relative; width: 96px; height: 96px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); background: #eee; }
+    .gp-item img { width: 100%; height: 100%; object-fit: cover; display: block; cursor: zoom-in; }
+    .gp-del { position: absolute; top: 4px; right: 4px; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%;
+      background: rgba(0,0,0,.62); color: #fff; font-weight: 800; cursor: pointer; font-family: inherit; }
+    .gp-conf { position: absolute; inset: 0; background: rgba(31,33,32,.88); color: #fff; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 6px; font-size: .74rem; font-weight: 800; text-align: center; }
+    .gp-conf button { border: 0; border-radius: 8px; padding: 6px 10px; font-weight: 800; font-size: .74rem; cursor: pointer; font-family: inherit; }
+    .gp-conf .y { background: #bf272d; color: #fff; }
+    .gp-conf .n { background: #efe9dc; color: #1f2120; }
+    .gp-msg { font-size: .85rem; color: var(--muted); margin-top: 6px; min-height: 1.2em; }
+    .gp-msg.err { color: #bf272d; font-weight: 700; }
+    .gp-view { position: fixed; inset: 0; z-index: 300; background: rgba(0,0,0,.94); display: flex; align-items: center; justify-content: center; }
+    .gp-view img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .gp-view button { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 12px); right: 12px; width: 44px; height: 44px; border: 0;
+      border-radius: 50%; background: rgba(255,255,255,.92); color: #1f2120; font-size: 1.1rem; font-weight: 800; cursor: pointer; }`;
+  document.head.appendChild(st);
+})();
+
+// Réduit la photo (1800 px de côté au plus, JPEG) : assez pour relire une addition,
+// et quelques centaines de Ko au lieu de plusieurs Mo.
+async function compressImage(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = url; });
+    const k = Math.min(1, 1800 / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(img.naturalWidth * k)); c.height = Math.max(1, Math.round(img.naturalHeight * k));
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    const blob = await new Promise((ok) => c.toBlob(ok, 'image/jpeg', 0.82));
+    return blob || file;
+  } catch (e) { return file; } finally { URL.revokeObjectURL(url); }
+}
+
+// Enregistre la liste des groupes d'un jour sans fermer la fiche.
+async function putGroups(date, arr) {
+  const value = arr.length ? JSON.stringify(arr) : '';
+  if (!data.cells[date]) data.cells[date] = {};
+  if (value) data.cells[date].groupe = value; else delete data.cells[date].groupe;
+  await fetch('api/menus/cell', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date, slot: 'groupe', value }) });
+  recap = null;
+}
+
+function showPhoto(id) {
+  const v = document.createElement('div');
+  v.className = 'gp-view';
+  v.innerHTML = `<img src="api/groupes/photos/${encodeURIComponent(id)}/file" alt="Addition"><button type="button" aria-label="Fermer">✕</button>`;
+  v.addEventListener('click', () => v.remove());
+  document.body.appendChild(v);
+}
+
+// Fiche d'un groupe : bouton appareil photo + vignettes des additions déjà prises.
+function bindGroupPhotos(date, index, g) {
+  const box = modal.querySelector('#g-photos');
+  const cam = modal.querySelector('#g-cam');
+  const input = modal.querySelector('#g-cam-input');
+  let key = g.photoKey || '';
+  const msg = (t, err) => { const m = box.querySelector('.gp-msg'); if (m) { m.textContent = t; m.className = err ? 'gp-msg err' : 'gp-msg'; } };
+  // Le nombre de photos est gardé dans la fiche du groupe (petit 📷 sur sa pastille).
+  async function saveCount(n) {
+    const arr = parseGroups(data.cells[date] && data.cells[date].groupe);
+    if (!arr[index]) return;
+    if (key) arr[index].photoKey = key;
+    if (n) arr[index].photos = n; else delete arr[index].photos;
+    try { await putGroups(date, arr); } catch (e) { /* gardé localement */ }
+    render();
+  }
+  function draw(list) {
+    box.innerHTML = `${list.length ? `<div class="gp-t">🧾 Addition${list.length > 1 ? ` (${list.length} photos)` : ''}</div>
+      <div class="gp-grid">${list.map((ph) => `<div class="gp-item" data-id="${esc(ph.id)}">
+        <img src="api/groupes/photos/${encodeURIComponent(ph.id)}/file" alt="Addition" loading="lazy">
+        <button type="button" class="gp-del" title="Supprimer cette photo" aria-label="Supprimer cette photo">✕</button></div>`).join('')}</div>` : ''}
+      <div class="gp-msg"></div>`;
+    box.querySelectorAll('.gp-item').forEach((it) => {
+      it.querySelector('img').addEventListener('click', () => showPhoto(it.dataset.id));
+      it.querySelector('.gp-del').addEventListener('click', () => {
+        if (it.querySelector('.gp-conf')) return;
+        it.insertAdjacentHTML('beforeend', '<div class="gp-conf">Supprimer ?<span><button type="button" class="y">Oui</button> <button type="button" class="n">Non</button></span></div>');
+        it.querySelector('.n').addEventListener('click', () => it.querySelector('.gp-conf').remove());
+        it.querySelector('.y').addEventListener('click', async () => {
+          try {
+            const d = await fetch('api/groupes/photos/' + encodeURIComponent(it.dataset.id), { method: 'DELETE' }).then((r) => r.json());
+            const rest = Array.isArray(d.photos) ? d.photos : [];
+            draw(rest); await saveCount(rest.length);
+          } catch (e) { msg('Suppression impossible.', true); }
+        });
+      });
+    });
+  }
+  draw([]);
+  if (key) fetch('api/groupes/photos?key=' + encodeURIComponent(key)).then((r) => r.json()).then((l) => { if (Array.isArray(l)) draw(l); }).catch(() => {});
+
+  cam.addEventListener('click', () => input.click());
+  input.addEventListener('change', async () => {
+    const file = input.files && input.files[0];
+    input.value = '';
+    if (!file) return;
+    cam.disabled = true; msg('Envoi de la photo…');
+    try {
+      // Première photo de ce groupe : on lui donne sa clé et on l'écrit dans sa fiche.
+      if (!key) {
+        key = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+        const arr = parseGroups(data.cells[date] && data.cells[date].groupe);
+        if (!arr[index]) throw new Error('Groupe introuvable');
+        arr[index].photoKey = key;
+        await putGroups(date, arr);
+      }
+      const blob = await compressImage(file);
+      const r = await fetch(`api/groupes/photos?key=${encodeURIComponent(key)}&date=${encodeURIComponent(date)}`, {
+        method: 'POST', headers: { 'Content-Type': blob.type || 'image/jpeg' }, body: blob,
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'Envoi impossible');
+      const list = Array.isArray(d.photos) ? d.photos : [];
+      draw(list); msg('✅ Photo enregistrée.');
+      await saveCount(list.length);
+    } catch (e) { msg(e.message || 'Envoi impossible', true); }
+    cam.disabled = false;
+  });
+}
+
 async function saveGroup(mode) {
   const date = gDate;
   const arr = parseGroups(data.cells[date] && data.cells[date].groupe);
   const prev = (gIndex != null && arr[gIndex]) ? arr[gIndex] : {};
   if (mode === 'delete') {
     if (gIndex != null) arr.splice(gIndex, 1);
+    if (prev.photoKey) fetch('api/groupes/photos?key=' + encodeURIComponent(prev.photoKey), { method: 'DELETE' }).catch(() => {});
   } else {
     const g = { ...prev }; // on garde les anciens champs non présents dans la fiche
     GROUP_FIELDS.forEach(([k]) => { const el = modal.querySelector('#g-' + k); g[k] = el ? el.value.trim() : ''; });

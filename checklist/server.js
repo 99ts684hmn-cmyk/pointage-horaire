@@ -3,7 +3,7 @@
 const path = require('path');
 const fs = require('fs');
 const express = require('express');
-const { db, uid, nowISO } = require('./db');
+const { db, uid, nowISO, DB_PATH } = require('./db');
 
 const app = express();
 const PORT = process.env.CHECKLIST_PORT || 3400;
@@ -682,6 +682,85 @@ app.put('/api/menus/cell', (req, res) => {
   const id = uid();
   db.prepare('INSERT INTO menu_cells(id,date,slot,value,updated_at) VALUES(?,?,?,?,?)').run(id, date, slot, value, nowISO());
   res.status(201).json({ ok: true, id });
+});
+
+// --- Groupes : photos de l'addition ------------------------------------------
+// Les images sont des fichiers rangés à côté de la base (disque persistant en
+// production) ; la table group_photos en garde la fiche. Un groupe est repéré
+// par sa clé « photoKey », écrite dans sa fiche à la première photo.
+const GROUP_PHOTOS_DIR = process.env.GROUP_PHOTOS_DIR || path.join(path.dirname(DB_PATH), 'group-photos');
+const PHOTO_KEY_RE = /^[A-Za-z0-9_-]{6,64}$/;
+const PHOTO_MAX = 12; // photos par groupe
+// Type réel de l'image, lu dans ses premiers octets (on ne se fie pas à l'en-tête).
+function imageKind(buf) {
+  if (!Buffer.isBuffer(buf) || buf.length < 12) return null;
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return { ext: 'jpg', mime: 'image/jpeg' };
+  if (buf[0] === 0x89 && buf.toString('latin1', 1, 4) === 'PNG') return { ext: 'png', mime: 'image/png' };
+  if (buf.toString('latin1', 0, 4) === 'RIFF' && buf.toString('latin1', 8, 12) === 'WEBP') return { ext: 'webp', mime: 'image/webp' };
+  return null;
+}
+const photoRows = (key) => db.prepare('SELECT id, created_at AS createdAt FROM group_photos WHERE group_key = ? ORDER BY created_at ASC').all(key);
+function removePhotoFile(file) {
+  try { fs.unlinkSync(path.join(GROUP_PHOTOS_DIR, path.basename(file))); } catch (e) { /* déjà absent */ }
+}
+
+// Photos d'un groupe (de la plus ancienne à la plus récente).
+app.get('/api/groupes/photos', (req, res) => {
+  const key = String(req.query.key || '');
+  if (!PHOTO_KEY_RE.test(key)) return res.status(400).json({ error: 'Groupe inconnu' });
+  res.json(photoRows(key));
+});
+
+// Ajoute une photo : le corps de la requête est l'image elle-même (10 Mo max).
+app.post('/api/groupes/photos', express.raw({ type: () => true, limit: '10mb' }), (req, res) => {
+  const key = String(req.query.key || '');
+  const date = String(req.query.date || '');
+  if (!PHOTO_KEY_RE.test(key)) return res.status(400).json({ error: 'Groupe inconnu' });
+  const kind = imageKind(req.body);
+  if (!kind) return res.status(400).json({ error: "Ce fichier n'est pas une photo (JPEG, PNG ou WebP)" });
+  if (photoRows(key).length >= PHOTO_MAX) return res.status(400).json({ error: `Maximum ${PHOTO_MAX} photos par groupe` });
+  const id = uid();
+  const file = `${id}.${kind.ext}`;
+  try {
+    fs.mkdirSync(GROUP_PHOTOS_DIR, { recursive: true });
+    fs.writeFileSync(path.join(GROUP_PHOTOS_DIR, file), req.body);
+  } catch (e) {
+    return res.status(500).json({ error: "La photo n'a pas pu être enregistrée" });
+  }
+  db.prepare('INSERT INTO group_photos (id, group_key, date, file, mime, size, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .run(id, key, /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null, file, kind.mime, req.body.length, nowISO());
+  res.status(201).json({ ok: true, id, photos: photoRows(key) });
+});
+
+// L'image elle-même.
+app.get('/api/groupes/photos/:id/file', (req, res) => {
+  const row = db.prepare('SELECT file, mime FROM group_photos WHERE id = ?').get(req.params.id);
+  if (!row) return res.status(404).end();
+  const fp = path.join(GROUP_PHOTOS_DIR, path.basename(row.file));
+  if (!fs.existsSync(fp)) return res.status(404).end();
+  res.setHeader('Content-Type', row.mime);
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Cache-Control', 'private, max-age=86400');
+  fs.createReadStream(fp).pipe(res);
+});
+
+// Supprime une photo.
+app.delete('/api/groupes/photos/:id', (req, res) => {
+  const row = db.prepare('SELECT file, group_key AS k FROM group_photos WHERE id = ?').get(req.params.id);
+  if (!row) return res.json({ ok: true, deleted: 0 });
+  db.prepare('DELETE FROM group_photos WHERE id = ?').run(req.params.id);
+  removePhotoFile(row.file);
+  res.json({ ok: true, deleted: 1, photos: photoRows(row.k) });
+});
+
+// Supprime toutes les photos d'un groupe (quand le groupe lui-même est supprimé).
+app.delete('/api/groupes/photos', (req, res) => {
+  const key = String(req.query.key || '');
+  if (!PHOTO_KEY_RE.test(key)) return res.status(400).json({ error: 'Groupe inconnu' });
+  const rows = db.prepare('SELECT file FROM group_photos WHERE group_key = ?').all(key);
+  db.prepare('DELETE FROM group_photos WHERE group_key = ?').run(key);
+  rows.forEach((r) => removePhotoFile(r.file));
+  res.json({ ok: true, deleted: rows.length });
 });
 
 // PUT /api/menus/pin — épingler / désépingler une case (affichée au bandeau aperçu).

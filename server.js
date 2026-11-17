@@ -101,6 +101,13 @@ try {
     if (req.originalUrl === '/cuisine') return res.redirect(301, '/cuisine/');
     next();
   });
+  // Le planning cuisine s'ouvre aussi avec la session admin du pointage (celle de
+  // l'espace « Responsables Cuisine ») : plus de second mot de passe à saisir.
+  // Le mot de passe propre à la cuisine reste valable pour un accès direct.
+  cuisineApp.locals.pointageAdmin = {
+    is: (req) => { const s = verifySession(parseCookies(req)[COOKIE_NAME]); return !!(s && s.role === 'admin'); },
+    clearCookie: `${COOKIE_NAME}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0`,
+  };
   app.use('/cuisine', cuisineApp);
   console.log('  Planning Cuisine monté sur /cuisine');
 } catch (e) {

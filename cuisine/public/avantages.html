@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Bœuf &amp; Cow — Avantages staff</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#f4f0e8; --gold:#c59d5f; --gold-dark:#8a6b32; --primary:#bf272d;
+      --dark:#1f2120; --muted:#5a5550; --card:#fff; --border:#e8e2d9;
+    }
+    *{box-sizing:border-box}
+    [hidden]{display:none !important}
+    body{
+      margin:0; font-family:"Hanken Grotesk",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      background:var(--bg); color:var(--dark); min-height:100vh;
+      padding:max(22px,env(safe-area-inset-top)) 16px 96px;
+    }
+    .wrap{max-width:760px; margin:0 auto}
+    .top{display:flex; align-items:center; gap:14px; margin:4px 0 6px}
+    .top a.back{color:var(--gold-dark); text-decoration:none; font-weight:700; font-size:.95rem; white-space:nowrap}
+    .top h1{margin:0; font-size:1.1rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase}
+    .sub{color:var(--muted); font-size:.88rem; margin:0 0 16px}
+    .card{background:var(--card); border:2px solid var(--border); border-radius:16px; padding:16px; margin:0 0 16px}
+    .card h2{margin:0 0 12px; font-size:.82rem; font-weight:900; letter-spacing:.07em; text-transform:uppercase; color:var(--gold-dark)}
+    .form{display:grid; grid-template-columns:1.2fr 1.2fr .9fr auto; gap:10px; align-items:end}
+    @media (max-width:640px){ .form{grid-template-columns:1fr 1fr} .form .btn{grid-column:1 / -1} }
+    label{display:block; font-size:.78rem; font-weight:800; color:var(--muted); margin:0 0 4px}
+    select, input[type="date"]{
+      width:100%; border:1.5px solid var(--border); border-radius:10px; padding:11px 10px; font-size:1rem;
+      font-family:inherit; font-weight:600; color:var(--dark); background:#fff; min-height:46px;
+    }
+    select:focus, input:focus{outline:2px solid var(--gold); outline-offset:0; border-color:var(--gold)}
+    .btn{border:0; border-radius:11px; padding:12px 16px; font-weight:800; font-size:.95rem; font-family:inherit; cursor:pointer; min-height:46px; white-space:nowrap}
+    .btn:disabled{opacity:.5; cursor:default}
+    .btn-gold{background:var(--gold); color:#1f2120}
+    .btn-red{background:var(--primary); color:#fff}
+    .btn-grey{background:#efe9dc; color:var(--dark)}
+    .msg{min-height:1.3em; margin-top:8px; font-size:.88rem; font-weight:700; color:#1e7a45}
+    .msg.err{color:var(--primary)}
+    .period{font-size:.85rem; color:var(--muted); margin:-6px 0 10px}
+    .tw{overflow-x:auto; -webkit-overflow-scrolling:touch; border:1.5px solid var(--border); border-radius:12px}
+    table{border-collapse:collapse; width:100%; min-width:520px; font-size:.93rem}
+    th, td{padding:10px 8px; text-align:center; border-bottom:1px solid var(--border)}
+    thead th{background:#f6efe2; font-size:.72rem; font-weight:900; letter-spacing:.05em; text-transform:uppercase; color:var(--gold-dark); line-height:1.25}
+    th:first-child, td:first-child{text-align:left; padding-left:12px; font-weight:800; position:sticky; left:0; background:#fff; z-index:1}
+    thead th:first-child{background:#f6efe2}
+    tbody tr:last-child td{border-bottom:0}
+    td.n{font-weight:800; font-size:1.05rem}
+    td.n.z{color:#c9c2b6; font-weight:600}
+    td.d{color:var(--muted); white-space:nowrap}
+    tfoot td{background:#faf7f1; font-weight:900; border-top:2px solid var(--border); border-bottom:0}
+    tfoot td:first-child{background:#faf7f1}
+    /* Téléphone : le tableau tient en entier dans la largeur de l'écran */
+    @media (max-width:640px){
+      .card{padding:14px 12px}
+      table{min-width:0; font-size:.84rem}
+      th, td{padding:9px 3px}
+      th:first-child, td:first-child{padding-left:8px}
+      thead th{font-size:.6rem; letter-spacing:.02em}
+      td.n{font-size:.98rem}
+      td.d{font-size:.78rem}
+    }
+    .empty{color:var(--muted); font-size:.9rem; padding:6px 0}
+    details{margin-top:12px}
+    summary{cursor:pointer; font-weight:800; font-size:.9rem; color:var(--gold-dark); padding:6px 0}
+    .entry{display:flex; align-items:center; gap:10px; padding:8px 4px; border-bottom:1px solid var(--border); font-size:.92rem}
+    .entry:last-child{border-bottom:0}
+    .entry .ed{color:var(--muted); white-space:nowrap; flex:0 0 auto; min-width:74px}
+    .entry .en{flex:1; min-width:0}
+    .entry .x{flex:0 0 auto; border:0; background:#efe9dc; color:var(--dark); border-radius:50%; width:32px; height:32px; font-weight:800; cursor:pointer; font-family:inherit}
+    .entry .yes{flex:0 0 auto; border:0; background:var(--primary); color:#fff; border-radius:9px; padding:7px 10px; font-weight:800; cursor:pointer; font-family:inherit; font-size:.82rem}
+    .entry .no{flex:0 0 auto; border:0; background:#efe9dc; color:var(--dark); border-radius:9px; padding:7px 10px; font-weight:800; cursor:pointer; font-family:inherit; font-size:.82rem}
+    .raz{display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:14px}
+    .raz .hint{font-size:.82rem; color:var(--muted); flex:1 1 200px}
+    .confirm{margin-top:14px; padding:12px; border:2px solid #c0392b; border-radius:12px; background:#fdf1ef}
+    .confirm .q{font-weight:800; color:#9e1f24; line-height:1.4}
+    .confirm .row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+    .arch{border:1.5px solid var(--border); border-radius:12px; padding:2px 12px; margin:0 0 10px; background:#fff}
+    .arch summary{color:var(--dark)}
+    .arch .tw{margin:6px 0 12px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <a class="back" href="/responsable-cuisine.html">← Responsables</a>
+      <h1>🎁 Avantages staff</h1>
+    </div>
+    <p class="sub">Continues sup, départs anticipés et demis sup accordés aux cuisiniers.</p>
+
+    <main id="page" hidden>
+      <!-- Saisie d'un avantage -->
+      <section class="card">
+        <h2>Ajouter un avantage</h2>
+        <div class="form">
+          <div><label for="emp">Cuisinier</label><select id="emp"><option value="">— Choisir —</option></select></div>
+          <div><label for="type">Avantage</label>
+            <select id="type">
+              <option value="">— Choisir —</option>
+              <option value="continue_sup">Continue sup</option>
+              <option value="depart_anticipe">Départ anticipé</option>
+              <option value="demi_sup">Demi sup</option>
+            </select></div>
+          <div><label for="day">Date</label><input type="date" id="day"></div>
+          <button class="btn btn-gold" id="add" type="button">Ajouter</button>
+        </div>
+        <div class="msg" id="msg"></div>
+      </section>
+
+      <!-- Tableau récapitulatif de la période en cours -->
+      <section class="card">
+        <h2>Récapitulatif</h2>
+        <div class="period" id="period"></div>
+        <div class="tw"><table id="recap"></table></div>
+
+        <details id="detail">
+          <summary id="detail-sum">Détail des saisies</summary>
+          <div id="entries"></div>
+        </details>
+
+        <div class="raz" id="raz-bar">
+          <span class="hint">La remise à zéro vide le tableau. Le tableau actuel est conservé dans l'historique, de date à date.</span>
+          <button class="btn btn-red" id="raz" type="button">Remise à zéro</button>
+        </div>
+        <div class="confirm" id="raz-confirm" hidden>
+          <div class="q" id="raz-q"></div>
+          <div class="row">
+            <button class="btn btn-red" id="raz-yes" type="button">Oui, remettre à zéro</button>
+            <button class="btn btn-grey" id="raz-no" type="button">Annuler</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tableaux conservés après chaque remise à zéro -->
+      <section class="card">
+        <h2>Historique</h2>
+        <div id="archives"></div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const TYPES = [['continue_sup', 'Continue sup'], ['depart_anticipe', 'Départ anticipé'], ['demi_sup', 'Demi sup']];
+    const TYPE_LABEL = Object.fromEntries(TYPES);
+    const frDate = (iso) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : '—');
+    const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+    let data = null;
+
+    async function api(url, opts) {
+      const r = await fetch(url, opts);
+      if (r.status === 401) { location.href = '/responsable-cuisine.html'; throw new Error('Non connecté'); }
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'Erreur');
+      return d;
+    }
+    function say(text, isErr) { const m = $('msg'); m.textContent = text; m.className = isErr ? 'msg err' : 'msg'; }
+
+    // Tableau récapitulatif (période en cours ou archive) : une ligne par cuisinier.
+    function recapHTML(rows) {
+      const n = (v) => `<td class="n${v ? '' : ' z'}">${v || 0}</td>`;
+      const tot = (k) => rows.reduce((t, r) => t + (r[k] || 0), 0);
+      return `<thead><tr><th>Cuisinier</th>${TYPES.map(([, l]) => `<th>${l}</th>`).join('')}<th>Dernier avantage</th></tr></thead>
+        <tbody>${rows.map((r) => `<tr><td>${esc(r.name)}</td>${TYPES.map(([k]) => n(r[k])).join('')}<td class="d">${frDate(r.last)}</td></tr>`).join('')
+          || '<tr><td colspan="5" class="empty">Aucun cuisinier.</td></tr>'}</tbody>
+        <tfoot><tr><td>Total</td>${TYPES.map(([k]) => `<td>${tot(k)}</td>`).join('')}<td></td></tr></tfoot>`;
+    }
+
+    function render() {
+      // Liste des cuisiniers (ordre du planning) : on garde le choix en cours.
+      const sel = $('emp'); const keep = sel.value;
+      sel.innerHTML = '<option value="">— Choisir —</option>' + data.employees.map((e) => `<option value="${e.id}">${esc(e.name)}</option>`).join('');
+      sel.value = keep;
+
+      $('period').textContent = `Depuis le ${frDate(data.periodStart)} — ${data.entries.length} avantage${data.entries.length > 1 ? 's' : ''} enregistré${data.entries.length > 1 ? 's' : ''}.`;
+      $('recap').innerHTML = recapHTML(data.rows);
+
+      $('detail-sum').textContent = `Détail des saisies (${data.entries.length})`;
+      $('entries').innerHTML = data.entries.map((e) => `<div class="entry" data-id="${e.id}">
+          <span class="ed">${frDate(e.day)}</span>
+          <span class="en"><b>${esc(e.name)}</b> · ${esc(TYPE_LABEL[e.type] || e.type)}</span>
+          <button type="button" class="x" data-del="${e.id}" title="Supprimer cette saisie" aria-label="Supprimer cette saisie">✕</button>
+        </div>`).join('') || '<div class="empty">Aucune saisie pour l\'instant.</div>';
+      // Suppression d'une saisie : confirmation sur la ligne elle-même.
+      $('entries').querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', () => {
+        const line = b.closest('.entry');
+        b.remove();
+        line.insertAdjacentHTML('beforeend', '<button type="button" class="yes">Supprimer</button><button type="button" class="no">Annuler</button>');
+        line.querySelector('.no').addEventListener('click', render);
+        line.querySelector('.yes').addEventListener('click', async () => {
+          try { await api('api/admin/perks/' + encodeURIComponent(line.dataset.id), { method: 'DELETE' }); say('Saisie supprimée.'); await load(); }
+          catch (e) { say(e.message, true); }
+        });
+      }));
+
+      $('raz').disabled = !data.entries.length;
+      $('raz-confirm').hidden = true; $('raz-bar').hidden = false;
+
+      $('archives').innerHTML = data.archives.map((a) => `<details class="arch">
+          <summary>Du ${frDate(a.fromDay)} au ${frDate(a.toDay)}</summary>
+          <div class="tw"><table>${recapHTML(a.rows)}</table></div>
+        </details>`).join('') || '<div class="empty">Aucune remise à zéro pour l\'instant. Chaque tableau remis à zéro sera conservé ici.</div>';
+    }
+
+    async function load() {
+      data = await api('api/admin/perks');
+      render();
+      $('page').hidden = false;
+    }
+
+    $('add').addEventListener('click', async () => {
+      const employeeId = $('emp').value; const type = $('type').value;
+      if (!employeeId) { say('Choisissez un cuisinier.', true); return; }
+      if (!type) { say('Choisissez un avantage.', true); return; }
+      $('add').disabled = true;
+      try {
+        await api('api/admin/perks', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ employeeId: Number(employeeId), type, day: $('day').value || todayISO() }) });
+        const name = $('emp').selectedOptions[0].textContent;
+        say(`✅ ${TYPE_LABEL[type]} ajouté pour ${name}.`);
+        $('type').value = '';
+        $('day').value = todayISO(); // la date revient à aujourd'hui pour la saisie suivante
+        await load();
+      } catch (e) { say(e.message, true); }
+      $('add').disabled = false;
+    });
+
+    // Remise à zéro : confirmation dans la page, puis archivage de date à date.
+    $('raz').addEventListener('click', () => {
+      $('raz-q').textContent = `Remettre le tableau à zéro ? Le tableau du ${frDate(data.periodStart)} au ${frDate(data.today)} sera conservé dans l'historique, puis tous les compteurs repartiront de zéro.`;
+      $('raz-bar').hidden = true; $('raz-confirm').hidden = false;
+      $('raz-confirm').scrollIntoView({ block: 'nearest' });
+    });
+    $('raz-no').addEventListener('click', () => { $('raz-confirm').hidden = true; $('raz-bar').hidden = false; });
+    $('raz-yes').addEventListener('click', async () => {
+      $('raz-yes').disabled = true;
+      try { await api('api/admin/perks/reset', { method: 'POST' }); say('Tableau remis à zéro. L\'ancien tableau est dans l\'historique.'); await load(); }
+      catch (e) { say(e.message, true); $('raz-confirm').hidden = true; $('raz-bar').hidden = false; }
+      $('raz-yes').disabled = false;
+    });
+
+    $('day').value = todayISO();
+    load().catch(() => {});
+  </script>
+  <script src="/tabbar.js?v=6"></script>
+</body>
+</html>

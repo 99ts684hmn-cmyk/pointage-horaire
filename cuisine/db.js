@@ -120,6 +120,27 @@ if (!db.prepare('PRAGMA table_info(poste_assign)').all().some((c) => c.name === 
   db.exec('ALTER TABLE poste_assign ADD COLUMN src TEXT');
 }
 
+// Avantages staff : un avantage accordé à un cuisinier (continue sup, départ
+// anticipé, demi sup) à une date. La remise à zéro vide la table après avoir
+// archivé le tableau récapitulatif de la période (de date à date).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS staff_perks (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    employee_id   INTEGER NOT NULL,
+    employee_name TEXT    NOT NULL,   -- nom au moment de la saisie
+    type          TEXT    NOT NULL,   -- continue_sup | depart_anticipe | demi_sup
+    day           TEXT    NOT NULL,   -- AAAA-MM-JJ
+    created_at    INTEGER NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS staff_perk_archives (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    from_day   TEXT    NOT NULL,      -- début de la période
+    to_day     TEXT    NOT NULL,      -- jour de la remise à zéro
+    created_at INTEGER NOT NULL,
+    data       TEXT    NOT NULL       -- JSON { rows:[…récapitulatif…], entries:[…saisies…] }
+  );
+`);
+
 // --- Hachage des secrets (mot de passe admin) ------------------------------
 function hashSecret(secret) {
   const salt = crypto.randomBytes(16);

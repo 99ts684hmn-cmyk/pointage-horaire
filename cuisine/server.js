@@ -64,12 +64,18 @@ function verifySession(token) {
   }
 }
 
+// Admin = session propre à la cuisine OU session admin du pointage (espace
+// « Responsables Cuisine », injectée par le serveur principal) : le planning
+// s'ouvre sans second mot de passe quand on vient de cet espace.
+function isAdmin(req) {
+  const session = verifySession(parseCookies(req)[COOKIE_NAME]);
+  if (session && session.role === 'admin') return true;
+  const pa = app.locals.pointageAdmin;
+  try { return !!(pa && typeof pa.is === 'function' && pa.is(req)); } catch { return false; }
+}
+
 function requireAdmin(req, res, next) {
-  const token = parseCookies(req)[COOKIE_NAME];
-  const session = verifySession(token);
-  if (!session || session.role !== 'admin') {
-    return res.status(401).json({ error: 'Non authentifié' });
-  }
+  if (!isAdmin(req)) return res.status(401).json({ error: 'Non authentifié' });
   next();
 }
 
@@ -175,14 +181,16 @@ app.post('/api/admin/login', (req, res) => {
 });
 
 app.post('/api/admin/logout', (req, res) => {
-  res.setHeader('Set-Cookie',
-    `${COOKIE_NAME}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0`);
+  // Déconnexion complète : session cuisine + session « Responsables Cuisine ».
+  const cookies = [`${COOKIE_NAME}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0`];
+  const pa = app.locals.pointageAdmin;
+  if (pa && pa.clearCookie) cookies.push(pa.clearCookie);
+  res.setHeader('Set-Cookie', cookies);
   res.json({ ok: true });
 });
 
 app.get('/api/admin/me', (req, res) => {
-  const session = verifySession(parseCookies(req)[COOKIE_NAME]);
-  res.json({ loggedIn: !!(session && session.role === 'admin') });
+  res.json({ loggedIn: isAdmin(req) });
 });
 
 app.put('/api/admin/password', requireAdmin, (req, res) => {
@@ -404,6 +412,89 @@ function parsePostes(raw) {
     return out;
   } catch { return {}; }
 }
+
+// =========================================================================
+//  Avantages staff : continue sup / départ anticipé / demi sup par cuisinier
+// =========================================================================
+const PERK_TYPES = ['continue_sup', 'depart_anticipe', 'demi_sup'];
+// Début de la période en cours : jour de la dernière remise à zéro, ou la plus
+// ancienne saisie si elle est antérieure (avantage saisi à une date passée) ;
+// aujourd'hui s'il n'y a encore rien.
+function perkPeriodStart() {
+  const s = getSetting('perks_period_start');
+  const first = db.prepare('SELECT MIN(day) AS d FROM staff_perks').get();
+  const days = [s && ISO_RE.test(s) ? s : null, first && first.d].filter(Boolean).sort();
+  return days[0] || localDay(Date.now());
+}
+const perkEntries = () => db.prepare(`SELECT id, employee_id AS employeeId, employee_name AS name, type, day
+  FROM staff_perks ORDER BY day DESC, id DESC`).all();
+// Cuisiniers en poste aujourd'hui, dans l'ordre du planning.
+function perkEmployees() {
+  const today = localDay(Date.now());
+  return db.prepare('SELECT id, name, end_date FROM employees WHERE active = 1 ORDER BY sort_order ASC, name COLLATE NOCASE').all()
+    .filter((e) => !e.end_date || e.end_date >= today).map((e) => ({ id: e.id, name: e.name }));
+}
+// Tableau récapitulatif : une ligne par cuisinier en poste (ordre du planning),
+// puis ceux qui ont des avantages sans être (ou plus) dans l'équipe.
+function perkRecap(entries, employees) {
+  const rows = new Map();
+  const row = (id, name) => {
+    if (!rows.has(id)) rows.set(id, { employeeId: id, name, continue_sup: 0, depart_anticipe: 0, demi_sup: 0, last: null });
+    return rows.get(id);
+  };
+  for (const e of employees) row(e.id, e.name);
+  for (const p of entries) {
+    const r = row(p.employeeId, p.name);
+    if (PERK_TYPES.includes(p.type)) r[p.type] += 1;
+    if (!r.last || p.day > r.last) r.last = p.day;
+  }
+  return [...rows.values()];
+}
+
+app.get('/api/admin/perks', requireAdmin, (req, res) => {
+  const entries = perkEntries();
+  const employees = perkEmployees();
+  const archives = db.prepare('SELECT id, from_day AS fromDay, to_day AS toDay, data FROM staff_perk_archives ORDER BY id DESC').all()
+    .map((a) => {
+      let d = {};
+      try { d = JSON.parse(a.data) || {}; } catch { d = {}; }
+      return { id: a.id, fromDay: a.fromDay, toDay: a.toDay, rows: Array.isArray(d.rows) ? d.rows : [] };
+    });
+  res.json({ periodStart: perkPeriodStart(), today: localDay(Date.now()), employees, entries, rows: perkRecap(entries, employees), archives });
+});
+
+app.post('/api/admin/perks', requireAdmin, (req, res) => {
+  const b = req.body || {};
+  const emp = db.prepare('SELECT id, name FROM employees WHERE id = ?').get(Number(b.employeeId));
+  if (!emp) return res.status(400).json({ error: 'Choisissez un cuisinier' });
+  if (!PERK_TYPES.includes(b.type)) return res.status(400).json({ error: "Choisissez un type d'avantage" });
+  const day = ISO_RE.test(b.day || '') ? b.day : localDay(Date.now());
+  const info = db.prepare('INSERT INTO staff_perks (employee_id, employee_name, type, day, created_at) VALUES (?, ?, ?, ?, ?)')
+    .run(emp.id, emp.name, b.type, day, Date.now());
+  res.status(201).json({ ok: true, id: info.lastInsertRowid });
+});
+
+app.delete('/api/admin/perks/:id', requireAdmin, (req, res) => {
+  const info = db.prepare('DELETE FROM staff_perks WHERE id = ?').run(Number(req.params.id));
+  res.json({ ok: true, deleted: info.changes });
+});
+
+// Remise à zéro : le tableau de la période (de date à date) est archivé avec le
+// détail des saisies, puis les compteurs repartent de zéro.
+app.post('/api/admin/perks/reset', requireAdmin, (req, res) => {
+  const entries = perkEntries();
+  if (!entries.length) return res.status(400).json({ error: 'Aucun avantage à remettre à zéro' });
+  const today = localDay(Date.now());
+  const from = perkPeriodStart();
+  const rows = perkRecap(entries, perkEmployees());
+  db.transaction(() => {
+    db.prepare('INSERT INTO staff_perk_archives (from_day, to_day, created_at, data) VALUES (?, ?, ?, ?)')
+      .run(from <= today ? from : today, today, Date.now(), JSON.stringify({ rows, entries }));
+    db.prepare('DELETE FROM staff_perks').run();
+    setSetting('perks_period_start', today);
+  })();
+  res.json({ ok: true });
+});
 
 // Liste publique des cuisiniers ACTIFS (noms seuls) — sert au sélecteur de
 // clôture des check-lists cuisine. Pas de données sensibles.

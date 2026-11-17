@@ -58,6 +58,7 @@
     tbody tr:last-child td{border-bottom:0}
     td.n{font-weight:800; font-size:1.05rem}
     td.n.z{color:#c9c2b6; font-weight:600}
+    td.n.z.c{color:#a89f90}
     td.d{color:var(--muted); white-space:nowrap}
     tfoot td{background:#faf7f1; font-weight:900; border-top:2px solid var(--border); border-bottom:0}
     tfoot td:first-child{background:#faf7f1}
@@ -69,11 +70,16 @@
       th:first-child, td:first-child{padding-left:8px}
       thead th{font-size:.6rem; letter-spacing:.02em}
       td.n{font-size:.98rem}
+      /* trois colonnes de chiffres de même largeur : cases faciles à toucher */
+      thead th:nth-child(2), thead th:nth-child(3), thead th:nth-child(4){width:18%}
       td.d{font-size:.78rem}
     }
     /* Chiffres cliquables du récapitulatif : ouvrent la saisie rapide */
-    td.n .cell{display:block; width:100%; border:0; background:transparent; font:inherit; color:inherit; cursor:pointer;
-      padding:6px 2px; margin:-6px 0; border-radius:8px}
+    /* Le bouton occupe toute la case : zone de toucher d'au moins 44 px de haut sur téléphone */
+    td.n.c{padding:0}
+    td.n .cell{display:block; width:100%; min-height:44px; border:0; background:transparent; font:inherit; color:inherit; cursor:pointer;
+      padding:10px 2px; margin:0; border-radius:0; -webkit-tap-highlight-color:rgba(197,157,95,.25); touch-action:manipulation}
+    td.n .cell:active{background:#f0e6d2}
     td.n .cell:hover, td.n .cell:focus-visible{background:#f6efe2; outline:0}
     .tip{font-size:.8rem; color:var(--muted); margin:8px 2px 0}
     /* Fenêtre de saisie rapide : croix en haut à gauche, Enregistrer en bas à droite */
@@ -233,7 +239,7 @@
 
     // Tableau récapitulatif (période en cours ou archive) : une ligne par cuisinier.
     function recapHTML(rows, clickable) {
-      const n = (v, r, k) => `<td class="n${v ? '' : ' z'}">${clickable
+      const n = (v, r, k) => `<td class="n${v ? '' : ' z'}${clickable ? ' c' : ''}">${clickable
         ? `<button type="button" class="cell" data-emp="${r.employeeId}" data-type="${k}" title="Ajouter : ${esc(TYPE_LABEL[k])} — ${esc(r.name)}">${v || 0}</button>`
         : (v || 0)}</td>`;
       const tot = (k) => rows.reduce((t, r) => t + (r[k] || 0), 0);

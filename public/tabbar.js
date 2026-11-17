@@ -4,7 +4,7 @@
 // présente sur toutes les pages du site. Son contenu dépend de la SECTION :
 //   accueil  → Accueil · Planning · Salle · Cuisine · Charlène
 //   salle    → Accueil · Salle · Planning · Check-lists · Managers · Admin
-//   cuisine  → Cuisine · Check-lists · Coûts · Groupes · Menu · Responsable
+//   cuisine  → Cuisine · Check-lists · Coûts · Groupes · Commandes · Responsable
 // L'onglet actif est déduit de l'adresse de la page.
 (function () {
   const path = location.pathname;
@@ -40,7 +40,7 @@
       { icon: '✅', label: 'Check-lists', href: '/checklist/cuisine.html', active: (p) => is('/checklist/cuisine.html', '/checklist/resp-cuisine.html', '/checklist/session.html') },
       { icon: '⚖️', label: 'Coûts', href: '/checklist/cuisine-couts.html', active: (p) => p === '/checklist/cuisine-couts.html' },
       { icon: '👥', label: 'Groupes', href: '/checklist/cuisine-groupes.html', active: (p) => p === '/checklist/cuisine-groupes.html' },
-      { icon: '📋', label: 'Menu', href: '/checklist/cuisine-menudujour.html', active: (p) => p === '/checklist/cuisine-menudujour.html' },
+      { icon: '📦', label: 'Commandes', href: '/checklist/cuisine-commandes-accueil.html', active: (p) => p.startsWith('/checklist/cuisine-commandes') },
       // Espace Responsables Cuisine (protégé) : planning cuisine, avantages staff, rapports, admin.
       { icon: '🔑', label: 'Responsable', href: '/responsable-cuisine.html', active: (p) => p === '/responsable-cuisine.html' || p.startsWith('/cuisine/') },
     ],

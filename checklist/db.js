@@ -232,6 +232,10 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_group_photos_key ON group_photos(group_key);
 `);
+// Photos d'addition : date du téléchargement (NULL = pas encore téléchargée).
+if (!db.prepare('PRAGMA table_info(group_photos)').all().some((c) => c.name === 'downloaded_at')) {
+  db.exec('ALTER TABLE group_photos ADD COLUMN downloaded_at TEXT');
+}
 // Colonne « days » (jours d'une tâche pour le mode WEEKLY_CARRY_OVER, ex. "1,3,5").
 // Si NULL, on retombe sur day_of_week (compat. tâches hebdo salle existantes).
 if (!db.prepare('PRAGMA table_info(tasks)').all().some((c) => c.name === 'days')) {

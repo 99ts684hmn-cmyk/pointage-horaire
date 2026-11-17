@@ -699,7 +699,7 @@ function imageKind(buf) {
   if (buf.toString('latin1', 0, 4) === 'RIFF' && buf.toString('latin1', 8, 12) === 'WEBP') return { ext: 'webp', mime: 'image/webp' };
   return null;
 }
-const photoRows = (key) => db.prepare('SELECT id, created_at AS createdAt FROM group_photos WHERE group_key = ? ORDER BY created_at ASC').all(key);
+const photoRows = (key) => db.prepare('SELECT id, created_at AS createdAt, downloaded_at AS downloadedAt FROM group_photos WHERE group_key = ? ORDER BY created_at ASC').all(key);
 function removePhotoFile(file) {
   try { fs.unlinkSync(path.join(GROUP_PHOTOS_DIR, path.basename(file))); } catch (e) { /* déjà absent */ }
 }
@@ -744,6 +744,14 @@ app.get('/api/groupes/photos/:id/file', (req, res) => {
   // ?dl=1 : le navigateur enregistre l'image au lieu de l'afficher.
   if (req.query.dl) res.setHeader('Content-Disposition', `attachment; filename="addition.${path.extname(row.file).slice(1) || 'jpg'}"`);
   fs.createReadStream(fp).pipe(res);
+});
+
+// Marque une photo comme téléchargée (la première date est conservée).
+app.post('/api/groupes/photos/:id/downloaded', (req, res) => {
+  const row = db.prepare('SELECT group_key AS k, downloaded_at AS d FROM group_photos WHERE id = ?').get(req.params.id);
+  if (!row) return res.status(404).json({ error: 'Photo introuvable' });
+  if (!row.d) db.prepare('UPDATE group_photos SET downloaded_at = ? WHERE id = ?').run(nowISO(), req.params.id);
+  res.json({ ok: true, photos: photoRows(row.k) });
 });
 
 // Supprime une photo.

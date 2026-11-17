@@ -29,8 +29,16 @@
     .card{background:var(--card); border:2px solid var(--border); border-radius:16px; padding:16px; margin:0 0 16px}
     .card h2{margin:0 0 12px; font-size:.82rem; font-weight:900; letter-spacing:.07em; text-transform:uppercase; color:var(--gold-dark)}
     .form{display:grid; grid-template-columns:1.2fr 1.2fr .9fr auto; gap:10px; align-items:end}
-    @media (max-width:640px){ .form{grid-template-columns:1fr 1fr} .form .btn{grid-column:1 / -1} }
-    .times{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; max-width:420px}
+    /* Ordinateur : le bouton reste au bout de la première ligne, les champs en plus passent dessous */
+    .form .btn{grid-column:4; grid-row:1}
+    .form .times{grid-column:1 / -1; margin-top:0}
+    /* Téléphone : les champs en plus viennent avant le bouton, qui prend toute la largeur en dernier */
+    @media (max-width:640px){ .form{grid-template-columns:minmax(0,1fr) minmax(0,1fr)} .form .btn{grid-column:1 / -1; grid-row:auto} }
+    .times{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px; margin-top:10px; max-width:420px}
+    .times > div, .form > div{min-width:0}
+    /* iPhone : sans ces deux lignes, les champs heure / date gardent une largeur propre et débordent */
+    input[type="time"], input[type="date"]{min-width:0; max-width:100%; -webkit-appearance:none; appearance:none; text-align:left}
+    input[type="time"]::-webkit-date-and-time-value, input[type="date"]::-webkit-date-and-time-value{text-align:left}
     input[type="time"]{
       width:100%; border:1.5px solid var(--border); border-radius:10px; padding:11px 10px; font-size:1rem;
       font-family:inherit; font-weight:600; color:var(--dark); background:#fff; min-height:46px;
@@ -85,6 +93,11 @@
     /* Fenêtre de saisie rapide : croix en haut à gauche, Enregistrer en bas à droite */
     .ov{position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; padding:16px; z-index:60}
     .ov.show{display:flex}
+    /* Téléphone : la fenêtre est collée en haut de l'écran. Le sélecteur d'heure de l'iPhone,
+       qui s'ouvre là où il a de la place, se place alors SOUS les champs : le titre reste lisible. */
+    @media (max-width:640px){
+      .ov{align-items:flex-start; padding-top:calc(env(safe-area-inset-top, 0px) + 14px)}
+    }
     .qm{position:relative; background:#fff; border-radius:16px; width:100%; max-width:380px; padding:18px 18px 16px; box-shadow:0 8px 28px rgba(0,0,0,.25)}
     .qm .qx{position:absolute; top:10px; left:10px; width:36px; height:36px; border:0; border-radius:50%; background:#efe9dc; color:var(--dark);
       font-size:1.05rem; font-weight:800; line-height:1; cursor:pointer; font-family:inherit}
@@ -94,7 +107,8 @@
     .qm .choice button{border:2px solid var(--border); background:#fff; border-radius:12px; padding:16px 8px; font:inherit; font-weight:800; font-size:1.05rem;
       color:var(--dark); cursor:pointer}
     .qm .choice button.on{border-color:var(--gold-dark); background:#f6efe2}
-    .qm .qtimes{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+    .qm .qtimes{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px}
+    .qm .qtimes > div{min-width:0}
     .qm .qmsg{min-height:1.3em; margin-top:10px; font-size:.86rem; font-weight:700; color:var(--primary)}
     .qm .qfoot{display:flex; justify-content:flex-end; margin-top:8px}
     .empty{color:var(--muted); font-size:.9rem; padding:6px 0}
@@ -139,21 +153,21 @@
               <option value="demi_sup">Demi sup</option>
             </select></div>
           <div><label for="day">Date</label><input type="date" id="day"></div>
+          <!-- Demi sup / continue sup : service concerné -->
+          <div class="times" id="svc-box" hidden>
+            <div><label for="svc">Service</label>
+              <select id="svc">
+                <option value="">— Midi ou soir —</option>
+                <option value="midi">Midi</option>
+                <option value="soir">Soir</option>
+              </select></div>
+          </div>
+          <!-- Départ anticipé : heure de départ et heure prévue -->
+          <div class="times" id="times" hidden>
+            <div><label for="leave">Heure de départ</label><input type="time" id="leave"></div>
+            <div><label for="planned">Au lieu de</label><input type="time" id="planned"></div>
+          </div>
           <button class="btn btn-gold" id="add" type="button">Ajouter</button>
-        </div>
-        <!-- Demi sup / continue sup : service concerné -->
-        <div class="times" id="svc-box" hidden>
-          <div><label for="svc">Service</label>
-            <select id="svc">
-              <option value="">— Midi ou soir —</option>
-              <option value="midi">Midi</option>
-              <option value="soir">Soir</option>
-            </select></div>
-        </div>
-        <!-- Départ anticipé : heure de départ et heure prévue -->
-        <div class="times" id="times" hidden>
-          <div><label for="leave">Heure de départ</label><input type="time" id="leave"></div>
-          <div><label for="planned">Au lieu de</label><input type="time" id="planned"></div>
         </div>
         <div class="msg" id="msg"></div>
       </section>

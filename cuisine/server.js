@@ -413,6 +413,32 @@ app.get('/api/cooks', (req, res) => {
   res.json(db.prepare('SELECT id, name, sort_order AS sortOrder FROM employees WHERE active = 1 ORDER BY name COLLATE NOCASE').all());
 });
 
+// Planning cuisine en LECTURE SEULE (page d'accueil cuisine) : équipe, horaires et
+// statuts d'une période de 14 jours au plus. Ni postes, ni totaux d'heures, ni notes.
+// Reprend les horaires programmés dans les profils (demi-journée, journée continue).
+app.get('/api/planning', (req, res) => {
+  const { from, to } = req.query;
+  if (!ISO_RE.test(from || '') || !ISO_RE.test(to || '') || to < from) return res.status(400).json({ error: 'Période invalide' });
+  if (dayList(from, to).length > 14) return res.status(400).json({ error: 'Période trop longue' });
+  const employees = db.prepare(
+    'SELECT id, name, active, end_date, sort_order, rest_days, continuous_service FROM employees ORDER BY sort_order ASC, name COLLATE NOCASE'
+  ).all().map((r) => ({
+    id: r.id, name: r.name, active: r.active, endDate: r.end_date || null, sortOrder: r.sort_order,
+    restPeriods: parseRestPeriods(r.rest_days), continuous: !!r.continuous_service,
+  }));
+  const report = buildReport({ from, to }).map((e) => ({
+    employeeId: e.employeeId,
+    days: e.days.map((d) => ({ day: d.day, segments: d.segments.map((s) => ({ clockIn: s.clockIn, clockOut: s.clockOut })) })),
+  }));
+  const statuses = db.prepare(
+    'SELECT employee_id AS employeeId, day, status FROM day_status WHERE day >= ? AND day <= ?'
+  ).all(from, to);
+  for (const v of virtualShifts(from, to)) {
+    if (v.status) statuses.push({ employeeId: v.employeeId, day: v.day, status: v.status });
+  }
+  res.json({ employees, report, statuses });
+});
+
 app.get('/api/admin/employees', requireAdmin, (req, res) => {
   const rows = db.prepare(
     'SELECT id, name, category, rest_days, continuous_service, sort_order, active, end_date, created_at, postes, schedule FROM employees ORDER BY active DESC, sort_order ASC, name COLLATE NOCASE'

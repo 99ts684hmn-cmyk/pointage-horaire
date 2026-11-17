@@ -405,7 +405,7 @@
       let html = `${produit ? `<div style="font-weight:800;margin-bottom:8px">${esc(produit)}</div>` : ''}
         <div class="big"><span class="lbl">Perte</span><span class="val">${fr(pertePct, 1)} %</span></div>
         <div class="bar"><i style="width:${Math.max(0, Math.min(100, pertePct))}%"></i></div>
-        ${Number.isFinite(ratio) ? `<div class="big ratio"><span class="lbl">Ratio réel</span><span class="val">× ${fr(ratio, 2)}<small>soit ${fr(100 / ratio, 1)} % du prix de vente</small></span></div>` : ''}
+        ${Number.isFinite(ratio) ? `<div class="big ratio"><span class="lbl">Ratio réel</span><span class="val">× ${fr(ratio, 2)}<small>soit ${fr(ratio * 100, 1)} % du coût portion</small></span></div>` : ''}
         <div class="lines">
           <div class="line"><span>Perte en poids</span><b>${fr(perteKg, 3)} kg</b></div>
           <div class="line"><span>Rendement (vendable)</span><b>${fr(rendement, 1)} %</b></div>`;
@@ -610,7 +610,7 @@
         const nb = Math.floor(r.reelKg * 1000 / r.portionG + 1e-9);
         parts.push(`${nb} portion${nb > 1 ? 's' : ''} de ${fr(r.portionG, 0)} g${cout ? ` · <b>${fr(cout * r.portionG / 1000, 2)} €/portion</b>` : ''}`);
         const pv = recVente(r);
-        if (cout && pv) parts.push(`vendu ${fr(pv, 2)} € → <b>ratio réel × ${fr(pv / (cout * r.portionG / 1000), 2)} (${fr(cout * r.portionG / 10 / pv, 1)} %)</b> · marge ${fr(pv - cout * r.portionG / 1000, 2)} €`);
+        if (cout && pv) parts.push(`vendu ${fr(pv, 2)} € → <b>ratio réel × ${fr(pv / (cout * r.portionG / 1000), 2)} (${fr(pv / (cout * r.portionG / 1000) * 100, 1)} %)</b> · marge ${fr(pv - cout * r.portionG / 1000, 2)} €`);
       }
       return `<button type="button" class="rec rec-btn" data-open="${esc(r.id)}">
           <span class="rp">${fr(perte, 1)} %</span>

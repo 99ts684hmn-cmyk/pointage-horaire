@@ -235,8 +235,13 @@
       <button type="button" class="btn btn-grey" id="edit-cancel">Annuler</button>
     </div>
     <section class="calc">
-      <label for="produit">Produit (facultatif)</label>
-      <input type="text" id="produit" placeholder="Ex. Côte de bœuf maturée 45 j" autocomplete="off" style="font-size:1rem;font-weight:600">
+      <label for="produit-sel">Produit</label>
+      <select id="produit-sel" class="who" style="font-size:1rem;font-weight:600"><option value="">— Choisir —</option></select>
+      <div id="produit-autre" hidden>
+        <label for="produit">Nom du produit</label>
+        <input type="text" id="produit" placeholder="Ex. Côte de bœuf maturée 45 j" autocomplete="off" style="font-size:1rem;font-weight:600">
+      </div>
+      <div class="prixbar" id="mat-constbar" style="margin-top:12px" hidden></div>
 
       <div class="row2">
         <div>
@@ -255,11 +260,14 @@
       <label for="prix">Prix d'achat au kg — étiquette (€, facultatif)</label>
       <input type="text" id="prix" inputmode="decimal" placeholder="38,50" autocomplete="off">
 
-      <label for="portion">Poids par portion (g, facultatif)</label>
-      <input type="text" id="portion" inputmode="decimal" placeholder="350" autocomplete="off">
+      <!-- Portion et prix de vente : saisis seulement pour « Autres » (constantes pour les autres produits) -->
+      <div id="mat-libre" hidden>
+        <label for="portion">Poids par portion (g, facultatif)</label>
+        <input type="text" id="portion" inputmode="decimal" placeholder="350" autocomplete="off">
 
-      <label for="vente">Prix de vente de la portion (€, facultatif)</label>
-      <input type="text" id="vente" inputmode="decimal" placeholder="55,00" autocomplete="off">
+        <label for="vente">Prix de vente de la portion (€, facultatif)</label>
+        <input type="text" id="vente" inputmode="decimal" placeholder="55,00" autocomplete="off">
+      </div>
 
       <label for="decoupeur">Découpeur</label>
       <select id="decoupeur" class="who"><option value="">— Choisir —</option></select>
@@ -282,6 +290,20 @@
   <!-- Fiche complète d'un enregistrement « Ratio viande » -->
   <div class="overlay" id="fiche-ov">
     <div class="modal" id="fiche" style="max-width:480px; max-height:88vh; overflow-y:auto"></div>
+  </div>
+
+  <!-- Constantes du ratio viande : poids de portion et prix de vente par produit -->
+  <div class="overlay" id="mat-ov">
+    <div class="modal" style="max-width:420px; max-height:88vh; overflow-y:auto">
+      <h2 style="margin:0 0 4px;font-size:1.15rem">Constantes — ratio viande</h2>
+      <div class="fdates">Ces valeurs servent à tous les nouveaux calculs. Les enregistrements déjà faits gardent celles du jour où ils ont été faits.</div>
+      <div class="calc" style="border:0;padding:0;margin:0" id="mc-fields"></div>
+      <div class="warn" id="mc-msg" style="min-height:1.2em"></div>
+      <div class="factions">
+        <button class="btn btn-green" id="mc-save" type="button">Enregistrer</button>
+        <button class="btn btn-grey" id="mc-cancel" type="button">Annuler</button>
+      </div>
+    </div>
   </div>
 
   <!-- Constantes du ratio ribs : quantités de rub et de sauce + prix au kg -->
@@ -353,18 +375,20 @@
       const reel = num($('reel').value);
       const box = $('result');
       $('saved-msg').textContent = '';
+      const prod = matProduit();
       const valid = etiq > 0 && reel >= 0 && $('reel').value.trim() !== '' && reel <= etiq;
-      $('save').disabled = !valid;
+      $('save').disabled = !(valid && prod.nom);
       if (!(etiq > 0) || !(reel >= 0) || $('reel').value.trim() === '') {
         box.className = 'result empty';
         box.textContent = 'Renseignez le poids étiquette et le poids réel détaillé.';
         return;
       }
       box.className = 'result';
+      const mv = matValues();
       box.innerHTML = calcHTML({
-        produit: $('produit').value.trim(), etiq, reel,
-        prix: num($('prix').value), portionG: num($('portion').value), vente: num($('vente').value),
-      });
+        produit: prod.nom, etiq, reel,
+        prix: num($('prix').value), portionG: mv.portionG, vente: mv.vente,
+      }) + (prod.nom ? '' : `<div class="warn">⚠️ ${prod.key === 'autre' ? 'Saisissez le nom du produit' : 'Choisissez le produit'} pour pouvoir enregistrer.</div>`);
     }
 
     // Récapitulatif complet d'un calcul (utilisé par la calculette ET par la
@@ -427,9 +451,116 @@
 
     function clearForm() {
       ['produit', 'etiquette', 'reel', 'prix', 'portion', 'vente'].forEach((id) => { $(id).value = ''; });
+      $('produit-sel').value = '';
       setDecoupeur('');
+      updateMatProduit();
+    }
+    // --- Produit : obligatoire, au choix. Les produits de la liste ont un poids de
+    // portion et un prix de vente constants (modifiables) ; « Autres » = nom saisi.
+    let matProduits = [
+      { key: 'lesage', nom: 'Entrecôte Lesage', vente: 30, portionG: 350 },
+      { key: 'chaiseronne', nom: 'Entrecôte Chaiseronne', vente: 32, portionG: 350 },
+      { key: 'matu45', nom: 'Matu 45 J', vente: 42, portionG: 350 },
+    ];
+    const matNorm = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, '');
+    const matByKey = (key) => matProduits.find((p) => p.key === key) || null;
+    const matKeyOfName = (name) => { const n = matNorm(name); const p = n && matProduits.find((x) => matNorm(x.nom) === n); return p ? p.key : ''; };
+    const matPos = (n) => (Number.isFinite(n) && n > 0 ? n : NaN);
+    // Prix de vente d'un enregistrement : le sien, sinon (ancien enregistrement d'un
+    // produit de la liste, fait avant l'ajout du prix de vente) la constante actuelle.
+    const recVente = (r) => { if (r.prixVente) return r.prixVente; const q = matByKey(matKeyOfName(r.produit)); return q && q.vente > 0 ? q.vente : null; };
+    function fillMatSelect() {
+      const sel = $('produit-sel'); const keep = sel.value;
+      sel.innerHTML = '<option value="">— Choisir —</option>'
+        + matProduits.map((p) => `<option value="${esc(p.key)}">${esc(p.nom)}</option>`).join('')
+        + '<option value="autre">Autres (saisir le nom)</option>';
+      sel.value = keep;
+    }
+    // Produit choisi : { key, nom } (nom vide tant que rien n'est choisi / saisi).
+    function matProduit() {
+      const key = $('produit-sel').value;
+      if (key === 'autre') return { key, nom: $('produit').value.trim() };
+      const p = matByKey(key);
+      return { key, nom: p ? p.nom : '' };
+    }
+    // L'enregistrement en cours de modification, s'il porte le produit choisi.
+    const matRec = (key) => (editing && matKeyOfName(editing.produit) === key ? editing : null);
+    // Poids de portion et prix de vente utilisés par le calcul. Produit de la liste :
+    // constantes (en modification : celles de l'enregistrement, complétées par les
+    // constantes actuelles). « Autres » : les deux champs de saisie.
+    function matValues() {
+      const key = $('produit-sel').value;
+      const p = matByKey(key);
+      if (!p) return key === 'autre' ? { portionG: num($('portion').value), vente: num($('vente').value) } : { portionG: NaN, vente: NaN };
+      const r = matRec(key);
+      return {
+        portionG: matPos(r && r.portionG) || matPos(p.portionG),
+        vente: matPos(r && r.prixVente) || matPos(p.vente),
+      };
+    }
+    function renderMatBar() {
+      const key = $('produit-sel').value; const p = matByKey(key); const bar = $('mat-constbar');
+      bar.hidden = !p;
+      if (!p) return;
+      const v = matValues(); const rec = matRec(key);
+      const g = Number.isFinite(v.portionG) ? `<b>${fr(v.portionG, 0)} g</b>` : '<b class="miss">à renseigner</b>';
+      const e = Number.isFinite(v.vente) ? `<b>${fr(v.vente, 2)} €</b>` : '<b class="miss">à renseigner</b>';
+      bar.innerHTML = `<span class="pb-t">${rec ? 'Constantes de cet enregistrement' : 'Constantes'} — ${esc(p.nom)}</span>
+        <span class="pb-v">Portion ${g} · Prix de vente ${e}</span>`
+        + (rec ? '' : '<button type="button" class="btn btn-grey" id="mat-const-edit">✏️ Modifier</button>');
+      const b = $('mat-const-edit');
+      if (b) b.addEventListener('click', openMatConst);
+    }
+    function updateMatProduit() {
+      const key = $('produit-sel').value;
+      $('produit-autre').hidden = key !== 'autre';
+      $('mat-libre').hidden = key !== 'autre';
+      renderMatBar();
       compute();
     }
+    fillMatSelect();
+    $('produit-sel').addEventListener('change', () => { updateMatProduit(); if ($('produit-sel').value === 'autre') $('produit').focus(); });
+    fetch('api/couts/produits').then((r) => r.json()).then((d) => {
+      if (d && Array.isArray(d.produits) && d.produits.length) { matProduits = d.produits; fillMatSelect(); updateMatProduit(); loadHist(); }
+    }).catch(() => {});
+
+    // Fenêtre de modification des constantes (poids de portion + prix de vente par produit).
+    function openMatConst() {
+      $('mc-fields').innerHTML = matProduits.map((p) => `<div style="font-weight:800;margin:12px 0 2px">${esc(p.nom)}</div>
+        <div class="row2">
+          <div><label for="mc-g-${esc(p.key)}">Poids par portion (g)</label>
+            <input type="text" id="mc-g-${esc(p.key)}" inputmode="decimal" autocomplete="off" value="${p.portionG != null ? esc(toField(p.portionG)) : ''}"></div>
+          <div><label for="mc-v-${esc(p.key)}">Prix de vente (€)</label>
+            <input type="text" id="mc-v-${esc(p.key)}" inputmode="decimal" autocomplete="off" value="${p.vente != null ? esc(toField(p.vente)) : ''}"></div>
+        </div>`).join('');
+      $('mc-msg').textContent = '';
+      $('mat-ov').classList.add('show');
+    }
+    function closeMatConst() { $('mat-ov').classList.remove('show'); }
+    $('mc-cancel').addEventListener('click', closeMatConst);
+    $('mat-ov').addEventListener('click', (e) => { if (e.target === $('mat-ov')) closeMatConst(); });
+    $('mc-save').addEventListener('click', async () => {
+      const produits = {};
+      for (const p of matProduits) {
+        const o = {};
+        for (const [k, id] of [['portionG', 'mc-g-' + p.key], ['vente', 'mc-v-' + p.key]]) {
+          const raw = $(id).value.trim();
+          if (raw === '') { o[k] = null; continue; }
+          const n = num(raw);
+          if (!Number.isFinite(n) || n <= 0) { $('mc-msg').textContent = 'Une valeur saisie n\'est pas un nombre.'; return; }
+          o[k] = n;
+        }
+        produits[p.key] = o;
+      }
+      try {
+        const r = await fetch('api/couts/produits', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ produits }) });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(data.error || 'Erreur');
+        if (Array.isArray(data.produits)) matProduits = data.produits;
+        closeMatConst(); updateMatProduit(); loadHist();
+      } catch (e) { $('mc-msg').textContent = 'Enregistrement impossible : ' + e.message; }
+    });
+
     // Découpeur : équipe de cuisine active, dans l'ordre du planning.
     function setDecoupeur(name) {
       const sel = $('decoupeur');
@@ -468,7 +599,8 @@
       if (r.portionG && r.reelKg > 0) {
         const nb = Math.floor(r.reelKg * 1000 / r.portionG + 1e-9);
         parts.push(`${nb} portion${nb > 1 ? 's' : ''} de ${fr(r.portionG, 0)} g${cout ? ` · <b>${fr(cout * r.portionG / 1000, 2)} €/portion</b>` : ''}`);
-        if (cout && r.prixVente) parts.push(`vendu ${fr(r.prixVente, 2)} € → <b>ratio réel × ${fr(r.prixVente / (cout * r.portionG / 1000), 2)}</b>`);
+        const pv = recVente(r);
+        if (cout && pv) parts.push(`vendu ${fr(pv, 2)} € → <b>ratio réel × ${fr(pv / (cout * r.portionG / 1000), 2)}</b>`);
       }
       return `<button type="button" class="rec rec-btn" data-open="${esc(r.id)}">
           <span class="rp">${fr(perte, 1)} %</span>
@@ -503,10 +635,10 @@
           <div class="line"><span>Poids réel détaillé</span><b>${fr(r.reelKg, 3)} kg</b></div>
           ${r.prixKg ? `<div class="line"><span>Prix d'achat au kg</span><b>${fr(r.prixKg, 2)} €/kg</b></div>` : ''}
           ${r.portionG ? `<div class="line"><span>Poids par portion</span><b>${fr(r.portionG, 0)} g</b></div>` : ''}
-          ${r.prixVente ? `<div class="line"><span>Prix de vente de la portion</span><b>${fr(r.prixVente, 2)} €</b></div>` : ''}
+          ${recVente(r) ? `<div class="line"><span>Prix de vente de la portion</span><b>${fr(recVente(r), 2)} €</b></div>` : ''}
           ${r.decoupeur ? `<div class="line"><span>Découpeur</span><b>${esc(r.decoupeur)}</b></div>` : ''}
         </div>
-        <div class="result">${calcHTML({ produit: '', etiq: r.etiquetteKg, reel: r.reelKg, prix: r.prixKg || NaN, portionG: r.portionG || NaN, vente: r.prixVente || NaN })}</div>
+        <div class="result">${calcHTML({ produit: '', etiq: r.etiquetteKg, reel: r.reelKg, prix: r.prixKg || NaN, portionG: r.portionG || NaN, vente: recVente(r) || NaN })}</div>
         <div class="factions">
           <button class="btn btn-green" id="f-close" type="button">Fermer</button>
           <button class="btn btn-blue" id="f-edit" type="button">✏️ Modifier</button>
@@ -530,7 +662,9 @@
     const toField = (n) => (n == null ? '' : n.toLocaleString('fr-FR', { maximumFractionDigits: 3, useGrouping: false }));
     function startEdit(r) {
       editing = r;
-      $('produit').value = r.produit || '';
+      const pk = matKeyOfName(r.produit); // produit de la liste, sinon « Autres » avec son nom
+      $('produit-sel').value = pk || 'autre';
+      $('produit').value = pk ? '' : (r.produit || '');
       $('etiquette').value = toField(r.etiquetteKg);
       $('reel').value = toField(r.reelKg);
       $('prix').value = r.prixKg ? toField(r.prixKg) : '';
@@ -540,7 +674,7 @@
       $('editbar-txt').textContent = `✏️ Modification de l'enregistrement du ${longDate(r.date)}`;
       $('editbar').hidden = false;
       $('save').textContent = '💾 Enregistrer les modifications';
-      compute();
+      updateMatProduit();
       $('editbar').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
     function stopEdit() {
@@ -553,11 +687,12 @@
     $('save').addEventListener('click', async () => {
       const btn = $('save');
       btn.disabled = true;
+      const mv = matValues(); // constantes du produit (ou saisie pour « Autres ») : conservées avec l'enregistrement
       const body = {
-        produit: $('produit').value.trim(),
+        produit: matProduit().nom,
         etiquetteKg: num($('etiquette').value), reelKg: num($('reel').value),
-        prixKg: num($('prix').value) || null, portionG: num($('portion').value) || null,
-        prixVente: num($('vente').value) || null,
+        prixKg: num($('prix').value) || null, portionG: mv.portionG || null,
+        prixVente: mv.vente || null,
         decoupeur: $('decoupeur').value || null,
       };
       const wasEditing = !!editing;

@@ -712,6 +712,40 @@ app.get('/api/couts', (req, res) => {
     FROM cost_records ORDER BY created_at DESC LIMIT 400`).all());
 });
 
+// Ratio viande : produits au choix. Pour chacun, deux constantes modifiables :
+// prix de vente de la portion (€) et poids de la portion (g). Valeurs par défaut
+// tant qu'elles n'ont jamais été modifiées. « Autres » = nom saisi librement.
+const VIANDE_PRODUITS = [
+  { key: 'lesage', nom: 'Entrecôte Lesage', vente: 30, portionG: 350 },
+  { key: 'chaiseronne', nom: 'Entrecôte Chaiseronne', vente: 32, portionG: 350 },
+  { key: 'matu45', nom: 'Matu 45 J', vente: 42, portionG: 350 },
+];
+function readViandeProduits() {
+  const get = db.prepare('SELECT value FROM cost_settings WHERE key = ?');
+  return VIANDE_PRODUITS.map((p) => {
+    const v = get.get(`viande_${p.key}_vente`);
+    const g = get.get(`viande_${p.key}_portion_g`);
+    return { key: p.key, nom: p.nom, vente: v ? v.value : p.vente, portionG: g ? g.value : p.portionG };
+  });
+}
+// À déclarer AVANT les routes « /api/couts/:id ».
+app.get('/api/couts/produits', (req, res) => { res.json({ produits: readViandeProduits() }); });
+app.put('/api/couts/produits', (req, res) => {
+  const b = (req.body && req.body.produits) || {};
+  const up = db.prepare(`INSERT INTO cost_settings (key, value, updated_at) VALUES (?, ?, ?)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`);
+  const now = nowISO();
+  db.transaction(() => {
+    for (const p of VIANDE_PRODUITS) {
+      const v = b[p.key];
+      if (!v || typeof v !== 'object') continue;
+      if (v.vente !== undefined) up.run(`viande_${p.key}_vente`, posNum(v.vente), now); // vide = non renseigné
+      if (v.portionG !== undefined) up.run(`viande_${p.key}_portion_g`, posNum(v.portionG), now);
+    }
+  })();
+  res.json({ ok: true, produits: readViandeProduits() });
+});
+
 // Modifier / compléter un calcul : la date de création (classement) est conservée,
 // la date de modification est posée.
 app.put('/api/couts/:id', (req, res) => {
@@ -719,6 +753,7 @@ app.put('/api/couts/:id', (req, res) => {
   const etiq = posNum(b.etiquetteKg);
   const reel = Number(b.reelKg);
   if (!etiq || !(Number.isFinite(reel) && reel >= 0)) return res.status(400).json({ error: 'Poids étiquette et poids réel requis' });
+  if (!String(b.produit || '').trim()) return res.status(400).json({ error: 'Le produit est obligatoire' });
   const info = db.prepare(`UPDATE cost_records SET produit = ?, etiquette_kg = ?, reel_kg = ?, prix_kg = ?, portion_g = ?, decoupeur = ?, prix_vente = ?, updated_at = ?
     WHERE id = ?`).run(String(b.produit || '').trim().slice(0, 120) || null, etiq, reel, posNum(b.prixKg), posNum(b.portionG),
     String(b.decoupeur || '').trim().slice(0, 60) || null, posNum(b.prixVente), nowISO(), req.params.id);
@@ -732,6 +767,7 @@ app.post('/api/couts', (req, res) => {
   const etiq = posNum(b.etiquetteKg);
   const reel = Number(b.reelKg);
   if (!etiq || !(Number.isFinite(reel) && reel >= 0)) return res.status(400).json({ error: 'Poids étiquette et poids réel requis' });
+  if (!String(b.produit || '').trim()) return res.status(400).json({ error: 'Le produit est obligatoire' });
   const id = uid();
   db.prepare(`INSERT INTO cost_records (id, date, created_at, produit, etiquette_kg, reel_kg, prix_kg, portion_g, decoupeur, prix_vente)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, todayParis(), nowISO(),

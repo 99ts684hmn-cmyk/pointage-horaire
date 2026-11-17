@@ -404,7 +404,7 @@
       box.className = 'result';
       const mv = matValues();
       box.innerHTML = calcHTML({
-        produit: prod.nom, etiq, reel,
+        produit: prod.nom ? prod.nom + optSuffix(matExtras()) : '', etiq, reel,
         prix: mv.prix, portionG: mv.portionG, vente: mv.vente, extras: matExtras(),
       }) + (prod.nom ? '' : `<div class="warn">⚠️ ${prod.key === 'autre' ? 'Saisissez le nom du produit' : 'Choisissez le produit'} pour pouvoir enregistrer.</div>`);
     }
@@ -538,14 +538,16 @@
     // --- Options à cocher : coût par portion, constantes communes à toutes les viandes.
     let matOptions = { garniture: null, flambage: null };
     const MAT_OPTS = [
-      { key: 'garniture', label: 'Garniture / sauce', chk: 'opt-garniture', rec: 'coutGarniture' },
-      { key: 'flambage', label: 'Flambage', chk: 'opt-flambage', rec: 'coutFlambage' },
+      { key: 'garniture', label: 'Garniture / sauce', abbr: 'G', chk: 'opt-garniture', rec: 'coutGarniture' },
+      { key: 'flambage', label: 'Flambage', abbr: 'F', chk: 'opt-flambage', rec: 'coutFlambage' },
     ];
+    // Mention ajoutée après le nom de la viande : « avec G », « avec F » ou « avec G et F ».
+    const optSuffix = (ex) => (ex.length ? ' avec ' + ex.map((x) => x.abbr).join(' et ') : '');
     // Coût d'une option : celui de l'enregistrement s'il en a un, sinon la constante actuelle (NaN = à renseigner).
     const optCost = (o, r) => matPos(r && r[o.rec]) || matPos(matOptions[o.key]);
     // Options cochées dans la calculette / dans un enregistrement : [{ key, label, cout }].
-    const matExtras = () => MAT_OPTS.filter((o) => $(o.chk).checked).map((o) => ({ key: o.key, label: o.label, cout: optCost(o, editing) }));
-    const recExtras = (r) => MAT_OPTS.filter((o) => r[o.key]).map((o) => ({ key: o.key, label: o.label, cout: optCost(o, r) }));
+    const matExtras = () => MAT_OPTS.filter((o) => $(o.chk).checked).map((o) => ({ key: o.key, label: o.label, abbr: o.abbr, cout: optCost(o, editing) }));
+    const recExtras = (r) => MAT_OPTS.filter((o) => r[o.key]).map((o) => ({ key: o.key, label: o.label, abbr: o.abbr, cout: optCost(o, r) }));
     const exTotal = (ex) => ex.reduce((t, x) => t + (Number.isFinite(x.cout) ? x.cout : 0), 0);
     function renderMatOpts() {
       for (const o of MAT_OPTS) {
@@ -662,13 +664,13 @@
         const nb = Math.floor(r.reelKg * 1000 / r.portionG + 1e-9);
         const ex = recExtras(r); // options cochées : leur coût s'ajoute à celui de la portion
         const cp = cout ? cout * r.portionG / 1000 + exTotal(ex) : null;
-        parts.push(`${nb} portion${nb > 1 ? 's' : ''} de ${fr(r.portionG, 0)} g${cp ? ` · <b>${fr(cp, 2)} €/portion</b>` : ''}${ex.length ? ` · avec ${ex.map((x) => esc(x.label.toLowerCase())).join(' + ')}` : ''}`);
+        parts.push(`${nb} portion${nb > 1 ? 's' : ''} de ${fr(r.portionG, 0)} g${cp ? ` · <b>${fr(cp, 2)} €/portion</b>` : ''}`);
         const pv = recVente(r);
         if (cp && pv) parts.push(`vendu ${fr(pv, 2)} € → <b>ratio réel × ${fr(pv / cp, 2)}</b> · marge ${fr(pv - cp, 2)} € (${fr((1 - cp / pv) * 100, 1)} %)`);
       }
       return `<button type="button" class="rec rec-btn" data-open="${esc(r.id)}">
           <span class="rp">${fr(perte, 1)} %</span>
-          <span class="rd"><b>${esc(r.produit || 'Sans nom')}</b> · ${heure(r.createdAt)}${r.decoupeur ? ` · découpe : ${esc(r.decoupeur)}` : ''}${r.updatedAt ? ' <span class="modif">· modifié</span>' : ''}<br>${parts.join('<br>')}</span>
+          <span class="rd"><b>${esc((r.produit || 'Sans nom') + optSuffix(recExtras(r)))}</b> · ${heure(r.createdAt)}${r.decoupeur ? ` · découpe : ${esc(r.decoupeur)}` : ''}${r.updatedAt ? ' <span class="modif">· modifié</span>' : ''}<br>${parts.join('<br>')}</span>
           <span class="rgo">›</span>
         </button>`;
     }
@@ -692,7 +694,7 @@
       const r = records.find((x) => x.id === id);
       if (!r) return;
       $('fiche').innerHTML = `
-        <h2>${esc(r.produit || 'Sans nom')}</h2>
+        <h2>${esc((r.produit || 'Sans nom') + optSuffix(recExtras(r)))}</h2>
         <div class="fdates">Créé le ${dateHeure(r.createdAt)}${r.updatedAt ? `<br>Modifié le ${dateHeure(r.updatedAt)}` : ''}</div>
         <div class="flines">
           <div class="line"><span>Poids étiquette</span><b>${fr(r.etiquetteKg, 3)} kg</b></div>

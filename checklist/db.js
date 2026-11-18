@@ -320,6 +320,24 @@ const MANAGER_HEBDO_TASKS = [
   'Faire le tour du restaurant y compris réserve, vestiaire, frigo, cave, placard, et faire en sorte que cela soit niquel.',
 ];
 
+// Onglet Managers — « Gestion du service » (document « GESTION DU SERVICE »).
+const GESTION_SERVICE_TASKS = [
+  'Accueil sourire et sympathie',
+  'Booster la cuisine',
+  'Collègues actifs',
+  'Suggestions proposées',
+  'Points réguliers chef de rang : réclame, timing de leur table',
+  'Longueurs de service : point cuisine, rassurer client',
+  'Communication cuisine : forte affluence / grande table / client pressé / modif plat',
+  'Suivi de TOUS les clients et actions correctives',
+  'Faire encaissements, interroger les clients',
+  'Vérifier ce qui sort',
+  'Table en assis / partis',
+  'Fermer les créneaux',
+  'Checker les réservations (qui tombent et en retard)',
+  'Faire du relationnel client +++',
+];
+
 // Onglet « Brief Manager 11 45 »
 const BRIEF_MANAGER_TASKS = [
   'Menu du jour / Suggestion',
@@ -832,6 +850,12 @@ function seedAndMigrate() {
   ensureTemplateByType('BRIEF_MANAGER_SOIR', () => {
     const id = insertTemplate({ name: 'Brief Manager Soir', type: 'BRIEF_MANAGER_SOIR', color: 'bg-rose-600', icon: '🌙', resetMode: 'AUTO_DAILY', order: 9, category: 'manager' });
     BRIEF_MANAGER_TASKS.forEach((title, i) => insertTask(id, title, i + 1));
+  });
+  // « Gestion du service » : placée après les autres check-lists manager.
+  ensureTemplateByType('GESTION_SERVICE', () => {
+    const last = db.prepare("SELECT MAX(ord) AS m FROM templates WHERE category = 'manager'").get();
+    const id = insertTemplate({ name: 'Gestion du service', type: 'GESTION_SERVICE', color: 'bg-rose-600', icon: '🎯', resetMode: 'AUTO_DAILY', order: ((last && last.m) || 9) + 1, category: 'manager' });
+    GESTION_SERVICE_TASKS.forEach((title, i) => insertTask(id, title, i + 1));
   });
   // Nouvelles check-lists de service (onglet « Check-lists »), créées vides :
   // les tâches sont à ajouter ensuite via l'Admin.

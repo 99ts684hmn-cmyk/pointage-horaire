@@ -26,14 +26,19 @@
       padding:max(28px,env(safe-area-inset-top)) 20px 48px;
     }
     .top{width:100%;max-width:720px;display:flex;align-items:center;gap:14px;margin:4px 0 22px}
-    .top a.back{color:var(--gold-dark);text-decoration:none;font-weight:700;font-size:.95rem}
+    .top a.back{color:var(--gold-dark);text-decoration:none;font-weight:700;font-size:.95rem;white-space:nowrap}
     .top h1{font-size:1.1rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dark)}
+    .boxes{width:100%;max-width:720px;margin:0 0 22px}
+    .boxes-title{font-size:.8rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+    .boxes-title:empty{display:none}
+    .boxes .none{background:var(--card);border:2px dashed var(--card-border);border-radius:12px;padding:14px 16px;color:var(--muted);font-size:.9rem;margin:0 0 12px}
+    .boxes .all{display:inline-block;margin-top:2px;color:var(--gold-dark);font-weight:700;font-size:.9rem;text-decoration:none}
     .grid{width:100%; max-width:720px; display:grid; grid-template-columns:repeat(2,1fr); gap:16px;}
     @media (max-width:560px){ .grid{grid-template-columns:1fr} }
     .tile{
       display:flex; flex-direction:column; gap:10px;
       background:var(--card); border:2px solid var(--card-border);
-      border-radius:20px; padding:24px 22px; min-height:140px;
+      border-radius:20px; padding:24px 22px; min-height:130px;
       color:var(--dark); text-decoration:none;
       transition:transform .15s ease, border-color .15s ease;
       position:relative; overflow:hidden;
@@ -42,156 +47,83 @@
     .tile .ic{font-size:2rem;line-height:1}
     .tile .ttl{font-size:1.12rem;font-weight:700}
     .tile .sub{font-size:.85rem;color:var(--muted);line-height:1.35}
-    .tile .accent{position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--primary)}
-    .gate{width:100%;max-width:360px;background:var(--card);border:2px solid var(--card-border);border-radius:18px;padding:26px 22px;margin-top:40px}
-    .gate h2{font-size:1.05rem;font-weight:700;margin-bottom:14px;color:var(--dark)}
-    .gate input{width:100%;border:1.5px solid var(--card-border);border-radius:11px;padding:12px 14px;font-size:.95rem;background:#faf7f1;color:var(--dark);font-family:inherit}
-    .gate button{width:100%;margin-top:12px;border:0;border-radius:11px;padding:12px;font-weight:700;font-size:.95rem;background:var(--gold);color:#1f2120;cursor:pointer;font-family:inherit}
-    .gate .err{color:var(--primary);font-size:.85rem;margin-top:10px;min-height:1em}
-    /* Bandeau aperçu (identique à la cuisine) : prochains groupes + menu de la semaine */
-    .apercu{width:100%;max-width:720px;display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:0 0 22px}
-    @media (max-width:620px){.apercu{grid-template-columns:1fr}}
-    .ap-col{background:var(--card);border:2px solid var(--card-border);border-radius:14px;padding:14px 16px}
-    .ap-title{color:var(--gold-dark);font-weight:800;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
-    .ap-line{display:flex;gap:10px;justify-content:space-between;padding:6px 0;font-size:.9rem;border-top:1px solid #f0ebe2}
-    .ap-line:first-child{border-top:0}
-    .ap-d{color:var(--gold-dark);font-weight:700;white-space:nowrap}
-    .ap-when{font-weight:600;font-size:.8rem;color:var(--muted)}
-    .ap-when.soon{color:var(--gold-dark)}
-    .ap-n{color:var(--dark);text-align:right}
-    .ap-lbl{color:var(--muted);font-weight:700}
-    .ap-v{color:var(--dark);text-align:right}
-    .ap-empty{color:var(--muted);font-size:.85rem}
+    .tile .accent{position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--gold)}
+    .badge{display:inline-flex;align-items:center;gap:5px;font-size:.72rem;font-weight:700;letter-spacing:.06em;
+      text-transform:uppercase;color:var(--gold-dark);background:#f6efe2;border-radius:999px;padding:3px 9px;width:max-content}
   </style>
 </head>
 <body>
   <div class="top">
-    <a class="back" href="/">← Accueil</a>
+    <a class="back" href="/salle.html">← Salle</a>
     <h1>Managers Salle</h1>
   </div>
 
-  <div class="gate" id="gate" hidden>
-    <h2>🔒 Accès protégé</h2>
-    <input type="password" id="pw" placeholder="Mot de passe" autocomplete="current-password">
-    <button id="login-btn">Entrer</button>
-    <div class="err" id="err"></div>
-  </div>
-
-  <section class="apercu" id="apercu" hidden>
-    <div class="ap-col">
-      <div class="ap-title">👥 Prochains groupes</div>
-      <div id="ap-groupes"></div>
-    </div>
-    <div class="ap-col">
-      <div class="ap-title" id="ap-menu-title">📋 Menu de la semaine</div>
-      <div id="ap-menu"></div>
-    </div>
+  <!-- Résumé des check-lists manager : celles du service en cours (midi de 8h à 17h,
+       soir le reste du temps), puis l'hebdo. Les tâches se cochent directement. -->
+  <section class="boxes" id="boxes">
+    <div class="boxes-title" id="boxes-title"></div>
+    <div id="boxes-host"></div>
+    <div class="none" id="boxes-none" hidden>Aucune check-list manager pour ce service.</div>
+    <a class="all" href="/checklist/index.html?tab=manager">Toutes les check-lists manager →</a>
   </section>
 
-  <main class="grid" id="tiles" hidden>
+  <main class="grid">
     <a class="tile" href="/checklist/rapports.html?scope=salle">
       <span class="accent"></span>
       <span class="ic">📊</span>
       <span class="ttl">Rapports check-list salle</span>
-      <span class="sub">Historique des check-lists de la salle uniquement</span>
+      <span class="sub">Historique des check-lists de la salle</span>
     </a>
 
-    <a class="tile" href="/admin.html">
+    <a class="tile" href="/checklist/admin.html">
       <span class="accent"></span>
       <span class="ic">⚙️</span>
-      <span class="ttl">Administration planning</span>
-      <span class="sub">Planning, employés, pauses, sécurité</span>
-    </a>
-
-    <a class="tile" href="/checklist/index.html?tab=manager">
-      <span class="accent"></span>
-      <span class="ic">👔</span>
-      <span class="ttl">Check-lists managers</span>
-      <span class="sub">Check Manager Matin, Hebdo &amp; Brief</span>
+      <span class="badge">🔒 Protégé</span>
+      <span class="ttl">Admin check-lists</span>
+      <span class="sub">Gérer les check-lists et leurs tâches</span>
     </a>
   </main>
 
   <script>
-    var gate = document.getElementById('gate');
-    var tiles = document.getElementById('tiles');
-    var apercu = document.getElementById('apercu');
-    var err = document.getElementById('err');
-    function showTiles(ok) {
-      tiles.hidden = !ok; gate.hidden = ok;
-      if (ok) loadApercu(); else { apercu.hidden = true; document.getElementById('pw').focus(); }
-    }
-
-    // --- Bandeau aperçu (mêmes données et rendu que la page Cuisine) ----------
-    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
-    var DOW = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
-    function dayHead(iso) { var d = new Date(iso + 'T12:00:00'); var p = iso.split('-'); return DOW[d.getDay()] + ' ' + p[2] + '/' + p[1]; }
-    function daysUntil(iso) { var t = new Date(); t.setHours(0, 0, 0, 0); return Math.round((new Date(iso + 'T00:00:00') - t) / 86400000); }
-    function whenInfo(iso) { var n = daysUntil(iso); if (n <= 0) return { txt: "aujourd'hui", soon: true }; if (n === 1) return { txt: 'demain', soon: true }; return { txt: 'dans ' + n + ' j', soon: false }; }
-    function menuLine(label, a, b) {
-      var parts = [a, b].filter(function (v) { return v && v.trim(); });
-      return '<div class="ap-line"><span class="ap-lbl">' + label + '</span><span class="ap-v">' + (parts.length ? parts.map(esc).join(' · ') : '—') + '</span></div>';
-    }
-    function buildMenuText(cells, title) {
-      var lines = [title];
-      function add(label, a, b) { var p = [a, b].filter(function (v) { return v && v.trim(); }); if (p.length) lines.push(label + ' : ' + p.join(' · ')); }
-      add('Entrées', cells.debut_entree, cells.fin_entree);
-      add('Plats', cells.debut_pj, cells.fin_pj);
-      add('Desserts', cells.debut_dessert, cells.fin_dessert);
-      return lines.join('\n');
-    }
-    function copyText(text) {
-      if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
-      return new Promise(function (resolve, reject) {
-        try { var ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.focus(); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); resolve(); } catch (e) { reject(e); }
-      });
-    }
-    function loadApercu() {
-      fetch('/checklist/api/menus/apercu').then(function (r) { return r.json(); }).then(function (d) {
-        var cells = d.menu || {};
-        var grp = Array.isArray(d.groupes) ? d.groupes : [];
-        document.getElementById('ap-groupes').innerHTML = grp.length
-          ? grp.map(function (g) {
-            var w = whenInfo(g.date);
-            return '<div class="ap-line"><span class="ap-d">' + dayHead(g.date) + ' <span class="ap-when' + (w.soon ? ' soon' : '') + '">' + w.txt + '</span></span><span class="ap-n">' + (g.heure ? '🕒 ' + esc(String(g.heure).replace(':', 'h')) + ' · ' : '') + esc(g.nom) + (g.pers ? ' · ' + esc(g.pers) + ' pers' : '') + '</span></div>';
-          }).join('')
-          : '<div class="ap-empty">Aucun groupe à venir</div>';
-        var menuTitle = d.menuNextWeek ? '📋 Menu de la semaine prochaine' : '📋 Menu de la semaine';
-        var mt = document.getElementById('ap-menu-title');
-        if (mt) mt.textContent = menuTitle;
-        var hasMenu = ['debut_entree', 'fin_entree', 'debut_pj', 'fin_pj', 'debut_dessert', 'fin_dessert'].some(function (k) { return (cells[k] || '').trim(); });
-        document.getElementById('ap-menu').innerHTML = hasMenu
-          ? menuLine('Entrées', cells.debut_entree, cells.fin_entree)
-            + menuLine('Plats', cells.debut_pj, cells.fin_pj)
-            + menuLine('Desserts', cells.debut_dessert, cells.fin_dessert)
-          : '<div class="ap-empty">Menu de la semaine non renseigné</div>';
-        var menuCol = document.getElementById('ap-menu').closest('.ap-col');
-        if (menuCol && hasMenu) {
-          menuCol.style.cursor = 'pointer';
-          menuCol.title = 'Cliquer pour copier le menu (prêt à coller dans un message)';
-          menuCol.onclick = function () {
-            copyText(buildMenuText(cells, menuTitle)).then(function () {
-              if (mt) { mt.textContent = '✅ Menu copié !'; setTimeout(function () { mt.textContent = menuTitle; }, 1400); }
-            }).catch(function () {});
-          };
+    // Cartouches : check-lists manager du service en cours + hebdo.
+    // Le service d'une check-list se lit dans son type ou son nom, comme sur la page
+    // des check-lists : « Midi » / « Matin » → midi, « Soir » → soir, « Hebdo » → hebdo.
+    window.CL_API_BASE = '/checklist/';
+    window.CL_FROM = 'managers';
+    window.CL_CATEGORY = 'manager';
+    window.CL_BOX_CSS = true;
+    (function () {
+      var SLOTS = 6; // check-lists de service affichées au plus
+      function svcOf(s) {
+        var t = ((s.templateType || '') + ' ' + (s.templateName || '')).toUpperCase();
+        if (t.indexOf('HEBDO') >= 0) return 'hebdo';
+        if (t.indexOf('MIDI') >= 0 || t.indexOf('MATIN') >= 0) return 'midi';
+        if (t.indexOf('SOIR') >= 0) return 'soir';
+        return 'autre';
+      }
+      var icon = function (s) { return (s && s.templateIcon) || '👔'; };
+      window.CL_BOXES = function () {
+        var h = new Date().getHours();
+        var svc = (h >= 8 && h < 17) ? 'midi' : 'soir';
+        var el = document.getElementById('boxes-title');
+        if (el) el.textContent = svc === 'midi' ? '🌞 Check-lists manager — service du midi' : '🌙 Check-lists manager — service du soir';
+        var list = [];
+        for (var i = 0; i < SLOTS; i++) {
+          (function (n) {
+            list.push({ id: 'box-svc-' + n, icon: icon, lines: 3, pick: function (all) { return all.filter(function (x) { return svcOf(x) === svc; })[n]; } });
+          })(i);
         }
-        apercu.hidden = false;
-      }).catch(function () { /* en cas d'erreur, on n'affiche simplement pas le bandeau */ });
-    }
-    async function login() {
-      err.textContent = '';
-      var pw = document.getElementById('pw').value;
-      try {
-        var r = await fetch('/api/admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw }) });
-        if (r.ok) { showTiles(true); } else { err.textContent = 'Mot de passe incorrect.'; }
-      } catch (e) { err.textContent = 'Erreur de connexion.'; }
-    }
-    document.getElementById('login-btn').addEventListener('click', login);
-    document.getElementById('pw').addEventListener('keydown', function (e) { if (e.key === 'Enter') login(); });
-    // Déjà connecté en admin ? (cookie partagé avec l'admin du pointage)
-    fetch('/api/admin/me').then(function (r) { return r.json(); })
-      .then(function (d) { showTiles(!!(d && d.loggedIn)); })
-      .catch(function () { showTiles(false); });
+        list.push({ id: 'box-hebdo', icon: icon, lines: 3, pick: function (all) { return all.filter(function (x) { return svcOf(x) === 'hebdo'; })[0]; } });
+        return list;
+      };
+      // Message quand aucune check-list n'est affichée.
+      document.addEventListener('boxes-rendered', function () {
+        var shown = document.querySelectorAll('#boxes-host .menage-box:not([hidden])').length;
+        document.getElementById('boxes-none').hidden = shown > 0;
+      });
+    })();
   </script>
-  <script src="/tabbar.js?v=7"></script>
+  <script src="/checklist/menage-box.js?v=5"></script>
+  <script src="/tabbar.js?v=8"></script>
 </body>
 </html>

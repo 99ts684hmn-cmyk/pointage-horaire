@@ -32,7 +32,7 @@
       { icon: '🛎️', label: 'Salle', href: '/salle.html', active: (p) => p === '/salle.html' },
       { icon: '🕒', label: 'Planning', href: '/pointage.html', active: (p) => p === '/pointage.html' },
       { icon: '✅', label: 'Check-lists', href: '/checklist/', active: (p) => is('/checklist/', '/checklist/index.html', '/checklist/session.html') && !/tab=manager/.test(q) },
-      { icon: '👔', label: 'Managers', href: '/checklist/index.html?tab=manager', active: (p) => (p === '/checklist/index.html' && /tab=manager/.test(q)) || p === '/manager-salle.html' || p === '/checklist/rapports.html' },
+      { icon: '👔', label: 'Managers', href: '/manager-salle.html', active: (p) => (p === '/checklist/index.html' && /tab=manager/.test(q)) || p === '/manager-salle.html' || p === '/checklist/rapports.html' },
       { icon: '⚙️', label: 'Admin', href: '/admin.html', active: (p) => p === '/admin.html' || p === '/checklist/admin.html' },
     ],
     cuisine: [

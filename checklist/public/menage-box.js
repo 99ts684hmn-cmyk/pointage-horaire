@@ -9,6 +9,7 @@
 //
 // Configurable par la page hôte (ex. /salle.html) via :
 //   window.CL_BOXES     : tableau [{ id, icon, lines, pick(sessions) }] ou FONCTION
+//                         (icon : texte, ou fonction(session) → icône de la check-list)
 //                         qui le renvoie (ré-évaluée à chaque rafraîchissement →
 //                         cartouches selon l'heure). Les conteneurs manquants sont
 //                         créés dans #boxes-host.
@@ -79,19 +80,20 @@
       tasks = Array.isArray(d.tasks) ? d.tasks : [];
     } catch (e) { el.hidden = true; return; }
     const todo = tasks.filter((t) => !t.isDone);
+    const icon = typeof box.icon === 'function' ? box.icon(s) : box.icon;
     const link = `${API}session.html?id=${encodeURIComponent(s.id)}&from=${FROM}`;
     if (!tasks.length) { el.hidden = true; return; } // liste vide ≠ terminée
     if (!todo.length) {
       el.className = 'menage-box done';
       // Tout est coché : la finalisation (nom + animation) se fait sur la liste.
-      el.innerHTML = `<div class="mh"><span>${box.icon} ${esc(s.templateName)}</span><span class="mc">✅ tout est fait</span></div>
+      el.innerHTML = `<div class="mh"><span>${icon} ${esc(s.templateName)}</span><span class="mc">✅ tout est fait</span></div>
         ${s.status === 'TERMINE' ? '' : `<a class="more" href="${link}">Finaliser la liste →</a>`}`;
     } else {
       const first = todo.slice(0, box.lines || 3);
       const rest = todo.length - first.length;
       el.className = 'menage-box';
       // En-tête compact : titre + compteur à gauche, lien « + N autres → » à droite.
-      el.innerHTML = `<div class="mh"><span>${box.icon} ${esc(s.templateName)} <span class="mc">${tasks.length - todo.length}/${tasks.length}</span></span><a class="more" href="${link}" title="Ouvrir la liste complète">${rest > 0 ? `+ ${rest} autre${rest > 1 ? 's' : ''} →` : 'Ouvrir →'}</a></div>
+      el.innerHTML = `<div class="mh"><span>${icon} ${esc(s.templateName)} <span class="mc">${tasks.length - todo.length}/${tasks.length}</span></span><a class="more" href="${link}" title="Ouvrir la liste complète">${rest > 0 ? `+ ${rest} autre${rest > 1 ? 's' : ''} →` : 'Ouvrir →'}</a></div>
         ${first.map((t) => `<button type="button" class="mt${t.isCarriedOver ? ' carried' : ''}" data-task="${esc(t.id)}" title="Marquer comme faite"><span class="cb"></span><span>${esc(t.title)}${t.isCarriedOver ? ' <small>↩ reporté</small>' : ''}</span></button>`).join('')}`;
       // Un appui coche la tâche (même action que sur la page de la liste), puis
       // le cartouche se recharge : la tâche suivante prend la place.

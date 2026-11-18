@@ -69,10 +69,12 @@ function render() {
     return;
   }
 
-  // Regroupe les check-lists par service : Midi / Soir / Autres (selon le type).
+  // Regroupe les check-lists par service : Midi / Soir / Autres, d'après le type
+  // OU le nom (une check-list créée dans l'admin n'a que son nom pour le dire).
+  // « Matin » compte pour le midi : le matin prépare le service du midi.
   const blockOf = (s) => {
-    const t = String(s.templateType || '').toUpperCase();
-    if (t.includes('MIDI')) return 'midi';
+    const t = `${s.templateType || ''} ${s.templateName || ''}`.toUpperCase();
+    if (t.includes('MIDI') || t.includes('MATIN')) return 'midi';
     if (t.includes('SOIR')) return 'soir';
     return 'autre';
   };

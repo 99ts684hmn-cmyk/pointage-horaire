@@ -851,12 +851,20 @@ function seedAndMigrate() {
     const id = insertTemplate({ name: 'Brief Manager Soir', type: 'BRIEF_MANAGER_SOIR', color: 'bg-rose-600', icon: '🌙', resetMode: 'AUTO_DAILY', order: 9, category: 'manager' });
     BRIEF_MANAGER_TASKS.forEach((title, i) => insertTask(id, title, i + 1));
   });
-  // « Gestion du service » : placée après les autres check-lists manager.
-  ensureTemplateByType('GESTION_SERVICE', () => {
-    const last = db.prepare("SELECT MAX(ord) AS m FROM templates WHERE category = 'manager'").get();
-    const id = insertTemplate({ name: 'Gestion du service', type: 'GESTION_SERVICE', color: 'bg-rose-600', icon: '🎯', resetMode: 'AUTO_DAILY', order: ((last && last.m) || 9) + 1, category: 'manager' });
-    GESTION_SERVICE_TASKS.forEach((title, i) => insertTask(id, title, i + 1));
-  });
+  // « Gestion du service » : une check-list par service, rangées dans les blocs
+  // Midi et Soir de l'onglet Managers (le bloc vient du type), chacune enregistrée
+  // à part dans le rapport. Placées après les autres check-lists manager.
+  // Une éventuelle check-list unique créée par une version précédente devient celle du midi.
+  db.prepare(`UPDATE templates SET type = 'GESTION_SERVICE_MIDI',
+    name = CASE WHEN name = 'Gestion du service' THEN 'Gestion du service Midi' ELSE name END
+    WHERE type = 'GESTION_SERVICE'`).run();
+  for (const [type, name] of [['GESTION_SERVICE_MIDI', 'Gestion du service Midi'], ['GESTION_SERVICE_SOIR', 'Gestion du service Soir']]) {
+    ensureTemplateByType(type, () => {
+      const last = db.prepare("SELECT MAX(ord) AS m FROM templates WHERE category = 'manager'").get();
+      const id = insertTemplate({ name, type, color: 'bg-rose-600', icon: '🎯', resetMode: 'AUTO_DAILY', order: ((last && last.m) || 9) + 1, category: 'manager' });
+      GESTION_SERVICE_TASKS.forEach((title, i) => insertTask(id, title, i + 1));
+    });
+  }
   // Nouvelles check-lists de service (onglet « Check-lists »), créées vides :
   // les tâches sont à ajouter ensuite via l'Admin.
   ensureTemplateByType('OUV_MIDI', () => { const id = insertTemplate({ name: 'Ouverture midi Bas', type: 'OUV_MIDI', color: 'bg-amber-400', icon: '☀️', resetMode: 'AUTO_DAILY', order: 1, category: 'general' }); OUV_MIDI_TASKS.forEach((t, i) => insertTask(id, t, i + 1)); });
